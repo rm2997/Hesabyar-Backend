@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: hesabyar-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hesabyar_db
+      MYSQL_USER: hesabyar_user
+      MYSQL_PASSWORD: hesabyar_pass
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - hesabyar-network
+
+  backend:
+    build: .
+    container_name: hesabyar-backend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=hesabyar_user
+      - DB_PASSWORD=hesabyar_pass
+      - DB_NAME=hesabyar_db
+      - UPLOAD_FOLDER=uploads
+      - STATIC_URL=http://localhost:3000/uploads
+    depends_on:
+      - mysql
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+    networks:
+      - hesabyar-network
+
+volumes:
+  mysql_data:
+
+networks:
+  hesabyar-network:

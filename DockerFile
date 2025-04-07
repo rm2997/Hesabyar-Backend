@@ -1,0 +1,23 @@
+# مرحله 1: ساخت (build) اپ با Node
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+# مرحله 2: اجرای اپ
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --only=production
+
+COPY --from=builder /app/dist ./dist
+COPY .env .env
+
+CMD ["node", "dist/main"]
