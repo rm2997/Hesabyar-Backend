@@ -15,6 +15,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Proforma } from './proforma.entity';
 import { Request } from 'express';
 import { User } from 'src/users/users.entity';
+import { Public } from 'src/common/decorators/jwt.decorator';
 
 // این کنترلر برای مدیریت درخواست‌های HTTP مرتبط با پیش‌فاکتور استفاده می‌شود
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,10 +30,37 @@ export class ProformaController {
     return this.proformaService.createProforma(data, user);
   }
 
+  @Get('share-link/:id')
+  async getShareableLink(@Param('id') id: number) {
+    return {
+      link: await this.proformaService.generateShareableLink(id),
+    };
+  }
+
+  // مسیر عمومی مشاهده پیش‌فاکتور از طریق لینک
+  @Get('view/:token')
+  @Public()
+  async viewProforma(@Param('token') token: string) {
+    return await this.proformaService.verifyAndFetchProforma(token);
+  }
+
+  // این متد برای دریافت همه پیش‌فاکتورها است
+  @Get()
+  async getAll() {
+    return this.proformaService.getAll();
+  }
+
   // این متد برای دریافت پیش‌فاکتور بر اساس شناسه است
   @Get(':id')
   async get(@Param('id') id: number) {
     return this.proformaService.getProforma(id);
+  }
+
+  // این متد برای دریافت پیش‌فاکتورهای کاربر جاری است
+  @Get('user/my')
+  async getByUserId(@Req() req: Request) {
+    const user = req.user as User;
+    return this.proformaService.getAllByUser(user);
   }
 
   // این متد برای به روزرسانی پیش‌فاکتور است

@@ -21,6 +21,9 @@ export class Proforma {
   @Column({ nullable: true })
   approvedFile: string; // فایل امضا شده توسط مشتری
 
+  @Column({ nullable: true })
+  customerLink: string; //لینکی که برای مشتری ارسال می شود
+
   @CreateDateColumn()
   createdAt: Date;
 
