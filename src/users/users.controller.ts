@@ -17,6 +17,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { Request } from 'express';
+import { Public } from 'src/common/decorators/jwt.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,6 +26,7 @@ export class UsersController {
 
   @Post('seed-admin')
   @UserRoles()
+  @Public()
   async seedAdmin() {
     return this.usersService.createAdmin(); // بدون نیاز به احراز هویت
   }

@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { json } from 'stream/consumers';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private config: ConfigService,
   ) {}
 
   // بررسی ورود کاربر
@@ -23,8 +26,41 @@ export class AuthService {
   // تولید توکن برای کاربر
   async login(user: any) {
     const payload = { username: user.username, sub: user.id, role: user.role };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '1d' });
+
+    return { accessToken, refreshToken };
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<any> {
+    try {
+      // تایید صحت توکن رفرش
+      const verifiedPayload = this.jwtService.verify(refreshToken, {
+        secret: this.config.get<string>('JWT_SECRET'),
+      });
+      const payload = {
+        username: verifiedPayload.username,
+        sub: verifiedPayload.id,
+        role: verifiedPayload.role,
+      };
+      // ساخت توکن جدید
+      const accessToken = this.jwtService.sign(payload, {
+        expiresIn: '15m',
+      });
+
+      return accessToken;
+    } catch (e) {
+      throw new Error('Invalid refresh token');
+    }
+  }
+
+  // بررسی شماره موبایل کاربر
+  async validateMobileNumber(mobile: string) {
+    const user = await this.usersService.findByMobileNumber(mobile);
+    if (user && user.usermobilenumber) {
+      const { password, ...result } = user;
+      return result;
+    }
+    return null;
   }
 }

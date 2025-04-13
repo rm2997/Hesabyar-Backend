@@ -6,10 +6,14 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableCors({
+    origin: ['http://localhost:3000'],
+    credentials: true,
+  });
   app.use(
     '/uploads',
     express.static(join(__dirname, '..', process.env.UPLOAD_FOLDER + '')),
   );
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.APP_PORT || 3000);
 }
 bootstrap();

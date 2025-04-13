@@ -29,10 +29,12 @@ export class UsersService {
     return user;
   }
 
-  // // دریافت کاربر با ایمیل
-  // async findByEmail(email: string): Promise<User> {
-  //   return this.usersRepository.findOne({ where: { email } });
-  // }
+  // دریافت کاربر با موبایل
+  async findByMobileNumber(usermobilenumber: string): Promise<User | null> {
+    const user = this.usersRepository.findOne({ where: { usermobilenumber } });
+    if (!user) throw new NotFoundException('Moblie number not found');
+    return user;
+  }
 
   // بروزرسانی کاربر
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
