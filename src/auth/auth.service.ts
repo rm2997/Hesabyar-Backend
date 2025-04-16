@@ -3,7 +3,6 @@ import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { json } from 'stream/consumers';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +37,7 @@ export class AuthService {
       const verifiedPayload = this.jwtService.verify(refreshToken, {
         secret: this.config.get<string>('JWT_SECRET'),
       });
+
       const payload = {
         username: verifiedPayload.username,
         sub: verifiedPayload.id,

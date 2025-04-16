@@ -15,6 +15,7 @@ import { Request, Response } from 'express';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -23,7 +24,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() body: { username: string; password: string }) {
     Logger.log(
-      `New login request received...  ${body.username} ,${body.password}`,
+      `New login request received...[username:${body.username} password:${body.password}]`,
     );
     if (!body || !body.username || !body.password) {
       throw new UnauthorizedException('نام کاربری یا رمز اشتباه است');
@@ -32,6 +33,8 @@ export class AuthController {
       body.username,
       body.password,
     );
+    console.log(user);
+
     if (!user) {
       throw new UnauthorizedException('نام کاربری یا رمز اشتباه است');
     }
@@ -39,7 +42,7 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @UserRoles(Roles.Admin)
   async refreshToken(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.body.refreshToken;

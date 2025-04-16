@@ -14,7 +14,11 @@ export class UsersService {
 
   // یافتن کاربر با نام کاربری
   async findByUsername(username: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { username } });
+    const user = await this.usersRepository.findOne({ where: { username } });
+
+    if (!user) throw new NotFoundException('کاربر مورد نظر موجود نیست');
+
+    return user;
   }
 
   // نمایش کل کاربران
@@ -25,8 +29,9 @@ export class UsersService {
   // دریافت کاربر با آیدی
   async findById(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
-    return user;
+    if (!user) throw new NotFoundException('کاربر مورد نظر موجود نیست');
+
+    return { ...user, password: '' };
   }
 
   // دریافت کاربر با موبایل

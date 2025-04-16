@@ -19,7 +19,9 @@ export class AuthGuard implements CanActivate {
     const token = request.headers['authorization']?.split(' ')[1]; // گرفتن توکن از هدر
 
     if (!token) {
-      throw new UnauthorizedException('No token provided'); // اگر توکنی وجود نداشته باشد، خطا می‌دهد
+      throw new UnauthorizedException(
+        'امکان استفاده از این بخش بدون داشتن توکن مجاز نیست',
+      ); // اگر توکنی وجود نداشته باشد، خطا می‌دهد
     }
 
     try {
@@ -28,13 +30,13 @@ export class AuthGuard implements CanActivate {
       const user = await this.userService.findById(decoded.userId);
 
       if (!user) {
-        throw new UnauthorizedException('User not found');
+        throw new UnauthorizedException('کاربر موجود نیست');
       }
 
       request.user = user; // ذخیره اطلاعات کاربر در درخواست
       return true; // اجازه دسترسی به مسیر
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired token'); // اگر توکن معتبر نباشد یا منقضی شود
+      throw new UnauthorizedException('توکن شما مجاز نیست یا منقضی شده است'); // اگر توکن معتبر نباشد یا منقضی شود
     }
   }
 }
