@@ -46,7 +46,7 @@ export class AuthController {
   @UserRoles(Roles.Admin)
   async refreshToken(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.body.refreshToken;
-    console.log(refreshToken);
+    Logger.log("New refresh request received");
 
     if (!refreshToken) {
       return res.status(400).send({ message: 'Refresh token is required' });

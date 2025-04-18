@@ -25,7 +25,6 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post('seed-admin')
-  @UserRoles()
   @Public()
   async seedAdmin() {
     return this.usersService.createAdmin(); // بدون نیاز به احراز هویت
