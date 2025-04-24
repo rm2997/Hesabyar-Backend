@@ -70,11 +70,8 @@ export class ProformaController {
 
   // این متد برای به روزرسانی پیش‌فاکتور است
   @Put(':id')
-  async update(
-    @Param('id') id: number,
-    @Body('totalAmount') totalAmount: number,
-  ) {
-    return this.proformaService.updateProforma(id, totalAmount);
+  async update(@Param('id') id: number, @Body() data: Partial<Proforma>) {
+    return this.proformaService.updateProforma(id, data);
   }
 
   // این متد برای حذف پیش‌فاکتور است

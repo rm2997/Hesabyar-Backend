@@ -61,10 +61,13 @@ export class ProformaService {
   }
 
   // این متد برای به روزرسانی اطلاعات پیش‌فاکتور است
-  async updateProforma(id: number, totalAmount: number): Promise<Proforma> {
+  async updateProforma(id: number, data: Partial<Proforma>): Promise<Proforma> {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (proforma) {
-      proforma.totalAmount = totalAmount;
+      proforma.totalAmount = data?.totalAmount!;
+      proforma.customerName = data?.customerName!;
+      proforma.customerLink = data?.customerLink!;
+      proforma.approvedFile = data?.approvedFile!;
       return this.proformaRepository.save(proforma); // به روزرسانی پیش‌فاکتور
     }
     throw new Error('Proforma not found');
