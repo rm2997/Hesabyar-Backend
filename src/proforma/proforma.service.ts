@@ -45,7 +45,11 @@ export class ProformaService {
 
   // این متد برای بازیابی پیش‌فاکتور با شناسه مشخص است
   async getProforma(id: number): Promise<Proforma | null> {
-    return this.proformaRepository.findOne({ where: { id } }); // پیدا کردن پیش‌فاکتور بر اساس شناسه
+    const proforma = this.proformaRepository.findOne({ where: { id } }); // پیدا کردن پیش‌فاکتور بر اساس شناسه
+    proforma.then((res) => {
+      console.log(res?.customerName);
+    });
+    return proforma;
   }
 
   // این متد برای بازیابی پیش‌فاکتورهای هر کاربر است

@@ -53,7 +53,12 @@ export class ProformaController {
   // این متد برای دریافت پیش‌فاکتور بر اساس شناسه است
   @Get(':id')
   async get(@Param('id') id: number) {
-    return this.proformaService.getProforma(id);
+    console.log('Select proforma by id recieved...');
+
+    const response = this.proformaService.getProforma(id);
+    console.log(response);
+
+    return response;
   }
 
   // این متد برای دریافت پیش‌فاکتورهای کاربر جاری است
