@@ -24,6 +24,9 @@ export class Notification {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User, (user) => user.notifications)
-  user: User;
+  @ManyToOne(() => User, (user) => user.usernotifications)
+  fromuser: User;
+
+  @ManyToOne(() => User, (user) => user.assignednotifications)
+  touser: User;
 }

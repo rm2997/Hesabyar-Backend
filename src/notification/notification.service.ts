@@ -11,8 +11,8 @@ export class NotificationService {
     private notificationRepo: Repository<Notification>,
   ) {}
 
-  async createNotification(user: User, message: string) {
-    const notification = this.notificationRepo.create({ user, message });
+  async createNotification(data: Partial<Notification>) {
+    const notification = this.notificationRepo.create(data);
     return this.notificationRepo.save(notification);
   }
 
@@ -22,14 +22,14 @@ export class NotificationService {
 
   async getUnreadNotifications(userId: number) {
     return this.notificationRepo.find({
-      where: { user: { id: userId }, read: false },
+      where: { touser: { id: userId }, read: false },
       order: { createdAt: 'DESC' },
     });
   }
 
   async getAllNotifications(userId: number) {
     return this.notificationRepo.find({
-      where: { user: { id: userId } },
+      where: { touser: { id: userId } },
       order: { createdAt: 'DESC' },
     });
   }

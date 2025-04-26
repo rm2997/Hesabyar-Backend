@@ -18,9 +18,10 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Post()
-  async create(@Body('message') message: string, @Req() req: Request) {
-    const user = req['user'];
-    return this.notificationService.createNotification(user!, message);
+  async create(@Body() data: Partial<Notification>, @Req() req: Request) {
+    const fromUser = req['user'];
+    const notif = { ...data, fromUser: fromUser };
+    return this.notificationService.createNotification(notif);
   }
 
   @Get('/unread')

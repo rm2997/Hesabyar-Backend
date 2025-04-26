@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToMany,
+  IsNull,
+} from 'typeorm';
 import { Notification } from 'src/notification/notification.entity';
 import { Roles } from 'src/common/decorators/roles.enum';
 
@@ -25,6 +31,9 @@ export class User {
   @Column()
   usermobilenumber: string;
 
-  @OneToMany(() => Notification, (notification) => notification.user)
-  notifications: Notification[];
+  @OneToMany(() => Notification, (notification) => notification.fromuser)
+  usernotifications: Notification[];
+
+  @OneToMany(() => Notification, (notification) => notification.touser)
+  assignednotifications: Notification[];
 }
