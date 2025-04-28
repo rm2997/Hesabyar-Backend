@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
     InvoiceModule,
     UploadModule,
     AuthModule,
+    NotificationModule,
   ],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه

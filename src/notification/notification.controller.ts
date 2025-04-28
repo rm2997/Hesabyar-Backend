@@ -20,7 +20,7 @@ export class NotificationController {
   @Post()
   async create(@Body() data: Partial<Notification>, @Req() req: Request) {
     const fromUser = req['user'];
-    const notif = { ...data, fromUser: fromUser };
+    const notif = { ...data, fromuser: fromUser };
     return this.notificationService.createNotification(notif);
   }
 
