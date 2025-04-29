@@ -36,6 +36,11 @@ export class NotificationController {
     return this.notificationService.getAllNotifications(user!.id);
   }
 
+  @Get('/:id')
+  async getNotification(@Param('id') id: string) {
+    return this.notificationService.getNotificationById(+id);
+  }
+
   @Patch(':id/read')
   async markAsRead(@Param('id') id: string) {
     return this.notificationService.markAsRead(+id);

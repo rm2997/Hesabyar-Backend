@@ -26,6 +26,11 @@ export class NotificationService {
       order: { createdAt: 'DESC' },
     });
   }
+  async getNotificationById(id: number) {
+    return this.notificationRepo.find({
+      where: { id: id },
+    });
+  }
 
   async getAllNotifications(userId: number) {
     return this.notificationRepo.find({
