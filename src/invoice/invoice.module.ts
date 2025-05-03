@@ -6,10 +6,7 @@ import { InvoiceController } from './invoice.controller';
 import { ProformaModule } from 'src/proforma/proforma.module'; // اضافه شده
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Invoice]),
-    ProformaModule, // این خط خیلی مهمه
-  ],
+  imports: [TypeOrmModule.forFeature([Invoice]), ProformaModule],
   controllers: [InvoiceController],
   providers: [InvoiceService],
 })

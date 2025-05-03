@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Notification } from 'src/notification/notification.entity';
 import { Roles } from 'src/common/decorators/roles.enum';
+import { Customer } from 'src/customer/customer.entity';
 
 @Entity('users')
 export class User {
@@ -36,4 +37,7 @@ export class User {
 
   @OneToMany(() => Notification, (notification) => notification.touser)
   assignednotifications: Notification[];
+
+  @OneToMany(() => Customer, (customer) => customer.id)
+  customers: Customer[];
 }

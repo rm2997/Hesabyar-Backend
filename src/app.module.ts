@@ -9,10 +9,9 @@ import { UploadModule } from './upload/upload.module';
 import { AuthModule } from './auth/auth.module';
 
 // گاردها برای امنیت سیستم
-import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 import { NotificationModule } from './notification/notification.module';
+import { CustomerService } from './customer/customer.service';
+import { CustomerModule } from './customer/customer.module';
 
 @Module({
   imports: [
@@ -34,6 +33,7 @@ import { NotificationModule } from './notification/notification.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         autoLoadEntities: true,
+        //synchronize: true,
         synchronize: configService.get('NODE_ENV') !== 'production',
         logging: true,
         logger: 'advanced-console',
@@ -46,6 +46,7 @@ import { NotificationModule } from './notification/notification.module';
     UploadModule,
     AuthModule,
     NotificationModule,
+    CustomerModule,
   ],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه
