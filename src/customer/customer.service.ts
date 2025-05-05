@@ -14,10 +14,16 @@ export class CustomerService {
     data: Partial<Customer>,
     user: number,
   ): Promise<Customer> {
-    return this.customerRepository.create({
+    const customer = this.customerRepository.create({
       ...data,
       createdAt: new Date(),
       createdBy: { id: user },
     });
+    const saved = await this.customerRepository.save(customer);
+    return saved;
+  }
+
+  async getAllCustomers(): Promise<Customer[]> {
+    return this.customerRepository.find();
   }
 }

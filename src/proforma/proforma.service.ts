@@ -23,7 +23,6 @@ export class ProformaService {
   async createProforma(data: Partial<Proforma>, user: User): Promise<Proforma> {
     const proforma = this.proformaRepository.create({
       ...data,
-
       createdAt: new Date(),
       createdBy: { id: user.id },
     });
