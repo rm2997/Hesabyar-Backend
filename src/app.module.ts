@@ -12,6 +12,10 @@ import { AuthModule } from './auth/auth.module';
 import { NotificationModule } from './notification/notification.module';
 import { CustomerService } from './customer/customer.service';
 import { CustomerModule } from './customer/customer.module';
+import { GoodsService } from './goods/goods.service';
+import { GoodsController } from './goods/goods.controller';
+import { GoodsModule } from './goods/goods.module';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -47,7 +51,10 @@ import { CustomerModule } from './customer/customer.module';
     AuthModule,
     NotificationModule,
     CustomerModule,
+    GoodsModule,
   ],
+  providers: [AppService],
+  controllers: [],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه
   // providers: [
