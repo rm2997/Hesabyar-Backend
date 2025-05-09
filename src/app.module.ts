@@ -16,6 +16,10 @@ import { GoodsService } from './goods/goods.service';
 import { GoodsController } from './goods/goods.controller';
 import { GoodsModule } from './goods/goods.module';
 import { AppService } from './app.service';
+import { SalesService } from './sales/sales.service';
+import { SalesController } from './sales/sales.controller';
+import { SalesModule } from './sales/sales.module';
+import { DepotModule } from './depot/depot.module';
 
 @Module({
   imports: [
@@ -52,6 +56,8 @@ import { AppService } from './app.service';
     NotificationModule,
     CustomerModule,
     GoodsModule,
+    SalesModule,
+    DepotModule,
   ],
   providers: [AppService],
   controllers: [],

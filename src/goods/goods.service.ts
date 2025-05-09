@@ -7,32 +7,32 @@ import { Good } from './good.entity';
 export class GoodsService {
   constructor(
     @InjectRepository(Good)
-    private readonly GoodRepository: Repository<Good>,
+    private readonly goodRepository: Repository<Good>,
   ) {}
 
   async createGood(data: Partial<Good>, user: number): Promise<Good> {
-    const Good = this.GoodRepository.create({
+    const Good = this.goodRepository.create({
       ...data,
       createdAt: new Date(),
       createdBy: { id: user },
     });
-    const saved = await this.GoodRepository.save(Good);
+    const saved = await this.goodRepository.save(Good);
     return saved;
   }
 
   async getAllGoods(): Promise<Good[]> {
-    return await this.GoodRepository.find();
+    return await this.goodRepository.find();
   }
 
   async getGoodById(id: number): Promise<Good | null> {
-    const Good = await this.GoodRepository.findOne({ where: { id } });
+    const Good = await this.goodRepository.findOne({ where: { id } });
     if (!Good) throw new NotFoundException();
 
     return Good;
   }
 
   async updateGood(id: number, data: Partial<Good>): Promise<Good | null> {
-    const Good = await this.GoodRepository.findOne({
+    const Good = await this.goodRepository.findOne({
       where: { id: id },
     });
     if (!Good) throw new NotFoundException();
@@ -41,15 +41,15 @@ export class GoodsService {
     Good.goodInfo = data?.goodInfo!;
     console.log(Good);
 
-    return this.GoodRepository.save(Good);
+    return this.goodRepository.save(Good);
   }
 
   async deleteGood(id: number): Promise<void> {
-    const Good = await this.GoodRepository.findOne({
+    const Good = await this.goodRepository.findOne({
       where: { id: id },
     });
     if (!Good) throw new NotFoundException();
 
-    await this.GoodRepository.delete(id);
+    await this.goodRepository.delete(id);
   }
 }
