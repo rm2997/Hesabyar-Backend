@@ -1,23 +1,24 @@
-import { Invoice } from 'src/invoice/invoice.entity';
+import { Good } from 'src/goods/good.entity';
 import { User } from 'src/users/users.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
 @Entity()
-export class Sale {
+export class Unit {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Invoice, (invoice) => invoice.id)
-  invoice: Invoice;
+  @Column()
+  unitName: string;
 
   @Column({ nullable: true })
-  saleInfo: string;
+  unitInfo: string;
 
   @CreateDateColumn()
   createdAt: Date;

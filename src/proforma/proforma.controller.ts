@@ -17,13 +17,11 @@ import { Request } from 'express';
 import { User } from 'src/users/users.entity';
 import { Public } from 'src/common/decorators/jwt.decorator';
 
-// این کنترلر برای مدیریت درخواست‌های HTTP مرتبط با پیش‌فاکتور استفاده می‌شود
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
 export class ProformaController {
   constructor(private readonly proformaService: ProformaService) {}
 
-  // این متد برای ایجاد یک پیش‌فاکتور جدید است
   @Post()
   async create(@Body() data: Partial<Proforma>, @Req() req: Request) {
     const user = req.user as User;
@@ -37,20 +35,17 @@ export class ProformaController {
     };
   }
 
-  // مسیر عمومی مشاهده پیش‌فاکتور از طریق لینک
   @Get('view/:token')
   @Public()
   async viewProforma(@Param('token') token: string) {
     return await this.proformaService.verifyAndFetchProforma(token);
   }
 
-  // این متد برای دریافت همه پیش‌فاکتورها است
   @Get()
   async getAll() {
     return this.proformaService.getAll();
   }
 
-  // این متد برای دریافت پیش‌فاکتور بر اساس شناسه است
   @Get(':id')
   async get(@Param('id') id: number) {
     const response = this.proformaService.getProforma(id);
@@ -64,13 +59,11 @@ export class ProformaController {
     return this.proformaService.getAllByUser(user);
   }
 
-  // این متد برای به روزرسانی پیش‌فاکتور است
   @Put(':id')
   async update(@Param('id') id: number, @Body() data: Partial<Proforma>) {
     return this.proformaService.updateProforma(id, data);
   }
 
-  // این متد برای حذف پیش‌فاکتور است
   @Delete(':id')
   async delete(@Param('id') id: number) {
     return this.proformaService.deleteProforma(id);

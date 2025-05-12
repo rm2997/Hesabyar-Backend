@@ -26,10 +26,6 @@ export class ProformaService {
       createdAt: new Date(),
       createdBy: { id: user.id },
     });
-    // proforma.customerName = data.customerName + '';
-    proforma.createdAt = new Date(); // تاریخ پیش‌فاکتور به صورت خودکار پر می‌شود
-    // proforma.totalAmount = data.totalAmount!;
-    // proforma.createdBy = user.id;
 
     const savedProforma = await this.proformaRepository.save(proforma); // ذخیره پیش‌فاکتور در دیتابیس
     const shareableLink = await this.generateShareableLink(savedProforma.id);
@@ -46,7 +42,7 @@ export class ProformaService {
   async getProforma(id: number): Promise<Proforma | null> {
     const proforma = this.proformaRepository.findOne({ where: { id } }); // پیدا کردن پیش‌فاکتور بر اساس شناسه
     proforma.then((res) => {
-      console.log(res?.customerName);
+      console.log(res?.customer);
     });
     return proforma;
   }
@@ -64,7 +60,7 @@ export class ProformaService {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (proforma) {
       proforma.totalAmount = data?.totalAmount!;
-      proforma.customerName = data?.customerName!;
+      proforma.customer = data?.customer!;
       proforma.customerLink = data?.customerLink!;
       proforma.approvedFile = data?.approvedFile!;
       return this.proformaRepository.save(proforma); // به روزرسانی پیش‌فاکتور

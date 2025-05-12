@@ -24,18 +24,23 @@ export class GoodsController {
   @Post()
   async create(@Body() data: Partial<Good>, @Req() req: Request) {
     const user = req.user as User;
+    console.log(data);
+
     return this.goodsService.createGood(data, user.id);
   }
 
   @Get()
   async getAll() {
-    return await this.goodsService.getAllGoods();
+    const goods = await this.goodsService.getAllGoods();
+    console.log(goods[0].goodUnit);
+
+    return goods;
   }
 
   @Get(':id')
   async getGood(@Param('id') id: number) {
     const Good = await this.goodsService.getGoodById(id);
-    console.log(Good);
+    console.log(Good?.goodUnit);
 
     return Good;
   }

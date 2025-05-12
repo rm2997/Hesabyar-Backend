@@ -37,7 +37,6 @@ export class DepotService {
     });
     if (!Depot) throw new NotFoundException();
     Depot.depotName = data?.depotName!;
-    Depot.depotUnit = data?.depotUnit!;
     Depot.depotInfo = data?.depotInfo!;
     console.log(Depot);
 

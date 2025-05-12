@@ -1,56 +1,111 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Invoice } from './invoice.entity';
-import { ProformaService } from '../proforma/proforma.service'; // وارد کردن سرویس پیش‌فاکتور برای استفاده از اطلاعات پیش‌فاکتور
+import { ProformaService } from '../proforma/proforma.service';
+import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
+import { PaymentTypes } from 'src/common/decorators/payment.enum';
+import { InvoiceGoods } from './invoice-good.entity';
+import { User } from 'src/users/users.entity';
 
-// این سرویس برای مدیریت عملیات‌های مختلف مانند ذخیره، حذف، ویرایش فاکتور استفاده می‌شود
 @Injectable()
 export class InvoiceService {
   constructor(
     @InjectRepository(Invoice) private invoiceRepository: Repository<Invoice>,
-    private proformaService: ProformaService, // استفاده از سرویس پیش‌فاکتور
+    private proformaService: ProformaService,
+    private configService: ConfigService,
   ) {}
 
-  // این متد برای ایجاد یک فاکتور جدید است
   async createInvoice(
-    proformaId: number,
-    customerId: number,
-    totalAmount: number,
-    paymentStatus: string,
+    data: Partial<Invoice>,
+    userId: number,
   ): Promise<Invoice> {
-    const proforma = await this.proformaService.getProforma(proformaId); // دریافت پیش‌فاکتور مربوطه
+    const proforma = await this.proformaService.getProforma(
+      data?.proforma?.id!,
+    );
     if (!proforma) {
       throw new Error('Proforma not found');
     }
+    const invoice = this.invoiceRepository.create({
+      ...data,
+      createdAt: Date(),
+      createdBy: { id: userId },
+      proforma: { id: proforma.id },
+    });
 
-    const invoice = new Invoice();
-    invoice.proforma = proforma; // ارتباط فاکتور با پیش‌فاکتور
-    invoice.customerId = customerId;
-    invoice.date = new Date(); // تاریخ فاکتور به صورت خودکار پر می‌شود
-    invoice.totalAmount = totalAmount;
-    invoice.paymentStatus = paymentStatus;
+    invoice.goods.forEach((element) => {
+      console.log(element);
+      console.log(userId);
 
-    return this.invoiceRepository.save(invoice); // ذخیره فاکتور در دیتابیس
+      element.createdBy = new User();
+      element.createdBy.id = userId;
+    });
+
+    const shareableLink = await this.generateShareableLink(invoice.id);
+    invoice.customerLink = shareableLink;
+    return await this.invoiceRepository.save(invoice);
   }
 
-  // این متد برای بازیابی فاکتور با شناسه مشخص است
+  async getAllInvoices(): Promise<Invoice[] | null> {
+    return await this.invoiceRepository.find();
+  }
+
   async getInvoice(id: number): Promise<Invoice | null> {
-    return this.invoiceRepository.findOne({ where: { id } }); // پیدا کردن فاکتور بر اساس شناسه و بارگذاری پیش‌فاکتور مرتبط
+    return await this.invoiceRepository.findOne({ where: { id } });
   }
 
-  // این متد برای به روزرسانی اطلاعات فاکتور است
-  async updateInvoice(id: number, paymentStatus: string): Promise<Invoice> {
+  async getUserInvoices(userId: number): Promise<Invoice | null> {
+    return await this.invoiceRepository.findOne({
+      where: { createdBy: { id: userId } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async updateInvoice(
+    id: number,
+    paymentStatus: PaymentTypes,
+  ): Promise<Invoice> {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (invoice) {
       invoice.paymentStatus = paymentStatus;
-      return this.invoiceRepository.save(invoice); // به روزرسانی وضعیت پرداخت فاکتور
+      return await this.invoiceRepository.save(invoice);
     }
     throw new Error('Invoice not found');
   }
 
-  // این متد برای حذف فاکتور است
   async deleteInvoice(id: number): Promise<void> {
-    await this.invoiceRepository.delete(id); // حذف فاکتور از دیتابیس
+    await this.invoiceRepository.delete(id);
+  }
+
+  async generateShareableLink(invoiceId: number): Promise<string> {
+    const payload = { invoiceId };
+    const secret = this.configService.get('INVOICE_LINK_SECRET');
+    const expiresIn = this.configService.get('INVOICE_LINK_EXPIRES_IN');
+
+    const token = jwt.sign(payload, secret, { expiresIn });
+    const baseUrl = this.configService.get('APP_BASE_URL');
+
+    return `${baseUrl}/invoice/view/${token}`;
+  }
+
+  async verifyAndFetchProforma(token: string): Promise<Invoice> {
+    try {
+      const secret = this.configService.get('INVOICE_LINK_SECRET');
+      const payload: any = jwt.verify(token, secret);
+      const proforma = await this.invoiceRepository.findOne({
+        where: { id: payload.proformaId },
+        relations: ['createdBy'],
+      });
+
+      if (!proforma) throw new NotFoundException('پیش‌فاکتور پیدا نشد');
+      return proforma;
+    } catch (err) {
+      throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
+    }
   }
 }

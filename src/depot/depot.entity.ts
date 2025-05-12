@@ -15,9 +15,6 @@ export class Depot {
   @Column()
   depotName: string;
 
-  @Column()
-  depotUnit: string;
-
   @Column({ nullable: true })
   depotInfo: string;
 

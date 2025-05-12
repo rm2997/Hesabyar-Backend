@@ -20,6 +20,7 @@ import { SalesService } from './sales/sales.service';
 import { SalesController } from './sales/sales.controller';
 import { SalesModule } from './sales/sales.module';
 import { DepotModule } from './depot/depot.module';
+import { UnitsModule } from './units/units.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { DepotModule } from './depot/depot.module';
     GoodsModule,
     SalesModule,
     DepotModule,
+    UnitsModule,
   ],
   providers: [AppService],
   controllers: [],

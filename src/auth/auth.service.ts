@@ -25,7 +25,7 @@ export class AuthService {
   // تولید توکن برای کاربر
   async login(user: any) {
     const payload = { username: user.username, sub: user.id, role: user.role };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '1d' });
 
     return { accessToken, refreshToken };

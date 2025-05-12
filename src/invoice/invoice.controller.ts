@@ -6,48 +6,70 @@ import {
   Body,
   Put,
   Delete,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
+import { Invoice } from './invoice.entity';
+import { Request } from 'express';
+import { User } from 'src/users/users.entity';
+import { Public } from 'src/common/decorators/jwt.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
+import { PaymentTypes } from 'src/common/decorators/payment.enum';
 
-// این کنترلر برای مدیریت درخواست‌های HTTP مرتبط با فاکتور استفاده می‌شود
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('invoice')
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
-  // این متد برای ایجاد یک فاکتور جدید است
   @Post()
-  async create(
-    @Body('proformaId') proformaId: number,
-    @Body('customerId') customerId: number,
-    @Body('totalAmount') totalAmount: number,
-    @Body('paymentStatus') paymentStatus: string,
-  ) {
-    return this.invoiceService.createInvoice(
-      proformaId,
-      customerId,
-      totalAmount,
-      paymentStatus,
-    );
+  async create(@Body() data: Partial<Invoice>, @Req() req: Request) {
+    const user = req.user as User;
+    console.log('Invoice data:', JSON.stringify(data));
+
+    return await this.invoiceService.createInvoice(data, user.id);
   }
 
-  // این متد برای دریافت فاکتور بر اساس شناسه است
+  @Get()
+  async getAll() {
+    return await this.invoiceService.getAllInvoices();
+  }
+
   @Get(':id')
   async get(@Param('id') id: number) {
-    return this.invoiceService.getInvoice(id);
+    return await this.invoiceService.getInvoice(id);
   }
 
-  // این متد برای به روزرسانی فاکتور است
+  @Get('user/my')
+  async getUserInvoices(@Req() req: Request) {
+    const user = req.user as User;
+    return this.invoiceService.getUserInvoices(user.id);
+  }
+
   @Put(':id')
   async update(
     @Param('id') id: number,
-    @Body('paymentStatus') paymentStatus: string,
+    @Body('paymentStatus') paymentStatus: PaymentTypes,
   ) {
-    return this.invoiceService.updateInvoice(id, paymentStatus);
+    return await this.invoiceService.updateInvoice(id, paymentStatus);
   }
 
-  // این متد برای حذف فاکتور است
   @Delete(':id')
   async delete(@Param('id') id: number) {
-    return this.invoiceService.deleteInvoice(id);
+    return await this.invoiceService.deleteInvoice(id);
+  }
+
+  @Get('share-link/:id')
+  async getShareableLink(@Param('id') id: number) {
+    return {
+      link: await this.invoiceService.generateShareableLink(id),
+    };
+  }
+
+  @Get('view/:token')
+  @Public()
+  async viewProforma(@Param('token') token: string) {
+    return await this.invoiceService.verifyAndFetchProforma(token);
   }
 }

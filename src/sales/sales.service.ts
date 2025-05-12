@@ -36,9 +36,8 @@ export class SalesService {
       where: { id: id },
     });
     if (!Sale) throw new NotFoundException();
-    Sale.saleName = data?.saleName!;
-    Sale.saleUnit = data?.saleUnit!;
     Sale.saleInfo = data?.saleInfo!;
+    Sale.invoice = data?.invoice!;
     console.log(Sale);
 
     return this.saleRepository.save(Sale);
