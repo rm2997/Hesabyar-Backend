@@ -7,10 +7,10 @@ import {
 } from 'typeorm';
 import { User } from 'src/users/users.entity';
 import { Good } from 'src/goods/good.entity';
-import { Invoice } from './invoice.entity';
+import { Proforma } from './proforma.entity';
 
 @Entity()
-export class InvoiceGoods {
+export class ProformaGoods {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -23,13 +23,13 @@ export class InvoiceGoods {
   @Column()
   total: number;
 
-  @ManyToOne(() => Invoice, (invoice) => invoice.invoiceGoods, {
+  @ManyToOne(() => Proforma, (proforma) => proforma.proformaGoods, {
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  invoice: Invoice[];
+  proforma: Proforma[];
 
-  @ManyToOne(() => Good, (good) => good.goodInvoice, {
+  @ManyToOne(() => Good, (good) => good.goodProforma, {
     onDelete: 'SET NULL',
   })
   @JoinColumn()

@@ -9,6 +9,8 @@ import { Notification } from 'src/notification/notification.entity';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { Customer } from 'src/customer/customer.entity';
 import { Good } from 'src/goods/good.entity';
+import { Proforma } from 'src/proforma/proforma.entity';
+import { Invoice } from 'src/invoice/invoice.entity';
 
 @Entity('users')
 export class User {
@@ -32,6 +34,12 @@ export class User {
 
   @Column()
   usermobilenumber: string;
+
+  @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
+  userAcceptedProforma: Proforma[];
+
+  @OneToMany(() => Invoice, (invoice) => invoice.acceptedBy)
+  userAcceptedInvoice: Invoice[];
 
   @OneToMany(() => Notification, (notification) => notification.fromuser)
   usernotifications: Notification[];

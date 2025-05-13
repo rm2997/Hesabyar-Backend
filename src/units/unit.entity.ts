@@ -6,6 +6,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -22,6 +23,9 @@ export class Unit {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @OneToMany(() => Good, (good) => good.goodUnit)
+  goods: Good[];
 
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
   createdBy: User;

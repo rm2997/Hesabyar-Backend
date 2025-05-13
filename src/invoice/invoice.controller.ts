@@ -28,7 +28,7 @@ export class InvoiceController {
     const user = req.user as User;
     console.log('Invoice data:', JSON.stringify(data));
 
-    return await this.invoiceService.createInvoice(data, user.id);
+    return await this.invoiceService.createInvoice(data, user);
   }
 
   @Get()

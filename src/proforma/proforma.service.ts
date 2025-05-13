@@ -10,7 +10,6 @@ import { Proforma } from './proforma.entity';
 import { User } from 'src/users/users.entity';
 import { ConfigService } from '@nestjs/config';
 
-// این سرویس برای مدیریت عملیات‌های مختلف مانند ذخیره، حذف، ویرایش پیش‌فاکتور استفاده می‌شود
 @Injectable()
 export class ProformaService {
   constructor(
@@ -19,15 +18,20 @@ export class ProformaService {
     private configService: ConfigService,
   ) {}
 
-  // این متد برای ایجاد یک پیش‌فاکتور جدید است
   async createProforma(data: Partial<Proforma>, user: User): Promise<Proforma> {
+    const proformaGoods = [...data?.proformaGoods!];
+
+    proformaGoods.map((item) => {
+      item.createdBy = user;
+    });
     const proforma = this.proformaRepository.create({
       ...data,
+      proformaGoods: [...proformaGoods],
       createdAt: new Date(),
       createdBy: { id: user.id },
     });
 
-    const savedProforma = await this.proformaRepository.save(proforma); // ذخیره پیش‌فاکتور در دیتابیس
+    const savedProforma = await this.proformaRepository.save(proforma);
     const shareableLink = await this.generateShareableLink(savedProforma.id);
     savedProforma.customerLink = shareableLink;
     return this.proformaRepository.save(savedProforma);
@@ -65,7 +69,7 @@ export class ProformaService {
       proforma.approvedFile = data?.approvedFile!;
       return this.proformaRepository.save(proforma); // به روزرسانی پیش‌فاکتور
     }
-    throw new Error('Proforma not found');
+    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
   }
 
   // این متد برای حذف پیش‌فاکتور است

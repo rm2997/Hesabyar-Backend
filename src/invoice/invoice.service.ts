@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -10,7 +11,6 @@ import { ProformaService } from '../proforma/proforma.service';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
-import { InvoiceGoods } from './invoice-good.entity';
 import { User } from 'src/users/users.entity';
 
 @Injectable()
@@ -21,33 +21,32 @@ export class InvoiceService {
     private configService: ConfigService,
   ) {}
 
-  async createInvoice(
-    data: Partial<Invoice>,
-    userId: number,
-  ): Promise<Invoice> {
+  async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
     const proforma = await this.proformaService.getProforma(
       data?.proforma?.id!,
     );
     if (!proforma) {
       throw new Error('Proforma not found');
     }
+    const invoiceGoods = [...data?.invoiceGoods!];
+
+    invoiceGoods.map((item) => {
+      item.createdBy = user;
+    });
     const invoice = this.invoiceRepository.create({
       ...data,
+      invoiceGoods: [...invoiceGoods],
       createdAt: Date(),
-      createdBy: { id: userId },
-      proforma: { id: proforma.id },
-    });
-
-    invoice.goods.forEach((element) => {
-      console.log(element);
-      console.log(userId);
-
-      element.createdBy = new User();
-      element.createdBy.id = userId;
+      createdBy: user,
+      proforma: proforma,
     });
 
     const shareableLink = await this.generateShareableLink(invoice.id);
     invoice.customerLink = shareableLink;
+
+    Logger.log(
+      `Incomming invoice data is : ${invoice.invoiceGoods[0].quantity}`,
+    );
     return await this.invoiceRepository.save(invoice);
   }
 

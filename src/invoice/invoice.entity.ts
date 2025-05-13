@@ -18,6 +18,14 @@ export class Invoice {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column('bool')
+  isAccepted: boolean;
+
+  @ManyToOne(() => User, (user) => user.userAcceptedInvoice, {
+    nullable: true,
+  })
+  acceptedBy: User;
+
   @ManyToOne(() => Proforma, { eager: true })
   @JoinColumn({ name: 'proforma_id' })
   proforma: Proforma;
@@ -33,6 +41,27 @@ export class Invoice {
   paymentStatus: PaymentTypes;
 
   @Column({ nullable: true })
+  chequeDate: Date;
+
+  @Column('decimal', { nullable: true })
+  chequeAmount: number;
+
+  @Column({ nullable: true })
+  chequeSerial: number;
+
+  @Column({ nullable: true })
+  paperMoneyDate: Date;
+
+  @Column('decimal', { nullable: true })
+  paperMoneyAmount: number;
+
+  @Column({ nullable: true })
+  paperMoneySerial: number;
+
+  @Column({ nullable: true })
+  trustIssueDate: Date;
+
+  @Column({ nullable: true })
   approvedFile: string;
 
   @Column({ nullable: true })
@@ -43,7 +72,7 @@ export class Invoice {
     eager: true, // برای لود اتوماتیک آیتم‌ها با خود فاکتور
   })
   @JoinColumn()
-  goods: InvoiceGoods[];
+  invoiceGoods: InvoiceGoods[];
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
