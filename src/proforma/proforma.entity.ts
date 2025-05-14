@@ -11,13 +11,17 @@ import { User } from '../users/users.entity';
 import { Good } from 'src/goods/good.entity';
 import { Customer } from 'src/customer/customer.entity';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
+import { ProformaGoods } from './proforma-goods.entity';
 
 @Entity()
 export class Proforma {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('bool')
+  @Column('bool', {
+    nullable: true,
+    default: false,
+  })
   isAccepted: boolean;
 
   @ManyToOne(() => User, (user) => user.userAcceptedProforma, {
@@ -62,12 +66,19 @@ export class Proforma {
   @Column({ nullable: true })
   customerLink: string;
 
+  @Column({ nullable: true })
+  description: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
-  @OneToMany(() => Good, (good) => good.goodProforma)
-  proformaGoods: Good[];
+  @OneToMany(() => ProformaGoods, (item) => item.proforma, {
+    cascade: true, // برای auto insert/update آیتم‌ها
+    eager: true, // برای لود اتوماتیک آیتم‌ها با خود فاکتور
+  })
+  @JoinColumn()
+  proformaGoods: ProformaGoods[];
 
-  @ManyToOne(() => User, { nullable: false })
+  @ManyToOne(() => User, (user) => user.id)
   createdBy: User;
 }

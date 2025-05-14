@@ -35,6 +35,9 @@ export class ProformaGoods {
   @JoinColumn()
   good: Good[];
 
+  @Column({ nullable: true })
+  description: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
