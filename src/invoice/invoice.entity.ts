@@ -18,6 +18,9 @@ export class Invoice {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ nullable: true })
+  title: string;
+
   @Column('bool')
   isAccepted: boolean;
 

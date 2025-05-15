@@ -40,7 +40,6 @@ export class Good {
 
   @OneToMany(() => ProformaGoods, (item) => item.good, {
     cascade: true, // برای auto insert/update آیتم‌ها
-    eager: true, // برای لود اتوماتیک آیتم‌ها با خود فاکتور
   })
   @JoinColumn()
   goodProforma: ProformaGoods[];

@@ -18,6 +18,9 @@ export class Proforma {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ nullable: true })
+  title: string;
+
   @Column('bool', {
     nullable: true,
     default: false,

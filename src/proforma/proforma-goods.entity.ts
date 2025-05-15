@@ -31,6 +31,7 @@ export class ProformaGoods {
 
   @ManyToOne(() => Good, (good) => good.goodProforma, {
     onDelete: 'SET NULL',
+    eager: true,
   })
   @JoinColumn()
   good: Good[];
