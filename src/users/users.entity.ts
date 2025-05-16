@@ -38,6 +38,9 @@ export class User {
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
   userAcceptedProforma: Proforma[];
 
+  @OneToMany(() => Proforma, (proforma) => proforma.convertedBy)
+  userConvertedProforma: Proforma[];
+
   @OneToMany(() => Invoice, (invoice) => invoice.acceptedBy)
   userAcceptedInvoice: Invoice[];
 

@@ -22,6 +22,14 @@ export class Proforma {
   title: string;
 
   @Column({ type: 'bool', nullable: true, default: false })
+  isConverted: boolean;
+
+  @ManyToOne(() => User, (user) => user.userConvertedProforma, {
+    nullable: true,
+  })
+  convertedBy: User;
+
+  @Column({ type: 'bool', nullable: true, default: false })
   isAccepted: boolean;
 
   @ManyToOne(() => User, (user) => user.userAcceptedProforma, {

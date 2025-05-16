@@ -63,15 +63,27 @@ export class ProformaService {
   async updateProforma(id: number, data: Partial<Proforma>): Promise<Proforma> {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (proforma) {
-      proforma.totalAmount = data?.totalAmount!;
-      proforma.customer = data?.customer!;
-      proforma.customerLink = data?.customerLink!;
-      proforma.approvedFile = data?.approvedFile!;
-      return this.proformaRepository.save(proforma); // به روزرسانی پیش‌فاکتور
+      // proforma.totalAmount = data?.totalAmount!;
+      // proforma.customer = data?.customer!;
+      // proforma.customerLink = data?.customerLink!;
+      // proforma.approvedFile = data?.approvedFile!;
+
+      return this.proformaRepository.save({ ...data });
     }
     throw new NotFoundException('پیش‌فاکتور وجود ندارد');
   }
 
+  async convertToInvoice(id: number, user: User): Promise<Proforma> {
+    const proforma = await this.proformaRepository.findOne({ where: { id } });
+    console.log(proforma);
+
+    if (proforma) {
+      proforma.isConverted = true;
+      proforma.convertedBy = user;
+      return this.proformaRepository.save(proforma);
+    }
+    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+  }
   // این متد برای حذف پیش‌فاکتور است
   async deleteProforma(id: number): Promise<void> {
     await this.proformaRepository.delete(id); // حذف پیش‌فاکتور از دیتابیس

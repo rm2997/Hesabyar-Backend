@@ -21,7 +21,7 @@ export class Invoice {
   @Column({ nullable: true })
   title: string;
 
-  @Column('bool')
+  @Column({ type: 'bool', nullable: true, default: false })
   isAccepted: boolean;
 
   @ManyToOne(() => User, (user) => user.userAcceptedInvoice, {

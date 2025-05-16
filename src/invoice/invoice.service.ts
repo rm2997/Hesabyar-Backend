@@ -58,8 +58,8 @@ export class InvoiceService {
     return await this.invoiceRepository.findOne({ where: { id } });
   }
 
-  async getUserInvoices(userId: number): Promise<Invoice | null> {
-    return await this.invoiceRepository.findOne({
+  async getUserInvoices(userId: number): Promise<Invoice[] | null> {
+    return await this.invoiceRepository.find({
       where: { createdBy: { id: userId } },
       order: { createdAt: 'DESC' },
     });

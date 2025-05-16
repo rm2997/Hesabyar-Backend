@@ -64,6 +64,12 @@ export class ProformaController {
     return this.proformaService.updateProforma(id, data);
   }
 
+  @Put('convert/:id')
+  async convert(@Param('id') id: number, @Req() req: Request) {
+    const user = req.user as User;
+    return this.proformaService.convertToInvoice(id, user);
+  }
+
   @Delete(':id')
   async delete(@Param('id') id: number) {
     return this.proformaService.deleteProforma(id);
