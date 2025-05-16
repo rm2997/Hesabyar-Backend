@@ -63,11 +63,12 @@ export class ProformaService {
   async updateProforma(id: number, data: Partial<Proforma>): Promise<Proforma> {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (proforma) {
-      proforma.totalAmount = data?.totalAmount!;
-      proforma.customer = data?.customer!;
-      proforma.customerLink = data?.customerLink!;
-      proforma.approvedFile = data?.approvedFile!;
-      return this.proformaRepository.save(proforma); // به روزرسانی پیش‌فاکتور
+      // proforma.totalAmount = data?.totalAmount!;
+      // proforma.customer = data?.customer!;
+      // proforma.customerLink = data?.customerLink!;
+      // proforma.approvedFile = data?.approvedFile!;
+
+      return this.proformaRepository.save({ ...data });
     }
     throw new NotFoundException('پیش‌فاکتور وجود ندارد');
   }
