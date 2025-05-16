@@ -21,10 +21,7 @@ export class Proforma {
   @Column({ nullable: true })
   title: string;
 
-  @Column('bool', {
-    nullable: true,
-    default: false,
-  })
+  @Column({ type: 'bool', nullable: true, default: false })
   isAccepted: boolean;
 
   @ManyToOne(() => User, (user) => user.userAcceptedProforma, {
