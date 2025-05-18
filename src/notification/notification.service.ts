@@ -11,8 +11,10 @@ export class NotificationService {
     private notificationRepo: Repository<Notification>,
   ) {}
 
-  async createNotification(data: Partial<Notification>) {
+  async createNotification(data: Partial<Notification>, user: User) {
     const notification = this.notificationRepo.create(data);
+    notification.fromUser = data?.fromUser!;
+    notification.fromUser = user;
     return this.notificationRepo.save(notification);
   }
 
@@ -20,9 +22,13 @@ export class NotificationService {
     return this.notificationRepo.update(id, { read: true });
   }
 
+  async markAsUnread(id: number) {
+    return this.notificationRepo.update(id, { read: false });
+  }
+
   async getUnreadNotifications(userId: number) {
     return this.notificationRepo.find({
-      where: { touser: { id: userId }, read: false },
+      where: { toUser: { id: userId }, read: false },
       order: { createdAt: 'DESC' },
     });
   }
@@ -32,9 +38,16 @@ export class NotificationService {
     });
   }
 
-  async getAllNotifications(userId: number) {
-    return this.notificationRepo.find({
-      where: { touser: { id: userId } },
+  async getUserRcv(userId: number): Promise<Notification[] | null> {
+    return await this.notificationRepo.find({
+      where: { toUser: { id: userId } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getUserSent(userId: number): Promise<Notification[] | null> {
+    return await this.notificationRepo.find({
+      where: { fromUser: { id: userId } },
       order: { createdAt: 'DESC' },
     });
   }

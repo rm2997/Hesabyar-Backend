@@ -24,9 +24,15 @@ export class Notification {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User, (user) => user.usernotifications)
-  fromuser: User;
+  @ManyToOne(() => User, (user) => user.usernotifications, {
+    eager: true,
+    onDelete: 'SET NULL',
+  })
+  fromUser: User;
 
-  @ManyToOne(() => User, (user) => user.assignednotifications)
-  touser: User;
+  @ManyToOne(() => User, (user) => user.assignednotifications, {
+    eager: true,
+    onDelete: 'SET NULL',
+  })
+  toUser: User;
 }

@@ -7,10 +7,12 @@ import {
   Body,
   Req,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Request } from 'express';
+import { User } from 'src/users/users.entity';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -19,9 +21,9 @@ export class NotificationController {
 
   @Post()
   async create(@Body() data: Partial<Notification>, @Req() req: Request) {
-    const fromUser = req['user'];
-    const notif = { ...data, fromuser: fromUser };
-    return this.notificationService.createNotification(notif);
+    const fromUser = req.user as User;
+
+    return this.notificationService.createNotification(data, fromUser);
   }
 
   @Get('/unread')
@@ -30,10 +32,21 @@ export class NotificationController {
     return this.notificationService.getUnreadNotifications(user!.id);
   }
 
-  @Get('/all')
-  async getAll(@Req() req: Request) {
+  @Get('/received')
+  async getAllRec(@Req() req: Request) {
     const user = req['user'];
-    return this.notificationService.getAllNotifications(user!.id);
+    const notifications = await this.notificationService.getUserRcv(user!.id);
+
+    if (notifications) return notifications;
+    else return null;
+  }
+
+  @Get('/sent')
+  async getAllSnd(@Req() req: Request) {
+    const user = req['user'];
+    const notifications = await this.notificationService.getUserSent(user!.id);
+    if (notifications) return notifications;
+    else return null;
   }
 
   @Get('/:id')
@@ -44,5 +57,10 @@ export class NotificationController {
   @Patch(':id/read')
   async markAsRead(@Param('id') id: string) {
     return this.notificationService.markAsRead(+id);
+  }
+
+  @Patch(':id/unread')
+  async markAsUnread(@Param('id') id: string) {
+    return this.notificationService.markAsUnread(+id);
   }
 }

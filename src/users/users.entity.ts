@@ -44,10 +44,10 @@ export class User {
   @OneToMany(() => Invoice, (invoice) => invoice.acceptedBy)
   userAcceptedInvoice: Invoice[];
 
-  @OneToMany(() => Notification, (notification) => notification.fromuser)
+  @OneToMany(() => Notification, (notification) => notification.fromUser)
   usernotifications: Notification[];
 
-  @OneToMany(() => Notification, (notification) => notification.touser)
+  @OneToMany(() => Notification, (notification) => notification.toUser)
   assignednotifications: Notification[];
 
   @OneToMany(() => Customer, (customer) => customer.id)

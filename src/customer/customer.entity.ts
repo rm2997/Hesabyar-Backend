@@ -25,7 +25,13 @@ export class Customer {
   customerPhone: string;
 
   @Column({ nullable: true })
+  customerMobile: string;
+
+  @Column({ nullable: true })
   customerNationalCode: string;
+
+  @Column({ nullable: true })
+  customerPostalCode: string;
 
   @CreateDateColumn()
   createdAt: Date;
