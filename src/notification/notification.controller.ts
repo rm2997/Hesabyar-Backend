@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -62,5 +63,11 @@ export class NotificationController {
   @Patch(':id/unread')
   async markAsUnread(@Param('id') id: string) {
     return this.notificationService.markAsUnread(+id);
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: number, @Req() req: Request) {
+    const user = req.user as User;
+    return await this.notificationService.softDeleteByUser(id, user);
   }
 }

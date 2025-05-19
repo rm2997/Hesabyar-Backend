@@ -19,7 +19,16 @@ export class Notification {
   message: string;
 
   @Column({ default: false })
-  read: boolean;
+  senderRead: boolean;
+
+  @Column({ default: false })
+  receiverRead: boolean;
+
+  @Column({ default: false })
+  senderDelete: boolean;
+
+  @Column({ default: false })
+  receiverDelete: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,8 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './notification.entity';
 import { User } from '../users/users.entity';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @Injectable()
 export class NotificationService {
@@ -15,40 +20,81 @@ export class NotificationService {
     const notification = this.notificationRepo.create(data);
     notification.fromUser = data?.fromUser!;
     notification.fromUser = user;
-    return this.notificationRepo.save(notification);
+    return await this.notificationRepo.save(notification);
   }
 
   async markAsRead(id: number) {
-    return this.notificationRepo.update(id, { read: true });
+    const notification = await this.notificationRepo.find({
+      where: { id: id },
+    });
+    if (!notification) throw new NotFoundException('اعلان موجود نیست');
+    return await this.notificationRepo.update(id, { receiverRead: true });
   }
 
   async markAsUnread(id: number) {
-    return this.notificationRepo.update(id, { read: false });
+    const notification = await this.notificationRepo.find({
+      where: { id: id },
+    });
+    if (!notification) throw new NotFoundException('اعلان موجود نیست');
+    return await this.notificationRepo.update(id, { receiverRead: false });
   }
 
   async getUnreadNotifications(userId: number) {
-    return this.notificationRepo.find({
-      where: { toUser: { id: userId }, read: false },
+    const notification = await this.notificationRepo.find({
+      where: {
+        toUser: { id: userId },
+        receiverDelete: false,
+        receiverRead: false,
+      },
       order: { createdAt: 'DESC' },
     });
+    if (!notification) throw new NotFoundException('اعلان موجود نیست');
+    return notification;
   }
+
   async getNotificationById(id: number) {
-    return this.notificationRepo.find({
+    const notification = await this.notificationRepo.find({
       where: { id: id },
     });
+    if (!notification) throw new NotFoundException('اعلان موجود نیست');
+    return notification;
   }
 
   async getUserRcv(userId: number): Promise<Notification[] | null> {
-    return await this.notificationRepo.find({
-      where: { toUser: { id: userId } },
+    const notification = await this.notificationRepo.find({
+      where: { toUser: { id: userId }, receiverDelete: false },
       order: { createdAt: 'DESC' },
     });
+    if (!notification) throw new NotFoundException('اعلان موجود نیست');
+    return notification;
   }
 
   async getUserSent(userId: number): Promise<Notification[] | null> {
-    return await this.notificationRepo.find({
-      where: { fromUser: { id: userId } },
+    const notification = await this.notificationRepo.find({
+      where: { fromUser: { id: userId }, senderDelete: false },
       order: { createdAt: 'DESC' },
     });
+    if (!notification) throw new NotFoundException('اعلان موجود نیست');
+    return notification;
+  }
+
+  async softDeleteByUser(id: number, user: User) {
+    const notif = await this.notificationRepo.findOne({ where: { id: id } });
+    if (!notif) throw new NotFoundException('این اعلان وجود ندارد');
+
+    if (notif.toUser.id === user.id) notif.receiverDelete = true;
+    else if (notif.fromUser.id === user.id) notif.senderDelete = true;
+    else if (user.role === Roles.Admin) {
+      notif.receiverDelete = true;
+      notif.senderDelete = true;
+    } else throw new ForbiddenException('شما مجاز به حذف این اعلان نیستید');
+
+    if (notif.senderDelete && notif.receiverDelete) {
+      await this.notificationRepo.delete(id);
+      return 'اعلان به طور کامل حذف شد';
+    }
+
+    await this.notificationRepo.save(notif);
+    return 'اعلان برای شما حذف شد';
   }
 }
