@@ -22,7 +22,9 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { username: string; password: string }) {
+  async login(
+    @Body() body: { username: string; password: string; location: string },
+  ) {
     Logger.log(
       `New login request received...[username:${body.username} password:${body.password}]`,
     );
@@ -33,11 +35,11 @@ export class AuthController {
       body.username,
       body.password,
     );
-    console.log(user);
 
     if (!user) {
       throw new UnauthorizedException('نام کاربری یا رمز اشتباه است');
     }
+    await this.authService.updateuserLocation(user?.id, body.location);
     return this.authService.login(user);
   }
 
@@ -46,7 +48,7 @@ export class AuthController {
   @UserRoles(Roles.Admin)
   async refreshToken(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.body.refreshToken;
-    Logger.log("New refresh request received");
+    Logger.log('New refresh request received');
 
     if (!refreshToken) {
       return res.status(400).send({ message: 'Refresh token is required' });

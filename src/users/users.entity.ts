@@ -4,6 +4,7 @@ import {
   PrimaryGeneratedColumn,
   OneToMany,
   IsNull,
+  CreateDateColumn,
 } from 'typeorm';
 import { Notification } from 'src/notification/notification.entity';
 import { Roles } from 'src/common/decorators/roles.enum';
@@ -34,6 +35,15 @@ export class User {
 
   @Column()
   usermobilenumber: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Column()
+  createdBy: number;
+
+  @Column({ nullable: true })
+  userLocation: string;
 
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
   userAcceptedProforma: Proforma[];

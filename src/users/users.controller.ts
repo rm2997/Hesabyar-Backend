@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './users.entity';
@@ -32,8 +33,9 @@ export class UsersController {
 
   @Post()
   @UserRoles(Roles.Admin)
-  async create(@Body() data: User) {
-    return this.usersService.createUser(data);
+  async create(@Body() data: Partial<User>, @Req() req: Request) {
+    const issuedUser = req.user as User;
+    return this.usersService.createUser(data, issuedUser);
   }
 
   @Get()
@@ -57,7 +59,6 @@ export class UsersController {
   }
 
   @Put(':id')
-  @UserRoles(Roles.Admin, Roles.User)
   async update(
     @Param('id') id: number,
     @Body() data: Partial<User>,
@@ -74,6 +75,21 @@ export class UsersController {
     }
 
     return this.usersService.updateUser(id, data);
+  }
+
+  @Put('/changePass/:id')
+  async changePass(
+    @Param('id') id: number,
+    @Body() data: { current: string; new: string },
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    if (user.role === Roles.Admin || user.id === id)
+      return this.usersService.changePass(id, data, user);
+    else
+      throw new UnauthorizedException(
+        'شما نمی توانید کلمه عبور سایر کاربران را تغییر دهید',
+      );
   }
 
   @Delete(':id')

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './users.entity';
@@ -34,14 +38,12 @@ export class UsersService {
     return { ...user, password: '' };
   }
 
-  // دریافت کاربر با موبایل
   async findByMobileNumber(usermobilenumber: string): Promise<User | null> {
     const user = this.usersRepository.findOne({ where: { usermobilenumber } });
     if (!user) throw new NotFoundException('Moblie number not found');
     return user;
   }
 
-  // بروزرسانی کاربر
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
     const user = await this.findById(id);
 
@@ -52,6 +54,32 @@ export class UsersService {
 
     Object.assign(user, updateData);
     return this.usersRepository.save(user);
+  }
+
+  async updateUserLocation(id: number, location: string): Promise<User> {
+    const user = await this.findById(id);
+    user.userLocation = location;
+    return this.usersRepository.save(user);
+  }
+  async changePass(
+    id: number,
+    passwordData: { current: string; new: string },
+    issuedUser: User,
+  ): Promise<User> {
+    const user = await this.findById(id);
+
+    if (
+      issuedUser.role === Roles.Admin ||
+      (await this.validatePassword(user, passwordData.current))
+    ) {
+      let newPass = '';
+      if (passwordData.new) {
+        const salt = await bcrypt.genSalt();
+        newPass = await bcrypt.hash(passwordData.new, salt);
+      }
+      user.password = newPass;
+      return this.usersRepository.save(user);
+    } else throw new UnauthorizedException('کلمه عبور جاری صحیح نیست');
   }
 
   // حذف کاربر
@@ -68,15 +96,18 @@ export class UsersService {
   }
 
   // ایجاد کاربر جدید با هش کردن پسورد
-  async createUser(userData: User): Promise<User | undefined> {
-    const user = new User();
-    user.username = userData.username;
-    user.usermobilenumber = userData.usermobilenumber;
-
+  async createUser(
+    userData: Partial<User>,
+    issuedUser: User,
+  ): Promise<User | undefined> {
+    const user = this.usersRepository.create({
+      ...userData,
+      createdAt: new Date(),
+      createdBy: issuedUser?.id,
+    });
     const salt = await bcrypt.genSalt();
     user.password = await bcrypt.hash(userData.password, salt);
 
-    user.role = userData.role || 'User';
     return this.usersRepository.save(user);
   }
 
