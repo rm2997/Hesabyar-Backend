@@ -8,19 +8,22 @@ import { Repository } from 'typeorm';
 import { User } from './users.entity';
 import * as bcrypt from 'bcrypt';
 import { Roles } from 'src/common/decorators/roles.enum';
+import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private configService: ConfigService,
   ) {}
 
   // یافتن کاربر با نام کاربری
   async findByUsername(username: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({ where: { username } });
 
-    if (!user) throw new NotFoundException('کاربر مورد نظر موجود نیست');
+    if (!user) throw new NotFoundException('کاربر مورد نظر شما موجود نیست');
 
     return user;
   }
@@ -33,7 +36,7 @@ export class UsersService {
   // دریافت کاربر با آیدی
   async findById(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException('کاربر مورد نظر موجود نیست');
+    if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست ${id}`);
 
     return { ...user, password: '' };
   }
@@ -56,11 +59,44 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async updateUserLocation(id: number, location: string): Promise<User> {
-    const user = await this.findById(id);
-    user.userLocation = location;
-    return this.usersRepository.save(user);
+  async updateUserLocation(
+    user: User,
+    location: string,
+  ): Promise<any | string> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { id: user?.id },
+    });
+    if (!existingUser) return 'کاربر موردنظر در سیستم وجود ندارد';
+
+    if (!location) return 'موقعیت مکانی صحیح نیست';
+
+    return await this.usersRepository.update(
+      { id: existingUser.id },
+      { userLocation: location, lastLogin: new Date() },
+    );
   }
+
+  async sendLocationSms(userId: number): Promise<any | string> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+    if (!existingUser) return 'کاربر موردنظر در سیستم وجود ندارد';
+
+    const link = await this.generateUserLocationLink(userId);
+    const title = 'درخواست موقعیت مکانی';
+    const body =
+      'همکار محترم ' +
+      existingUser.userfname +
+      ' ' +
+      existingUser.userlname +
+      ' ' +
+      'لطفا در اولین فرصت موقعیت خود را از طریق لینک زیر به مجموعه ارسال فرمایید.' +
+      '\r\n' +
+      link;
+
+    return body;
+  }
+
   async changePass(
     id: number,
     passwordData: { current: string; new: string },
@@ -115,7 +151,15 @@ export class UsersService {
     const exists = await this.usersRepository.findOne({
       where: { username: 'admin' },
     });
-    if (exists) return { message: 'Admin already exists' };
+
+    if (exists) {
+      // return { message: 'Admin already exists' };
+      const salt = await bcrypt.genSalt();
+      const password = await bcrypt.hash('admin1234', salt);
+      exists.password = password;
+      await this.usersRepository.save(exists);
+      return { message: 'Admin updated successfully' };
+    }
 
     const salt = await bcrypt.genSalt();
     const password = await bcrypt.hash('admin1234', salt);
@@ -131,5 +175,30 @@ export class UsersService {
 
     await this.usersRepository.save(admin);
     return { message: 'Admin created successfully' };
+  }
+
+  async generateUserLocationLink(userId: number) {
+    const payload = { userId };
+    const secret = this.configService.get('USER_LINK_SECRET');
+    const expiresIn = this.configService.get('USER_LINK_EXPIRES_IN');
+
+    const token = jwt.sign(payload, secret, { expiresIn });
+    const baseUrl = this.configService.get('FRONT_APP_URL');
+    return `${baseUrl}/sendLocationLink/${token}`;
+  }
+
+  async verifyUserLocationToken(token: string): Promise<User> {
+    try {
+      const secret = this.configService.get('USER_LINK_SECRET');
+      const payload: any = jwt.verify(token, secret);
+      const user = await this.usersRepository.findOne({
+        where: { id: payload.userId },
+      });
+
+      if (!user) throw new NotFoundException('کاربر موجود نیست');
+      return user;
+    } catch (err) {
+      throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
+    }
   }
 }

@@ -22,7 +22,7 @@ export class User {
   username: string;
 
   @Column()
-  password: string; // hashed
+  password: string;
 
   @Column({ type: 'enum', enum: Roles })
   role: Roles;
@@ -44,6 +44,9 @@ export class User {
 
   @Column({ nullable: true })
   userLocation: string;
+
+  @Column({ nullable: true })
+  lastLogin: Date;
 
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
   userAcceptedProforma: Proforma[];

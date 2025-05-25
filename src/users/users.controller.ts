@@ -10,6 +10,9 @@ import {
   Req,
   ForbiddenException,
   UnauthorizedException,
+  ParseIntPipe,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './users.entity';
@@ -44,9 +47,63 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Put('changePass/:id')
+  async changePass(
+    @Param('id') id: number,
+    @Body() data: { current: string; new: string },
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    if (user.role === Roles.Admin || user.id === id)
+      return this.usersService.changePass(id, data, user);
+    else
+      throw new UnauthorizedException(
+        'شما نمی توانید کلمه عبور سایر کاربران را تغییر دهید',
+      );
+  }
+
+  @Put('location')
+  async updateUserLocation(
+    @Body() data: { location: string },
+    @Req() req: Request,
+  ): Promise<string | User> {
+    const user = req.user as User;
+    if (!data?.location)
+      throw new BadRequestException('موقعیت مکانی صحیح نیست');
+    return this.usersService.updateUserLocation(user, data.location);
+  }
+
+  @Post('sms/:id')
+  async sendLocationSms(
+    @Param(
+      'id',
+      new ParseIntPipe({
+        exceptionFactory: (err) => new BadRequestException(),
+      }),
+    )
+    id: number,
+  ) {
+    return this.usersService.sendLocationSms(id);
+  }
+
+  @Get('view/:token')
+  @Public()
+  async viewUserFromToken(@Param('token') token: string) {
+    return await this.usersService.verifyUserLocationToken(token);
+  }
+
   @Get(':id')
   @UserRoles(Roles.Admin)
-  async findOne(@Param('id') id: number, @Req() req: Request): Promise<User> {
+  async findOne(
+    @Param(
+      'id',
+      new ParseIntPipe({
+        exceptionFactory: (err) => new BadRequestException(),
+      }),
+    )
+    id: number,
+    @Req() req: Request,
+  ): Promise<User> {
     const user = req.user as any;
     const isOwner = user.id === +id;
     const isAdmin = user.role === 'admin';
@@ -75,21 +132,6 @@ export class UsersController {
     }
 
     return this.usersService.updateUser(id, data);
-  }
-
-  @Put('/changePass/:id')
-  async changePass(
-    @Param('id') id: number,
-    @Body() data: { current: string; new: string },
-    @Req() req: Request,
-  ) {
-    const user = req.user as User;
-    if (user.role === Roles.Admin || user.id === id)
-      return this.usersService.changePass(id, data, user);
-    else
-      throw new UnauthorizedException(
-        'شما نمی توانید کلمه عبور سایر کاربران را تغییر دهید',
-      );
   }
 
   @Delete(':id')

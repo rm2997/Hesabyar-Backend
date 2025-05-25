@@ -22,9 +22,6 @@ export class AuthService {
     return null;
   }
 
-  async updateuserLocation(userId: number, location: string) {
-    return this.usersService.updateUserLocation(userId, location);
-  }
   // تولید توکن برای کاربر
   async login(user: any) {
     const payload = { username: user.username, sub: user.id, role: user.role };

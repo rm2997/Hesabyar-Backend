@@ -39,7 +39,8 @@ export class AuthController {
     if (!user) {
       throw new UnauthorizedException('نام کاربری یا رمز اشتباه است');
     }
-    await this.authService.updateuserLocation(user?.id, body.location);
+    // if (body.location != '')
+    //   await this.authService.updateuserLocation(user?.id, body.location);
     return this.authService.login(user);
   }
 
