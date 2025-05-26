@@ -48,6 +48,9 @@ export class User {
   @Column({ nullable: true })
   lastLogin: Date;
 
+  @Column({ type: Boolean, nullable: true })
+  twoFactorAuthntication: boolean;
+
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
   userAcceptedProforma: Proforma[];
 

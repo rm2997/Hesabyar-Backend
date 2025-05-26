@@ -69,11 +69,15 @@ export class UsersService {
     if (!existingUser) return 'کاربر موردنظر در سیستم وجود ندارد';
 
     if (!location) return 'موقعیت مکانی صحیح نیست';
+    console.log('user for set location:', user);
 
-    return await this.usersRepository.update(
-      { id: existingUser.id },
-      { userLocation: location, lastLogin: new Date() },
-    );
+    return this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ userLocation: location, lastLogin: new Date() })
+      .where('id = :id', { id: user?.id })
+      .execute();
+    //return await this.usersRepository.update({ id: existingUser.id }, { userLocation: location, lastLogin: new Date() },);
   }
 
   async sendLocationSms(userId: number): Promise<any | string> {

@@ -3,6 +3,7 @@ import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class AuthService {
@@ -23,12 +24,13 @@ export class AuthService {
   }
 
   // تولید توکن برای کاربر
-  async login(user: any) {
+  async login(user: User) {
     const payload = { username: user.username, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '1d' });
-
-    return { accessToken, refreshToken };
+    const mobilnumber = user?.usermobilenumber;
+    const twoFactorAuthntication = user?.twoFactorAuthntication;
+    return { accessToken, refreshToken, mobilnumber, twoFactorAuthntication };
   }
 
   async refreshAccessToken(refreshToken: string): Promise<any> {
