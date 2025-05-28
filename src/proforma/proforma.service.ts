@@ -75,7 +75,6 @@ export class ProformaService {
 
   async convertToInvoice(id: number, user: User): Promise<Proforma> {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
-    console.log(proforma);
 
     if (proforma) {
       proforma.isConverted = true;
@@ -95,9 +94,22 @@ export class ProformaService {
     const expiresIn = this.configService.get('PROFORMA_LINK_EXPIRES_IN');
 
     const token = jwt.sign(payload, secret, { expiresIn });
-    const baseUrl = this.configService.get('APP_BASE_URL');
+    return token;
+  }
 
-    return `${baseUrl}/proforma/view/${token}`;
+  async renewProformaToken(proformaId: number) {
+    try {
+      const proforma = await this.proformaRepository.findOne({
+        where: { id: proformaId },
+      });
+      if (proforma) {
+        const newToken = await this.generateShareableLink(proformaId);
+        proforma.customerLink = newToken;
+        await this.proformaRepository.save(proforma);
+        return newToken;
+      }
+      throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    } catch (error) {}
   }
 
   async verifyAndFetchProforma(token: string): Promise<Proforma> {
@@ -112,7 +124,7 @@ export class ProformaService {
       if (!proforma) throw new NotFoundException('پیش‌فاکتور یافت نشد');
       return proforma;
     } catch (err) {
-      throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
+      throw new NotFoundException('لینک نامعتبر یا منقضی‌شده است');
     }
   }
 }

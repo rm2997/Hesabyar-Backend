@@ -11,6 +11,11 @@ export class RolesGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const roles = this.reflector.get<Roles[]>(ROLES_KEY, context.getHandler()); // دریافت نقش‌های مورد نیاز از دکوراتور
+    const isPublic = this.reflector.get<boolean>(
+      'isPublic',
+      context.getHandler(),
+    );
+    if (isPublic) return true;
 
     if (!roles) {
       return true; // اگر نقش مشخص نشده باشد، به کاربر اجازه دسترسی داده می‌شود

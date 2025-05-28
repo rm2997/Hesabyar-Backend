@@ -28,6 +28,17 @@ export class ProformaController {
     return this.proformaService.createProforma(data, user);
   }
 
+  @Get('token/:token')
+  @Public()
+  async getProformaByToken(@Param('token') token: string) {
+    return this.proformaService.verifyAndFetchProforma(token);
+  }
+
+  @Post('generateNewToken/:id')
+  async generateNewToken(@Param('id') id: number) {
+    return this.proformaService.renewProformaToken(id);
+  }
+
   @Get('share-link/:id')
   async getShareableLink(@Param('id') id: number) {
     return {
@@ -35,10 +46,21 @@ export class ProformaController {
     };
   }
 
+  @Put('convert/:id')
+  async convert(@Param('id') id: number, @Req() req: Request) {
+    const user = req.user as User;
+    return this.proformaService.convertToInvoice(id, user);
+  }
   @Get('view/:token')
   @Public()
   async viewProforma(@Param('token') token: string) {
     return await this.proformaService.verifyAndFetchProforma(token);
+  }
+
+  @Get('user/my')
+  async getByUserId(@Req() req: Request) {
+    const user = req.user as User;
+    return this.proformaService.getAllByUser(user);
   }
 
   @Get()
@@ -52,22 +74,9 @@ export class ProformaController {
     return response;
   }
 
-  // این متد برای دریافت پیش‌فاکتورهای کاربر جاری است
-  @Get('user/my')
-  async getByUserId(@Req() req: Request) {
-    const user = req.user as User;
-    return this.proformaService.getAllByUser(user);
-  }
-
   @Put(':id')
   async update(@Param('id') id: number, @Body() data: Partial<Proforma>) {
     return this.proformaService.updateProforma(id, data);
-  }
-
-  @Put('convert/:id')
-  async convert(@Param('id') id: number, @Req() req: Request) {
-    const user = req.user as User;
-    return this.proformaService.convertToInvoice(id, user);
   }
 
   @Delete(':id')
