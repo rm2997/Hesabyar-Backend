@@ -96,3 +96,31 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## env
+APP_PORT=3001
+APP_BASE_URL=http://localhost
+
+FRONT_APP_URL=http://localhost:3000
+
+UPLOAD_FOLDER=uploads
+
+STATIC_URL=${APP_BASE_URL}/${UPLOAD_FOLDER}
+
+JWT_SECRET=test
+JWT_EXPIRES_IN=1d
+
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=test
+DB_NAME=hesabyar_db
+
+PROFORMA_LINK_SECRET=test
+PROFORMA_LINK_EXPIRES_IN=2d
+
+USER_LINK_SECRET=test
+USER_LINK_EXPIRES_IN=1h
+
+INVOICE_LINK_SECRET=test
+INVOICE_LINK_EXPIRES_IN=2d
