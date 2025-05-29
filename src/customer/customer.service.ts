@@ -48,6 +48,9 @@ export class CustomerService {
     customer.customerAddress = data?.customerAddress!;
     customer.customerNationalCode = data?.customerNationalCode!;
     customer.customerPhone = data?.customerPhone!;
+    customer.customerMobile = data?.customerMobile!;
+    customer.customerGender = data?.customerGender!;
+    customer.customerPostalCode = data?.customerPostalCode!;
     console.log(customer);
 
     return this.customerRepository.save(customer);
