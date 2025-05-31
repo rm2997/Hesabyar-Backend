@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Proforma } from '../proforma/proforma.entity';
 import { User } from 'src/users/users.entity';
@@ -28,6 +29,12 @@ export class Invoice {
     nullable: true,
   })
   acceptedBy: User;
+
+  @UpdateDateColumn()
+  updateAt: Date;
+
+  @Column({ type: 'nvarchar', nullable: true })
+  sepidarId: string;
 
   @ManyToOne(() => Proforma, { eager: true })
   @JoinColumn({ name: 'proforma_id' })

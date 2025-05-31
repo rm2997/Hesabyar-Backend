@@ -73,6 +73,14 @@ export class ProformaService {
     throw new NotFoundException('پیش‌فاکتور وجود ندارد');
   }
 
+  async setProformaIsSent(id: number) {
+    const proforma = await this.proformaRepository.findOne({ where: { id } });
+    if (proforma) {
+      return this.proformaRepository.save({ ...proforma, isSent: true });
+    }
+    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+  }
+
   async convertToInvoice(id: number, user: User): Promise<Proforma> {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
 
@@ -105,6 +113,8 @@ export class ProformaService {
       if (proforma) {
         const newToken = await this.generateShareableLink(proformaId);
         proforma.customerLink = newToken;
+        proforma.isSent = false;
+        proforma.approvedFile = '';
         await this.proformaRepository.save(proforma);
         return newToken;
       }

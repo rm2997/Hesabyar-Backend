@@ -12,17 +12,20 @@ import {
   NotFoundException,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
+  Res,
 } from '@nestjs/common';
 import { ProformaService } from './proforma.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Proforma } from './proforma.entity';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { User } from 'src/users/users.entity';
 import { Public } from 'src/common/decorators/jwt.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import multer, { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import { exists, existsSync } from 'fs';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
@@ -64,11 +67,41 @@ export class ProformaController {
     @Param('token') token: string,
     @UploadedFile() image: Express.Multer.File,
   ) {
+    if (!image) {
+      throw new BadRequestException('فایلی ارسال نشده است');
+    }
     const proforma = await this.proformaService.verifyAndFetchProforma(token);
-    if (!proforma) throw new NotFoundException();
-    const filePath = `/uploads/${image.filename}`;
+    if (!proforma) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+
+    const filePath = `/uploads/proforma/${image.filename}`;
     proforma.approvedFile = filePath;
+
     return this.proformaService.updateProforma(proforma?.id, proforma);
+  }
+
+  @Patch('sent/:id')
+  async setProformaIsSent(@Param('id') id: number) {
+    return await this.proformaService.setProformaIsSent(id);
+  }
+
+  @Get('file/:id')
+  async getProformaApprovedFile(@Param('id') id: number, @Res() res: Response) {
+    const proforma = await this.proformaService.getProforma(id);
+    if (!proforma) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+    if (!proforma?.approvedFile)
+      throw new NotFoundException(
+        'برای این پیش‌فاکتور فایل تاییدیه ثبت نشده است',
+      );
+
+    const filePath = join(__dirname, '..', '..', proforma.approvedFile);
+    console.log(filePath);
+
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('فایل در سرور موجود نیست');
+    }
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    return res.sendFile(filePath);
   }
 
   @Get('share-link/:id')

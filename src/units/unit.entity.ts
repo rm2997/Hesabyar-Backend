@@ -8,6 +8,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -23,6 +24,12 @@ export class Unit {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updateAt: Date;
+
+  @Column({ type: 'nvarchar', nullable: true })
+  sepidarId: string;
 
   @OneToMany(() => Good, (good) => good.goodUnit)
   goods: Good[];

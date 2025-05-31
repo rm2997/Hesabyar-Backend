@@ -11,10 +11,7 @@ async function bootstrap() {
     origin: ['http://localhost:3000'],
     credentials: true,
   });
-  app.use(
-    '/uploads',
-    express.static(join(__dirname, '..', process.env.UPLOAD_FOLDER + '')),
-  );
+
   Logger.log(`App is listeninig to[${process.env.APP_PORT}]`);
   await app.listen(process.env.APP_PORT || 3000);
 }

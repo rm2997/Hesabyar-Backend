@@ -12,6 +12,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -30,6 +31,12 @@ export class Good {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @Column({ type: 'nvarchar', nullable: true })
+  sepidarId: string;
 
   @OneToMany(() => InvoiceGoods, (item) => item.good, {
     cascade: true, // برای auto insert/update آیتم‌ها

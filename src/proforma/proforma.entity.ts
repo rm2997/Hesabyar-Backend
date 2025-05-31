@@ -6,6 +6,7 @@ import {
   CreateDateColumn,
   OneToMany,
   JoinColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../users/users.entity';
 import { Good } from 'src/goods/good.entity';
@@ -79,6 +80,15 @@ export class Proforma {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @Column({ type: 'nvarchar', nullable: true })
+  sepidarId: string;
+
+  @Column({ type: Boolean, default: false })
+  isSent: boolean;
 
   @OneToMany(() => ProformaGoods, (item) => item.proforma, {
     cascade: true, // برای auto insert/update آیتم‌ها
