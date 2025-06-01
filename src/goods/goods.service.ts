@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Good } from './good.entity';
 import { Unit } from 'src/units/unit.entity';
 import { UnitsService } from 'src/units/units.service';
+import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class GoodsService {
@@ -11,6 +12,7 @@ export class GoodsService {
     @InjectRepository(Good)
     private readonly goodRepository: Repository<Good>,
     private readonly unitService: UnitsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createGood(data: Partial<Good>, user: number): Promise<Good> {
@@ -23,7 +25,58 @@ export class GoodsService {
     return saved;
   }
 
-  async getAllGoods(): Promise<Good[]> {
+  async createGoodFromExcelFile(data: any[], user: User) {
+    let counter = 0;
+    const unit = await this.unitService.getUnitById(1);
+    data.forEach(async (record) => {
+      const fieldNames = Object.keys(record);
+      const sepidarId = record[fieldNames[2]];
+      const goodName = record[fieldNames[3]];
+
+      const Good = this.goodRepository.create({
+        goodInfo: 'آپلود دسته ای',
+        goodName: goodName,
+        goodPrice: 0,
+        sepidarId: sepidarId,
+        goodUnit: unit!,
+        createdAt: new Date(),
+        createdBy: user,
+      });
+      await this.goodRepository.save(Good);
+      counter++;
+    });
+    return { message: 'درج اطلاعات کالا توسط فایل انجام شد', rows: counter };
+  }
+
+  async getAllGoods(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Good[] }> {
+    const query = this.dataSource
+      .getRepository(Good)
+      .createQueryBuilder('good')
+      .leftJoinAndSelect('good.goodUnit', 'unit');
+
+    // شرط جستجو اختیاری
+    if (search) {
+      query.andWhere('good.goodName LIKE :search', { search: `%${search}%` });
+    }
+
+    // محاسبه تعداد کل
+    const total = await query.getCount();
+
+    // صفحه‌بندی
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('good.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
+  async getGoodsByCount(count: number): Promise<Good[]> {
     return await this.goodRepository.find();
   }
 

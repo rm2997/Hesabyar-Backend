@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -19,6 +20,7 @@ import { GoodsService } from './goods.service';
 import { Good } from './good.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as XLSX from 'xlsx';
+import { json } from 'stream/consumers';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('goods')
@@ -34,9 +36,12 @@ export class GoodsController {
   }
 
   @Get()
-  async getAll() {
-    const goods = await this.goodsService.getAllGoods();
-    console.log(goods[0].goodUnit);
+  async getAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+  ) {
+    const goods = await this.goodsService.getAllGoods(page, limit, search);
 
     return goods;
   }
@@ -61,16 +66,17 @@ export class GoodsController {
 
   @Post('upload-excel')
   @UseInterceptors(FileInterceptor('excelFile'))
-  async uploadExcel(@UploadedFile() file: Express.Multer.File) {
-    console.log('New excell Request');
+  async uploadExcel(
+    @Req() req: Request,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const user = req.user as User;
 
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
-    console.log(sheetName);
     const sheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(sheet);
-    console.log(data);
 
-    return { message: 'فایل با موفقیت پردازش شد', rows: data.length };
+    return await this.goodsService.createGoodFromExcelFile(data, user);
   }
 }

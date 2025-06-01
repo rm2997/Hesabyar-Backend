@@ -59,4 +59,5 @@ export class Good {
 
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
   createdBy: User;
+  good: { id: number };
 }
