@@ -1,13 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Customer } from './customer.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
 export class CustomerService {
   constructor(
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createCustomer(
@@ -23,8 +24,29 @@ export class CustomerService {
     return saved;
   }
 
-  async getAllCustomers(): Promise<Customer[]> {
-    return await this.customerRepository.find();
+  async getAllCustomers(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Customer[] }> {
+    const query = this.dataSource
+      .getRepository(Customer)
+      .createQueryBuilder('customer');
+
+    if (search && search.trim().length > 0) {
+      query.andWhere('customer.customerLName LIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('customer.id', 'DESC')
+      .getMany();
+
+    return { total, items };
   }
 
   async getCustomerById(id: number): Promise<Customer | null> {

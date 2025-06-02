@@ -13,6 +13,7 @@ import {
   ParseIntPipe,
   BadRequestException,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './users.entity';
@@ -43,8 +44,12 @@ export class UsersController {
 
   @Get()
   @UserRoles(Roles.Admin)
-  async findAll(): Promise<User[] | null> {
-    return this.usersService.findAll();
+  async findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+  ) {
+    return this.usersService.findAll(page, limit, search);
   }
 
   @Put('changePass/:id')

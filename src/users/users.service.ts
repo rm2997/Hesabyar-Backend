@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { User } from './users.entity';
 import * as bcrypt from 'bcrypt';
 import { Roles } from 'src/common/decorators/roles.enum';
@@ -16,6 +16,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private readonly dataSource: DataSource,
     private configService: ConfigService,
   ) {}
 
@@ -28,9 +29,25 @@ export class UsersService {
     return user;
   }
 
-  // نمایش کل کاربران
-  async findAll(): Promise<User[] | null> {
-    return this.usersRepository.find();
+  async findAll(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ items: User[]; total: number } | null> {
+    const query = this.dataSource
+      .getRepository(User)
+      .createQueryBuilder('user');
+
+    if (search) {
+      query.andWhere('user.userName LIKE :search', { search: `%${search}%` });
+    }
+    const total = await query.getCount();
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { total, items };
   }
 
   // دریافت کاربر با آیدی

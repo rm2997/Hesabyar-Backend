@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -30,8 +31,12 @@ export class CustomerController {
   }
 
   @Get()
-  async getAll() {
-    return await this.customerService.getAllCustomers();
+  async getAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+  ) {
+    return await this.customerService.getAllCustomers(page, limit, search);
   }
 
   @Get(':id')

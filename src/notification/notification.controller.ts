@@ -9,6 +9,7 @@ import {
   UseGuards,
   NotFoundException,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -28,24 +29,49 @@ export class NotificationController {
   }
 
   @Get('/unread')
-  async getUnread(@Req() req: Request) {
+  async getUnread(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
     const user = req['user'];
     return this.notificationService.getUnreadNotifications(user!.id);
   }
 
   @Get('/received')
-  async getAllRec(@Req() req: Request) {
+  async getAllRec(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
     const user = req['user'];
-    const notifications = await this.notificationService.getUserRcv(user!.id);
+    const notifications = await this.notificationService.getUserRcv(
+      page,
+      limit,
+      search,
+      user!.id,
+    );
 
     if (notifications) return notifications;
     else return null;
   }
 
   @Get('/sent')
-  async getAllSnd(@Req() req: Request) {
+  async getAllSnd(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
     const user = req['user'];
-    const notifications = await this.notificationService.getUserSent(user!.id);
+    const notifications = await this.notificationService.getUserSent(
+      page,
+      limit,
+      search,
+      user!.id,
+    );
     if (notifications) return notifications;
     else return null;
   }

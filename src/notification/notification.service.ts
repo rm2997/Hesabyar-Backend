@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Notification } from './notification.entity';
 import { User } from '../users/users.entity';
 import { Roles } from 'src/common/decorators/roles.enum';
@@ -14,6 +14,7 @@ export class NotificationService {
   constructor(
     @InjectRepository(Notification)
     private notificationRepo: Repository<Notification>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createNotification(data: Partial<Notification>, user: User) {
@@ -60,22 +61,57 @@ export class NotificationService {
     return notification;
   }
 
-  async getUserRcv(userId: number): Promise<Notification[] | null> {
-    const notification = await this.notificationRepo.find({
-      where: { toUser: { id: userId }, receiverDelete: false },
-      order: { createdAt: 'DESC' },
-    });
-    if (!notification) throw new NotFoundException('اعلان موجود نیست');
-    return notification;
+  async getUserRcv(
+    page: number,
+    limit: number,
+    search: string,
+    userId: number,
+  ): Promise<{ total: number; items: Notification[] }> {
+    const query = this.dataSource
+      .getRepository(Notification)
+      .createQueryBuilder('notification')
+      .leftJoinAndSelect('notification.fromUser', 'user')
+      .andWhere(`notification.toUser= :user`, { user: userId });
+
+    if (search) {
+      query.andWhere('notification.title LIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+    return { total, items };
   }
 
-  async getUserSent(userId: number): Promise<Notification[] | null> {
-    const notification = await this.notificationRepo.find({
-      where: { fromUser: { id: userId }, senderDelete: false },
-      order: { createdAt: 'DESC' },
-    });
-    if (!notification) throw new NotFoundException('اعلان موجود نیست');
-    return notification;
+  async getUserSent(
+    page: number,
+    limit: number,
+    search: string,
+    userId: number,
+  ): Promise<{ items: Notification[]; total: number }> {
+    const query = this.dataSource
+      .getRepository(Notification)
+      .createQueryBuilder('notification')
+      .leftJoinAndSelect('notification.toUser', 'user')
+      .andWhere(`notification.fromUser= :user`, { user: userId });
+
+    if (search) {
+      query.andWhere('notification.title LIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { total, items };
   }
 
   async softDeleteByUser(id: number, user: User) {

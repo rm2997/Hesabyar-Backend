@@ -42,7 +42,6 @@ export class GoodsController {
     @Query('search') search: string,
   ) {
     const goods = await this.goodsService.getAllGoods(page, limit, search);
-
     return goods;
   }
 

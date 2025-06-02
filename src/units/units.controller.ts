@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -28,8 +29,12 @@ export class UnitsController {
   }
 
   @Get()
-  async getAll() {
-    return await this.unitsService.getAllUnits();
+  async getAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') serach: string,
+  ) {
+    return await this.unitsService.getAllUnits(page, limit, serach);
   }
 
   @Get(':id')
