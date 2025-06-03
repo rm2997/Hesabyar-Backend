@@ -8,6 +8,7 @@ import {
   Delete,
   Req,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { Invoice } from './invoice.entity';
@@ -42,9 +43,14 @@ export class InvoiceController {
   }
 
   @Get('user/my')
-  async getUserInvoices(@Req() req: Request) {
+  async getUserInvoices(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
     const user = req.user as User;
-    return this.invoiceService.getUserInvoices(user.id);
+    return this.invoiceService.getUserInvoices(page, limit, search, user.id);
   }
 
   @Put(':id')

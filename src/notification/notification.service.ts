@@ -71,7 +71,8 @@ export class NotificationService {
       .getRepository(Notification)
       .createQueryBuilder('notification')
       .leftJoinAndSelect('notification.fromUser', 'user')
-      .andWhere(`notification.toUser= :user`, { user: userId });
+      .andWhere(`notification.toUser= :user`, { user: userId })
+      .andWhere('notification.receiverDelete=false');
 
     if (search) {
       query.andWhere('notification.title LIKE :search', {
@@ -97,7 +98,8 @@ export class NotificationService {
       .getRepository(Notification)
       .createQueryBuilder('notification')
       .leftJoinAndSelect('notification.toUser', 'user')
-      .andWhere(`notification.fromUser= :user`, { user: userId });
+      .andWhere(`notification.fromUser= :user`, { user: userId })
+      .andWhere('notification.receiverDelete=false');
 
     if (search) {
       query.andWhere('notification.title LIKE :search', {

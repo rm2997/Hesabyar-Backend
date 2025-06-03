@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as jwt from 'jsonwebtoken';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Proforma } from './proforma.entity';
 import { User } from 'src/users/users.entity';
 import { ConfigService } from '@nestjs/config';
@@ -15,6 +15,7 @@ export class ProformaService {
   constructor(
     @InjectRepository(Proforma)
     private proformaRepository: Repository<Proforma>,
+    private readonly dataSource: DataSource,
     private configService: ConfigService,
   ) {}
 
@@ -52,11 +53,29 @@ export class ProformaService {
   }
 
   // این متد برای بازیابی پیش‌فاکتورهای هر کاربر است
-  async getAllByUser(user: Partial<User>): Promise<Proforma[] | null> {
-    return this.proformaRepository.find({
-      where: { createdBy: { id: user.id } },
-      order: { createdAt: 'DESC' },
-    });
+  async getAllByUser(
+    page: number,
+    limit: number,
+    search: string,
+    user: Partial<User>,
+  ): Promise<{ items: Proforma[]; total: number }> {
+    const query = this.dataSource
+      .getRepository(Proforma)
+      .createQueryBuilder('proforma')
+      .leftJoinAndSelect('proforma.createdBy', 'user')
+      .andWhere('proforma.createdBy= :user', { user: user.id });
+
+    if (search) {
+      query.andWhere('proforma.id= :id', { id: search });
+    }
+
+    const total = await query.getCount();
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('proforma.createdAt', 'DESC')
+      .getMany();
+    return { total, items };
   }
 
   // این متد برای به روزرسانی اطلاعات پیش‌فاکتور است

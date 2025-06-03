@@ -14,6 +14,7 @@ import {
   UploadedFile,
   BadRequestException,
   Res,
+  Query,
 } from '@nestjs/common';
 import { ProformaService } from './proforma.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -123,9 +124,14 @@ export class ProformaController {
   }
 
   @Get('user/my')
-  async getByUserId(@Req() req: Request) {
+  async getByUserId(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
     const user = req.user as User;
-    return this.proformaService.getAllByUser(user);
+    return this.proformaService.getAllByUser(page, limit, search, user);
   }
 
   @Get()

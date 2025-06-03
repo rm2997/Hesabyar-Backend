@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Invoice } from './invoice.entity';
 import { ProformaService } from '../proforma/proforma.service';
 import { ConfigService } from '@nestjs/config';
@@ -17,8 +17,9 @@ import { User } from 'src/users/users.entity';
 export class InvoiceService {
   constructor(
     @InjectRepository(Invoice) private invoiceRepository: Repository<Invoice>,
-    private proformaService: ProformaService,
-    private configService: ConfigService,
+    private readonly proformaService: ProformaService,
+    private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
   async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
@@ -58,11 +59,31 @@ export class InvoiceService {
     return await this.invoiceRepository.findOne({ where: { id } });
   }
 
-  async getUserInvoices(userId: number): Promise<Invoice[] | null> {
-    return await this.invoiceRepository.find({
-      where: { createdBy: { id: userId } },
-      order: { createdAt: 'DESC' },
-    });
+  async getUserInvoices(
+    page: number,
+    limit: number,
+    search: string,
+    userId: number,
+  ): Promise<{ total: number; items: Invoice[] }> {
+    const query = this.dataSource
+      .getRepository(Invoice)
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.createdBy', 'user')
+      .andWhere('invoice.createdBy= :user', { user: userId });
+
+    if (search) {
+      query.andWhere('invoice.id= :search', { search: search });
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('invoice.createdAt', 'DESC')
+      .getMany();
+
+    return { items, total };
   }
 
   async updateInvoice(

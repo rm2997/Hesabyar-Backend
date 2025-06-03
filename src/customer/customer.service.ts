@@ -34,9 +34,13 @@ export class CustomerService {
       .createQueryBuilder('customer');
 
     if (search && search.trim().length > 0) {
-      query.andWhere('customer.customerLName LIKE :search', {
-        search: `%${search}%`,
-      });
+      query
+        .andWhere('customer.customerLName LIKE :search', {
+          search: `%${search}%`,
+        })
+        .orWhere('customer.customerFName LIKE :search', {
+          search: `%${search}%`,
+        });
     }
     const total = await query.getCount();
 

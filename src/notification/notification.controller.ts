@@ -31,7 +31,7 @@ export class NotificationController {
   @Get('/unread')
   async getUnread(
     @Query('page') page: number = 1,
-    @Query('limit') limit: number,
+    @Query('limit') limit: number = 10,
     @Query('search') search: string,
     @Req() req: Request,
   ) {
@@ -42,7 +42,7 @@ export class NotificationController {
   @Get('/received')
   async getAllRec(
     @Query('page') page: number = 1,
-    @Query('limit') limit: number,
+    @Query('limit') limit: number = 10,
     @Query('search') search: string,
     @Req() req: Request,
   ) {
@@ -61,7 +61,7 @@ export class NotificationController {
   @Get('/sent')
   async getAllSnd(
     @Query('page') page: number = 1,
-    @Query('limit') limit: number,
+    @Query('limit') limit: number = 10,
     @Query('search') search: string,
     @Req() req: Request,
   ) {
