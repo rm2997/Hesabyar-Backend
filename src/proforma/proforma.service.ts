@@ -63,6 +63,9 @@ export class ProformaService {
       .getRepository(Proforma)
       .createQueryBuilder('proforma')
       .leftJoinAndSelect('proforma.createdBy', 'user')
+      .leftJoinAndSelect('proforma.customer', 'customer')
+      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+      .leftJoinAndSelect('proformaGoods.good', 'good')
       .andWhere('proforma.createdBy= :user', { user: user.id });
 
     if (search) {

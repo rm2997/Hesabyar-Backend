@@ -24,9 +24,9 @@ import { Request, Response } from 'express';
 import { User } from 'src/users/users.entity';
 import { Public } from 'src/common/decorators/jwt.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
-import multer, { diskStorage } from 'multer';
+import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { exists, existsSync } from 'fs';
+import { existsSync } from 'fs';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
@@ -95,7 +95,6 @@ export class ProformaController {
       );
 
     const filePath = join(__dirname, '..', '..', proforma.approvedFile);
-    console.log(filePath);
 
     if (!existsSync(filePath)) {
       throw new NotFoundException('فایل در سرور موجود نیست');

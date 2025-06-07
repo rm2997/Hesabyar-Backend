@@ -45,8 +45,8 @@ export class CustomerService {
     const total = await query.getCount();
 
     const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
       .orderBy('customer.id', 'DESC')
       .getMany();
 

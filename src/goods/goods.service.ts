@@ -58,18 +58,15 @@ export class GoodsService {
       .createQueryBuilder('good')
       .leftJoinAndSelect('good.goodUnit', 'unit');
 
-    // شرط جستجو اختیاری
     if (search) {
       query.andWhere('good.goodName LIKE :search', { search: `%${search}%` });
     }
 
-    // محاسبه تعداد کل
     const total = await query.getCount();
 
-    // صفحه‌بندی
     const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
       .orderBy('good.id', 'DESC')
       .getMany();
 
