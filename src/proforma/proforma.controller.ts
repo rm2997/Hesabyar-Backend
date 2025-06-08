@@ -80,6 +80,12 @@ export class ProformaController {
     return this.proformaService.updateProforma(proforma?.id, proforma);
   }
 
+  @Patch('accept/:id')
+  async setProformaIsAccepted(@Param('id') id: number, @Req() req: Request) {
+    const acceptedBy = req.user as User;
+    return await this.proformaService.setProformaIsAccepted(id, acceptedBy);
+  }
+
   @Patch('sent/:id')
   async setProformaIsSent(@Param('id') id: number) {
     return await this.proformaService.setProformaIsSent(id);

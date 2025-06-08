@@ -95,6 +95,18 @@ export class ProformaService {
     throw new NotFoundException('پیش‌فاکتور وجود ندارد');
   }
 
+  async setProformaIsAccepted(id: number, acceptedBy: User) {
+    const proforma = await this.proformaRepository.findOne({ where: { id } });
+    if (proforma) {
+      return this.proformaRepository.save({
+        ...proforma,
+        isAccepted: true,
+        acceptedBy: acceptedBy,
+      });
+    }
+    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+  }
+
   async setProformaIsSent(id: number) {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (proforma) {
