@@ -9,7 +9,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../users/users.entity';
-import { Good } from 'src/goods/good.entity';
 import { Customer } from 'src/customer/customer.entity';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
 import { ProformaGoods } from './proforma-goods.entity';
@@ -78,7 +77,7 @@ export class Proforma {
   @Column({ nullable: true })
   description: string;
 
-  @CreateDateColumn()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
   @UpdateDateColumn()
@@ -93,6 +92,7 @@ export class Proforma {
   @OneToMany(() => ProformaGoods, (item) => item.proforma, {
     cascade: true, // برای auto insert/update آیتم‌ها
     eager: true, // برای لود اتوماتیک آیتم‌ها با خود فاکتور
+    orphanedRowAction: 'delete',
   })
   @JoinColumn()
   proformaGoods: ProformaGoods[];

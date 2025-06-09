@@ -77,7 +77,11 @@ export class ProformaController {
     const filePath = `/uploads/proforma/${image.filename}`;
     proforma.approvedFile = filePath;
 
-    return this.proformaService.updateProforma(proforma?.id, proforma);
+    return this.proformaService.updateProforma(
+      proforma?.id,
+      proforma,
+      proforma.createdBy,
+    );
   }
 
   @Patch('accept/:id')
@@ -151,8 +155,13 @@ export class ProformaController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: number, @Body() data: Partial<Proforma>) {
-    return this.proformaService.updateProforma(id, data);
+  async update(
+    @Param('id') id: number,
+    @Body() data: Partial<Proforma>,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return this.proformaService.updateProforma(id, data, user);
   }
 
   @Delete(':id')

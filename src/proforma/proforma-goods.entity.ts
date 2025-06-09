@@ -30,7 +30,7 @@ export class ProformaGoods {
   proforma: Proforma[];
 
   @ManyToOne(() => Good, (good) => good.goodProforma, {
-    onDelete: 'SET NULL',
+    onDelete: 'CASCADE',
     eager: true,
   })
   @JoinColumn()

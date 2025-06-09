@@ -9,12 +9,15 @@ import { DataSource, Repository } from 'typeorm';
 import { Proforma } from './proforma.entity';
 import { User } from 'src/users/users.entity';
 import { ConfigService } from '@nestjs/config';
+import { ProformaGoods } from './proforma-goods.entity';
 
 @Injectable()
 export class ProformaService {
   constructor(
     @InjectRepository(Proforma)
     private proformaRepository: Repository<Proforma>,
+    @InjectRepository(ProformaGoods)
+    private proformaGoodsRepository: Repository<ProformaGoods>,
     private readonly dataSource: DataSource,
     private configService: ConfigService,
   ) {}
@@ -38,12 +41,10 @@ export class ProformaService {
     return this.proformaRepository.save(savedProforma);
   }
 
-  // این متد برای بازیابی همه پیش‌فاکتور ها است
   async getAll(): Promise<Proforma[] | null> {
     return this.proformaRepository.find({ order: { createdAt: 'DESC' } });
   }
 
-  // این متد برای بازیابی پیش‌فاکتور با شناسه مشخص است
   async getProforma(id: number): Promise<Proforma | null> {
     const proforma = this.proformaRepository.findOne({ where: { id } }); // پیدا کردن پیش‌فاکتور بر اساس شناسه
     proforma.then((res) => {
@@ -52,7 +53,6 @@ export class ProformaService {
     return proforma;
   }
 
-  // این متد برای بازیابی پیش‌فاکتورهای هر کاربر است
   async getAllByUser(
     page: number,
     limit: number,
@@ -82,15 +82,39 @@ export class ProformaService {
   }
 
   // این متد برای به روزرسانی اطلاعات پیش‌فاکتور است
-  async updateProforma(id: number, data: Partial<Proforma>): Promise<Proforma> {
-    const proforma = await this.proformaRepository.findOne({ where: { id } });
+  async updateProforma(
+    id: number,
+    data: Partial<Proforma>,
+    updatedBy: User,
+  ): Promise<Proforma> {
+    const proforma = await this.proformaRepository.findOne({
+      where: { id },
+      relations: ['proformaGoods'],
+    });
     if (proforma) {
-      // proforma.totalAmount = data?.totalAmount!;
-      // proforma.customer = data?.customer!;
-      // proforma.customerLink = data?.customerLink!;
-      // proforma.approvedFile = data?.approvedFile!;
+      proforma.totalAmount = data?.totalAmount!;
+      data?.proformaGoods?.map((g) => {
+        if (g.id == 0) {
+          g.createdAt = new Date();
+          g.createdBy = updatedBy;
+        } else {
+          g.createdBy = updatedBy;
+        }
+      });
 
-      return this.proformaRepository.save({ ...data });
+      await this.proformaGoodsRepository.remove(proforma.proformaGoods);
+      proforma.proformaGoods = [...data?.proformaGoods!];
+      return await this.proformaRepository.save({ ...proforma, ...data });
+      // //Remove deleted items
+      // if (updatedItems?.length! < existItems.length) {
+      //   const removedItems = existItems.filter(
+      //     (item) => !updatedItems?.includes(item),
+      //   );
+
+      //   removedItems.map(
+      //     async (item) => await this.proformaGoodsRepository.remove(item),
+      //   );
+      // }
     }
     throw new NotFoundException('پیش‌فاکتور وجود ندارد');
   }
@@ -162,7 +186,7 @@ export class ProformaService {
       const payload: any = jwt.verify(token, secret);
       const proforma = await this.proformaRepository.findOne({
         where: { id: payload.proformaId },
-        relations: ['createdBy'], // در صورت نیاز
+        relations: ['createdBy'],
       });
 
       if (!proforma) throw new NotFoundException('پیش‌فاکتور یافت نشد');

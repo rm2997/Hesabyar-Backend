@@ -30,7 +30,8 @@ export class InvoiceGoods {
   invoice: Invoice[];
 
   @ManyToOne(() => Good, (good) => good.goodInvoice, {
-    onDelete: 'SET NULL',
+    onDelete: 'CASCADE',
+    eager: true,
   })
   @JoinColumn()
   good: Good[];

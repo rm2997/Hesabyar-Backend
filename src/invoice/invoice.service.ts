@@ -12,12 +12,15 @@ import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
 import { User } from 'src/users/users.entity';
+import { InvoiceGoods } from './invoice-good.entity';
 
 @Injectable()
 export class InvoiceService {
   constructor(
     @InjectRepository(Invoice) private invoiceRepository: Repository<Invoice>,
     private readonly proformaService: ProformaService,
+    @InjectRepository(InvoiceGoods)
+    private invoiceGoodsRepository: Repository<InvoiceGoods>,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
   ) {}
@@ -69,6 +72,9 @@ export class InvoiceService {
       .getRepository(Invoice)
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.createdBy', 'user')
+      .leftJoinAndSelect('invoice.customer', 'customer')
+      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+      .leftJoinAndSelect('invoiceGoods.good', 'good')
       .andWhere('invoice.createdBy= :user', { user: userId });
 
     if (search) {
@@ -88,12 +94,26 @@ export class InvoiceService {
 
   async updateInvoice(
     id: number,
-    paymentStatus: PaymentTypes,
+    data: Partial<Invoice>,
+    updatedBy: User,
   ): Promise<Invoice> {
-    const invoice = await this.invoiceRepository.findOne({ where: { id } });
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id },
+      relations: ['invoiceGoods'],
+    });
     if (invoice) {
-      invoice.paymentStatus = paymentStatus;
-      return await this.invoiceRepository.save(invoice);
+      invoice.totalAmount = data?.totalAmount!;
+      data?.invoiceGoods?.map((g) => {
+        if (g.id == 0) {
+          g.createdAt = new Date();
+          g.createdBy = updatedBy;
+        } else {
+          g.createdBy = updatedBy;
+        }
+      });
+      await this.invoiceGoodsRepository.remove(invoice?.invoiceGoods!);
+      invoice.invoiceGoods = [...data?.invoiceGoods!];
+      return await this.invoiceRepository.save({ ...invoice, ...data });
     }
     throw new Error('Invoice not found');
   }
@@ -108,24 +128,59 @@ export class InvoiceService {
     const expiresIn = this.configService.get('INVOICE_LINK_EXPIRES_IN');
 
     const token = jwt.sign(payload, secret, { expiresIn });
-    const baseUrl = this.configService.get('APP_BASE_URL');
-
-    return `${baseUrl}/invoice/view/${token}`;
+    return token;
   }
 
-  async verifyAndFetchProforma(token: string): Promise<Invoice> {
+  async verifyAndFetchInvoice(token: string): Promise<Invoice> {
     try {
       const secret = this.configService.get('INVOICE_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
-      const proforma = await this.invoiceRepository.findOne({
-        where: { id: payload.proformaId },
+      const invoice = await this.invoiceRepository.findOne({
+        where: { id: payload.invoiceId },
         relations: ['createdBy'],
       });
 
-      if (!proforma) throw new NotFoundException('پیش‌فاکتور پیدا نشد');
-      return proforma;
+      if (!invoice) throw new NotFoundException('فاکتور پیدا نشد');
+      return invoice;
     } catch (err) {
       throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
     }
+  }
+
+  async setInvoiceIsAccepted(id: number, acceptedBy: User) {
+    const invoice = await this.invoiceRepository.findOne({ where: { id } });
+    if (invoice) {
+      return this.invoiceRepository.save({
+        ...invoice,
+        isAccepted: true,
+        acceptedBy: acceptedBy,
+      });
+    }
+    throw new NotFoundException('فاکتور وجود ندارد');
+  }
+
+  async setInvoiceIsSent(id: number) {
+    const invoice = await this.invoiceRepository.findOne({ where: { id } });
+    if (invoice) {
+      return this.invoiceRepository.save({ ...invoice, isSent: true });
+    }
+    throw new NotFoundException('فاکتور وجود ندارد');
+  }
+
+  async renewInvoiceToken(invoiceId: number) {
+    try {
+      const invoice = await this.invoiceRepository.findOne({
+        where: { id: invoiceId },
+      });
+      if (invoice) {
+        const newToken = await this.generateShareableLink(invoiceId);
+        invoice.customerLink = newToken;
+        invoice.isSent = false;
+        invoice.approvedFile = '';
+        await this.invoiceRepository.save(invoice);
+        return newToken;
+      }
+      throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    } catch (error) {}
   }
 }

@@ -22,6 +22,9 @@ export class Invoice {
   @Column({ nullable: true })
   title: string;
 
+  @Column({ type: Boolean, default: false })
+  isSent: boolean;
+
   @Column({ type: 'bool', nullable: true, default: false })
   isAccepted: boolean;
 
@@ -78,8 +81,8 @@ export class Invoice {
   customerLink: string;
 
   @OneToMany(() => InvoiceGoods, (item) => item.invoice, {
-    cascade: true, // برای auto insert/update آیتم‌ها
-    eager: true, // برای لود اتوماتیک آیتم‌ها با خود فاکتور
+    cascade: true,
+    eager: true,
   })
   @JoinColumn()
   invoiceGoods: InvoiceGoods[];
