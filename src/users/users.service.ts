@@ -58,10 +58,13 @@ export class UsersService {
     return { ...user, password: '' };
   }
 
-  async findByMobileNumber(usermobilenumber: string): Promise<User | null> {
-    const user = this.usersRepository.findOne({ where: { usermobilenumber } });
+  async findByMobileNumber(usermobilenumber: string): Promise<any | null> {
+    const user = await this.usersRepository.findOne({
+      where: { usermobilenumber },
+    });
     if (!user) throw new NotFoundException('Moblie number not found');
-    return user;
+    const token = await this.generateUserChangePassToken(user?.id);
+    return { ...user, token: token };
   }
 
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
@@ -209,6 +212,31 @@ export class UsersService {
   }
 
   async verifyUserLocationToken(token: string): Promise<User> {
+    try {
+      const secret = this.configService.get('USER_LINK_SECRET');
+      const payload: any = jwt.verify(token, secret);
+      const user = await this.usersRepository.findOne({
+        where: { id: payload.userId },
+      });
+
+      if (!user) throw new NotFoundException('کاربر موجود نیست');
+      return user;
+    } catch (err) {
+      throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
+    }
+  }
+
+  async generateUserChangePassToken(userId: number) {
+    const payload = { userId };
+    const secret = this.configService.get('USER_LINK_SECRET');
+    const expiresIn = this.configService.get('USER_LINK_EXPIRES_IN');
+
+    const token = jwt.sign(payload, secret, { expiresIn });
+
+    return token;
+  }
+
+  async verifyUserChangePassToken(token: string): Promise<User> {
     try {
       const secret = this.configService.get('USER_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);

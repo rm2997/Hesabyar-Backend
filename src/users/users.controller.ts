@@ -52,6 +52,12 @@ export class UsersController {
     return this.usersService.findAll(page, limit, search);
   }
 
+  @Get('forgetpassword/:mobileNumber')
+  @Public()
+  async getUserByMobileNumber(@Param('mobile') mobile: string) {
+    return this.usersService.findByMobileNumber(mobile);
+  }
+
   @Put('changePass/:id')
   async changePass(
     @Param('id') id: number,
