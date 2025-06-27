@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -64,7 +65,14 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('Moblie number not found');
     const token = await this.generateUserChangePassToken(user?.id);
-    return { ...user, token: token };
+    return { ...user, password: '', token: token };
+  }
+
+  async findByToken(token: string): Promise<User | null> {
+    const user = await this.verifyUserChangePassToken(token);
+    if (!user) throw new NotFoundException('User not found');
+    console.log(user);
+    return { ...user, password: '' };
   }
 
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
@@ -119,6 +127,26 @@ export class UsersService {
       link;
 
     return body;
+  }
+
+  async changePasswordFromOut(passwordData: {
+    current: string;
+    new: string;
+    token: string;
+  }): Promise<User> {
+    const userByToken = await this.verifyUserChangePassToken(
+      passwordData.token,
+    );
+    if (!userByToken) throw new NotFoundException();
+    const user = await this.findById(userByToken.id);
+    if (!user) throw new NotFoundException();
+    let newPass = '';
+    if (passwordData.new) {
+      const salt = await bcrypt.genSalt();
+      newPass = await bcrypt.hash(passwordData.new, salt);
+    }
+    user.password = newPass;
+    return this.usersRepository.save(user);
   }
 
   async changePass(
@@ -247,7 +275,7 @@ export class UsersService {
       if (!user) throw new NotFoundException('کاربر موجود نیست');
       return user;
     } catch (err) {
-      throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
+      throw new BadRequestException('لینک نامعتبر یا منقضی‌شده است');
     }
   }
 }

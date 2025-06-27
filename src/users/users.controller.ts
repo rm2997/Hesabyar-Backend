@@ -58,6 +58,12 @@ export class UsersController {
     return this.usersService.findByMobileNumber(mobile);
   }
 
+  @Get('token/:token')
+  @Public()
+  async getUserByToken(@Param('token') token: string) {
+    return this.usersService.findByToken(token);
+  }
+
   @Put('changePass/:id')
   async changePass(
     @Param('id') id: number,
@@ -71,6 +77,14 @@ export class UsersController {
       throw new UnauthorizedException(
         'شما نمی توانید کلمه عبور سایر کاربران را تغییر دهید',
       );
+  }
+
+  @Put('changePassExternal')
+  @Public()
+  async changePasswordPublic(
+    @Body() data: { current: string; new: string; token: string },
+  ) {
+    return this.usersService.changePasswordFromOut(data);
   }
 
   @Put('location')
