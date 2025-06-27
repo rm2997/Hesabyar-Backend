@@ -98,46 +98,25 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 ## env
-<<<<<<< HEAD
 
-APP_PORT=3001 APP_BASE_URL=http://localhost
-=======
 APP_PORT=3001
-APP_BASE_URL=http://localhost
->>>>>>> 547c4f0d5d3e7915ce4c6e3ab2c1aae8024740a4
-
-FRONT_APP_URL=http://localhost:3000
-
+APP_BASE_URL=http://localhost:${APP_PORT}
 UPLOAD_FOLDER=uploads
 
-STATIC_URL=${APP_BASE_URL}/${UPLOAD_FOLDER}
-
-<<<<<<< HEAD
-JWT_SECRET=test JWT_EXPIRES_IN=1d
-
-DB_HOST=localhost DB_PORT=3306 DB_USERNAME=root DB_PASSWORD=test DB_NAME=hesabyar_db
-
-PROFORMA_LINK_SECRET=test PROFORMA_LINK_EXPIRES_IN=2d
-
-USER_LINK_SECRET=test USER_LINK_EXPIRES_IN=1h
-
-INVOICE_LINK_SECRET=test INVOICE_LINK_EXPIRES_IN=2d
-=======
-JWT_SECRET=test
+JWT_SECRET=your_secret
 JWT_EXPIRES_IN=1d
 
 DB_HOST=localhost
 DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=test
+DB_USERNAME=user
+DB_PASSWORD=pass
 DB_NAME=hesabyar_db
 
-PROFORMA_LINK_SECRET=test
-PROFORMA_LINK_EXPIRES_IN=2d
-
-USER_LINK_SECRET=test
+USER_LINK_SECRET=your_secret
 USER_LINK_EXPIRES_IN=1h
 
-INVOICE_LINK_SECRET=test
-INVOICE_LINK_EXPIRES_IN=2d
->>>>>>> 547c4f0d5d3e7915ce4c6e3ab2c1aae8024740a4
+PROFORMA_LINK_SECRET=your_secret
+PROFORMA_LINK_EXPIRES_IN=3d
+
+INVOICE_LINK_SECRET=your_secret
+INVOICE_LINK_EXPIRES_IN=3d
