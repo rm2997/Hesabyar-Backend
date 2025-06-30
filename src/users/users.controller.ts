@@ -87,6 +87,8 @@ export class UsersController {
     return this.usersService.changePasswordFromOut(data);
   }
 
+
+  
   @Put('location')
   async updateUserLocation(
     @Body() data: { location: string },

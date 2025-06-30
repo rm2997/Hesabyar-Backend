@@ -188,15 +188,22 @@ export class UsersService {
     userData: Partial<User>,
     issuedUser: User,
   ): Promise<User | undefined> {
-    const user = this.usersRepository.create({
-      ...userData,
+    console.log('user password for create is:', userData.password);
+
+    const salt = await bcrypt.genSalt();
+    const password = await bcrypt.hash(userData.password, salt);
+    const newUser = this.usersRepository.create({
+      username: userData.username,
+      password: password,
+      userfname: userData.userfname,
+      userlname: userData.userlname,
+      usermobilenumber: userData.usermobilenumber,
+      role: userData.role,
+      twoFactorAuthntication: userData.twoFactorAuthntication,
       createdAt: new Date(),
       createdBy: issuedUser?.id,
     });
-    const salt = await bcrypt.genSalt();
-    user.password = await bcrypt.hash(userData.password, salt);
-
-    return this.usersRepository.save(user);
+    return this.usersRepository.save(newUser);
   }
 
   async createAdmin() {
@@ -210,7 +217,7 @@ export class UsersService {
       const password = await bcrypt.hash('admin1234', salt);
       exists.password = password;
       await this.usersRepository.save(exists);
-      return { message: 'Admin updated successfully' };
+      return { message: 'مدیر سیستم به روز رسانی شد' };
     }
 
     const salt = await bcrypt.genSalt();
@@ -223,10 +230,11 @@ export class UsersService {
       userlname: 'mirasgari',
       usermobilenumber: '09125213288',
       role: Roles.Admin,
+      twoFactorAuthntication: true,
     });
 
     await this.usersRepository.save(admin);
-    return { message: 'Admin created successfully' };
+    return { message: 'مدیر سیستم ساخته شد' };
   }
 
   async generateUserLocationLink(userId: number) {

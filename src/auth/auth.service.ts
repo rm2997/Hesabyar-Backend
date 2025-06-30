@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -16,11 +16,12 @@ export class AuthService {
   // بررسی ورود کاربر
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
-    if (user && (await bcrypt.compare(pass, user.password))) {
+    if (!user) throw new NotFoundException('کاربر موجود نیست');
+
+    if (await bcrypt.compare(pass, user.password)) {
       const { password, ...result } = user;
       return result;
-    }
-    return null;
+    } else throw new NotFoundException(' رمز اشتباه است');
   }
 
   // تولید توکن برای کاربر
