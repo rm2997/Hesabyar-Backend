@@ -16,12 +16,12 @@ export class AuthService {
   // بررسی ورود کاربر
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
-    if (!user) throw new NotFoundException('کاربر موجود نیست');
+    if (!user) throw new NotFoundException('نام کاربری یا رمز اشتباه است');
 
     if (await bcrypt.compare(pass, user.password)) {
       const { password, ...result } = user;
       return result;
-    } else throw new NotFoundException(' رمز اشتباه است');
+    } else throw new NotFoundException('نام کاربری یا رمز اشتباه است');
   }
 
   // تولید توکن برای کاربر

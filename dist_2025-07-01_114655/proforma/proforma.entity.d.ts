@@ -1,0 +1,31 @@
+import { User } from '../users/users.entity';
+import { Customer } from 'src/customer/customer.entity';
+import { PaymentTypes } from 'src/common/decorators/payment.enum';
+import { ProformaGoods } from './proforma-goods.entity';
+export declare class Proforma {
+    id: number;
+    title: string;
+    isConverted: boolean;
+    convertedBy: User;
+    isAccepted: boolean;
+    acceptedBy: User;
+    customer: Customer;
+    totalAmount: number;
+    paymentStatus: PaymentTypes;
+    chequeDate: Date;
+    chequeAmount: number;
+    chequeSerial: number;
+    paperMoneyDate: Date;
+    paperMoneyAmount: number;
+    paperMoneySerial: number;
+    trustIssueDate: Date;
+    approvedFile: string;
+    customerLink: string;
+    description: string;
+    createdAt: Date;
+    updatedAt: Date;
+    sepidarId: string;
+    isSent: boolean;
+    proformaGoods: ProformaGoods[];
+    createdBy: User;
+}

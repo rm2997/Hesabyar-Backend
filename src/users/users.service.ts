@@ -129,6 +129,17 @@ export class UsersService {
     return body;
   }
 
+  async checkPassword(
+    id: number,
+    password: string,
+  ): Promise<{ result: boolean }> {
+    const user = await this.usersRepository.findOne({ where: { id: id } });
+    if (!user) throw new NotFoundException('کاربر مورد نظر پیدا نشد');
+    const result = await this.validatePassword(user.password, password);
+
+    return { result: result };
+  }
+
   async changePasswordFromOut(passwordData: {
     current: string;
     new: string;
@@ -151,23 +162,27 @@ export class UsersService {
 
   async changePass(
     id: number,
-    passwordData: { current: string; new: string },
+    passwordData: { current: string; confirm: string; new: string },
     issuedUser: User,
   ): Promise<User> {
-    const user = await this.findById(id);
+    const user = await this.usersRepository.findOne({ where: { id: id } });
+    if (!user) throw new NotFoundException('کاربر موجود نیست');
 
-    if (
-      issuedUser.role === Roles.Admin ||
-      (await this.validatePassword(user, passwordData.current))
-    ) {
-      let newPass = '';
-      if (passwordData.new) {
-        const salt = await bcrypt.genSalt();
-        newPass = await bcrypt.hash(passwordData.new, salt);
-      }
-      user.password = newPass;
-      return this.usersRepository.save(user);
-    } else throw new UnauthorizedException('کلمه عبور جاری صحیح نیست');
+    const checkPass =
+      issuedUser.role == Roles.Admin
+        ? true
+        : await this.validatePassword(user.password, passwordData.current);
+
+    if (issuedUser.role !== Roles.Admin && !checkPass)
+      throw new UnauthorizedException('کلمه عبور جاری صحیح نیست');
+
+    let newPass = '';
+    if (passwordData.new) {
+      const salt = await bcrypt.genSalt();
+      newPass = await bcrypt.hash(passwordData.new, salt);
+    }
+    user.password = newPass;
+    return this.usersRepository.save(user);
   }
 
   // حذف کاربر
@@ -179,8 +194,11 @@ export class UsersService {
   }
 
   // بررسی صحت رمز عبور
-  async validatePassword(user: User, plainPassword: string): Promise<boolean> {
-    return bcrypt.compare(plainPassword, user.password);
+  async validatePassword(
+    hashPassword: string,
+    plainPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(plainPassword, hashPassword);
   }
 
   // ایجاد کاربر جدید با هش کردن پسورد

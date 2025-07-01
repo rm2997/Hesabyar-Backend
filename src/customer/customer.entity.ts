@@ -27,13 +27,13 @@ export class Customer {
   @Column({ nullable: true })
   customerPhone: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: false, unique: true })
   customerMobile: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: false, unique: true })
   customerNationalCode: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, length: 10 })
   customerPostalCode: string;
 
   @CreateDateColumn()

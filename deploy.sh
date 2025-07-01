@@ -1,6 +1,8 @@
 #!/bin/bash
 
-DEPLOY_DIR="./deploy"
+DEPLOY_DIR="./hesabyaar_backend_deploy"
+pattern=`date  '+%Y-%m-%d_%H%M%S'`
+mv  ./dist/ dist_${pattern}
 
 echo "Start deploying..."
 
@@ -19,6 +21,9 @@ cp package-lock.json $DEPLOY_DIR/
 if [ -f .env ]; then
   cp .env $DEPLOY_DIR/
 fi
+
+echo "Compressing deploy..."
+zip -r ${DEPLOY_DIR}_${pattern}.zip $DEPLOY_DIR/
 
 echo "Deploying finished..."
 

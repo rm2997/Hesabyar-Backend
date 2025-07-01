@@ -29,7 +29,7 @@ export class AuthController {
       `New login request received...[username:${body.username} password:${body.password}]`,
     );
     if (!body || !body.username || !body.password) {
-      throw new UnauthorizedException('نام کاربری یا رمز ارسال نشده است');
+      throw new NotFoundException('نام کاربری یا رمز ارسال نشده است');
     }
     const user = await this.authService.validateUser(
       body.username,
@@ -37,7 +37,7 @@ export class AuthController {
     );
 
     if (!user) {
-      throw new UnauthorizedException('نام کاربری یا رمز اشتباه است');
+      throw new NotFoundException('نام کاربری یا رمز اشتباه است');
     }
     // if (body.location != '')
     //   await this.authService.updateuserLocation(user?.id, body.location);

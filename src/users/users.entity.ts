@@ -18,7 +18,7 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   username: string;
 
   @Column()
@@ -33,7 +33,7 @@ export class User {
   @Column()
   userlname: string;
 
-  @Column()
+  @Column({ unique: true, length: 11 })
   usermobilenumber: string;
 
   @CreateDateColumn()
@@ -48,7 +48,7 @@ export class User {
   @Column({ nullable: true })
   lastLogin: Date;
 
-  @Column({ type: Boolean, nullable: true })
+  @Column({ type: Boolean, nullable: false, default: 1 })
   twoFactorAuthntication: boolean;
 
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)

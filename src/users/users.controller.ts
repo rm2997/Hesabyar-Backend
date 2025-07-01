@@ -32,14 +32,14 @@ export class UsersController {
   @Post('seed-admin')
   @Public()
   async seedAdmin() {
-    return this.usersService.createAdmin(); // بدون نیاز به احراز هویت
+    return await this.usersService.createAdmin(); // بدون نیاز به احراز هویت
   }
 
   @Post()
   @UserRoles(Roles.Admin)
   async create(@Body() data: Partial<User>, @Req() req: Request) {
     const issuedUser = req.user as User;
-    return this.usersService.createUser(data, issuedUser);
+    return await this.usersService.createUser(data, issuedUser);
   }
 
   @Get()
@@ -49,34 +49,51 @@ export class UsersController {
     @Query('limit') limit: number = 10,
     @Query('search') search: string,
   ) {
-    return this.usersService.findAll(page, limit, search);
+    return await this.usersService.findAll(page, limit, search);
+  }
+
+  @Get('/profile/:id')
+  async getUserById(@Param('id') id: number) {
+    return await this.usersService.findById(id);
   }
 
   @Get('forgetpassword/:mobileNumber')
   @Public()
   async getUserByMobileNumber(@Param('mobile') mobile: string) {
-    return this.usersService.findByMobileNumber(mobile);
+    return await this.usersService.findByMobileNumber(mobile);
   }
 
   @Get('token/:token')
   @Public()
   async getUserByToken(@Param('token') token: string) {
-    return this.usersService.findByToken(token);
+    return await this.usersService.findByToken(token);
   }
 
   @Put('changePass/:id')
   async changePass(
     @Param('id') id: number,
-    @Body() data: { current: string; new: string },
+    @Body() data: { current: string; confirm: string; new: string },
     @Req() req: Request,
   ) {
-    const user = req.user as User;
-    if (user.role === Roles.Admin || user.id === id)
-      return this.usersService.changePass(id, data, user);
+    const issuedUser = req.user as User;
+
+    if (issuedUser.role === Roles.Admin)
+      return await this.usersService.changePass(id, data, issuedUser);
+
+    if (issuedUser.id == id)
+      return await this.usersService.changePass(id, data, issuedUser);
     else
       throw new UnauthorizedException(
         'شما نمی توانید کلمه عبور سایر کاربران را تغییر دهید',
       );
+  }
+
+  @Post('checkPassword/:id')
+  async checkPassword(
+    @Param('id') id: number,
+    @Body() data: { password: string },
+  ): Promise<{ result: boolean }> {
+    return await this.usersService.checkPassword(id, data.password);
   }
 
   @Put('changePassExternal')
@@ -84,11 +101,9 @@ export class UsersController {
   async changePasswordPublic(
     @Body() data: { current: string; new: string; token: string },
   ) {
-    return this.usersService.changePasswordFromOut(data);
+    return await this.usersService.changePasswordFromOut(data);
   }
 
-
-  
   @Put('location')
   async updateUserLocation(
     @Body() data: { location: string },
@@ -97,7 +112,7 @@ export class UsersController {
     const user = req.user as User;
     if (!data?.location)
       throw new BadRequestException('موقعیت مکانی صحیح نیست');
-    return this.usersService.updateUserLocation(user, data.location);
+    return await this.usersService.updateUserLocation(user, data.location);
   }
 
   @Post('sms/:id')
@@ -110,7 +125,7 @@ export class UsersController {
     )
     id: number,
   ) {
-    return this.usersService.sendLocationSms(id);
+    return await this.usersService.sendLocationSms(id);
   }
 
   @Get('view/:token')
@@ -139,7 +154,7 @@ export class UsersController {
         'شما فقط می توانید اطلاعات خودتان را مشاهده کنید',
       );
     }
-    return this.usersService.findById(id);
+    return await this.usersService.findById(id);
   }
 
   @Put(':id')
@@ -158,12 +173,12 @@ export class UsersController {
       );
     }
 
-    return this.usersService.updateUser(id, data);
+    return await this.usersService.updateUser(id, data);
   }
 
   @Delete(':id')
   @UserRoles(Roles.Admin)
   async remove(@Param('id') id: number) {
-    return this.usersService.deleteUser(id);
+    return await this.usersService.deleteUser(id);
   }
 }
