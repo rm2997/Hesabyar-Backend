@@ -1,7 +1,10 @@
 # compiled output
 /dist
+/dist_*
 /node_modules
 /build
+/hesabyaar_backend_deploy
+
 
 # Logs
 logs
