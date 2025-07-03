@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEPLOY_DIR="./hesabyaar_backend_deploy"
+DEPLOY_DIR="../hesabyaar_backend_deploy"
 pattern=`date  '+%Y-%m-%d_%H%M%S'`
 mv  ./dist/ dist_${pattern}
 
