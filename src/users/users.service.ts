@@ -244,8 +244,8 @@ export class UsersService {
     const admin = this.usersRepository.create({
       username: 'admin',
       password,
-      userfname: 'reza',
-      userlname: 'mirasgari',
+      userfname: 'رضا',
+      userlname: 'میرعسگری',
       usermobilenumber: '09125213288',
       role: Roles.Admin,
       twoFactorAuthntication: true,
