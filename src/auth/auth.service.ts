@@ -16,15 +16,21 @@ export class AuthService {
   // بررسی ورود کاربر
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
-    if (!user) throw new NotFoundException('نام کاربری یا رمز اشتباه است');
+
+    if (!user) {
+      console.log('User not found', user);
+      throw new NotFoundException('نام کاربری یا رمز اشتباه است');
+    }
 
     if (await bcrypt.compare(pass, user.password)) {
       const { password, ...result } = user;
       return result;
-    } else throw new NotFoundException('نام کاربری یا رمز اشتباه است');
+    } else {
+      console.log('Icorrect password', pass, user.password);
+      throw new NotFoundException('نام کاربری یا رمز اشتباه است');
+    }
   }
 
-  // تولید توکن برای کاربر
   async login(user: User) {
     const payload = { username: user.username, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });

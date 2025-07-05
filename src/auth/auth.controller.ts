@@ -25,10 +25,8 @@ export class AuthController {
   async login(
     @Body() body: { username: string; password: string; location: string },
   ) {
-    Logger.log(
-      `New login request received...[username:${body.username} password:${body.password}]`,
-    );
     if (!body || !body.username || !body.password) {
+      console.log('خطا در دریافت داده', body);
       throw new NotFoundException('نام کاربری یا رمز ارسال نشده است');
     }
     const user = await this.authService.validateUser(
@@ -39,8 +37,9 @@ export class AuthController {
     if (!user) {
       throw new NotFoundException('نام کاربری یا رمز اشتباه است');
     }
-    // if (body.location != '')
-    //   await this.authService.updateuserLocation(user?.id, body.location);
+    Logger.log(
+      `New login request received...[username:${body.username} password:${body.password}]`,
+    );
     return this.authService.login(user);
   }
 
