@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
+import { SmsService } from 'src/sms/sms.service';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +19,7 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly smsService: SmsService,
     private configService: ConfigService,
   ) {}
 
@@ -51,7 +53,6 @@ export class UsersService {
     return { total, items };
   }
 
-  // دریافت کاربر با آیدی
   async findById(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست ${id}`);
@@ -63,9 +64,12 @@ export class UsersService {
     const user = await this.usersRepository.findOne({
       where: { usermobilenumber },
     });
+
     if (!user) throw new NotFoundException('Moblie number not found');
     const token = await this.generateUserChangePassToken(user?.id);
-    return { ...user, password: '', token: token };
+    await this.smsService.sendForgetPassSms(user, token);
+    return { status: 'success', usermobilenumber: user?.usermobilenumber };
+    //return { ...user, password: '', token: token };
   }
 
   async findByToken(token: string): Promise<User | null> {
@@ -78,10 +82,10 @@ export class UsersService {
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
     const user = await this.findById(id);
 
-    if (updateData.password) {
-      const salt = await bcrypt.genSalt();
-      updateData.password = await bcrypt.hash(updateData.password, salt);
-    }
+    // if (updateData.password) {
+    //   const salt = await bcrypt.genSalt();
+    //   updateData.password = await bcrypt.hash(updateData.password, salt);
+    // }
 
     Object.assign(user, updateData);
     return this.usersRepository.save(user);
@@ -185,7 +189,6 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  // حذف کاربر
   async deleteUser(id: number): Promise<void> {
     const result = await this.usersRepository.delete(id);
     if (result.affected === 0) {
@@ -193,7 +196,6 @@ export class UsersService {
     }
   }
 
-  // بررسی صحت رمز عبور
   async validatePassword(
     hashPassword: string,
     plainPassword: string,
@@ -201,7 +203,6 @@ export class UsersService {
     return bcrypt.compare(plainPassword, hashPassword);
   }
 
-  // ایجاد کاربر جدید با هش کردن پسورد
   async createUser(
     userData: Partial<User>,
     issuedUser: User,

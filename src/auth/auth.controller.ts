@@ -40,7 +40,22 @@ export class AuthController {
     Logger.log(
       `New login request received...[username:${body.username} password:${body.password}]`,
     );
+
     return this.authService.login(user);
+  }
+
+  @Post('secondLogin')
+  @Public()
+  async secondLogin(@Body() data: { code: string; token: string }) {
+    return await this.authService.secondLogin(data.token, data.code);
+  }
+
+  @Post('resendValidationKey')
+  @Public()
+  async resendValidationKey(@Body() data: { mobile: string; token: string }) {
+    const user = this.authService.validateToken(data.token);
+    if (!user) return;
+    return this.authService.resendValidationKey(data);
   }
 
   @Post('refresh')

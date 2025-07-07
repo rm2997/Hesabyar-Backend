@@ -21,6 +21,9 @@ import { SalesController } from './sales/sales.controller';
 import { SalesModule } from './sales/sales.module';
 import { DepotModule } from './depot/depot.module';
 import { UnitsModule } from './units/units.module';
+import { SmsModule } from './sms/sms.module';
+import { OtpService } from './otp/otp.service';
+import { OtpModule } from './otp/otp.module';
 
 @Module({
   imports: [
@@ -49,7 +52,6 @@ import { UnitsModule } from './units/units.module';
       }),
     }),
 
-    // ماژول‌های اصلی برنامه
     ProformaModule,
     InvoiceModule,
     UploadModule,
@@ -60,9 +62,9 @@ import { UnitsModule } from './units/units.module';
     SalesModule,
     DepotModule,
     UnitsModule,
+    SmsModule,
+    OtpModule,
   ],
-  providers: [AppService],
-  controllers: [],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه
   // providers: [

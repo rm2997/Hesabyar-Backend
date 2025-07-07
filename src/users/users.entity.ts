@@ -12,6 +12,7 @@ import { Customer } from 'src/customer/customer.entity';
 import { Good } from 'src/goods/good.entity';
 import { Proforma } from 'src/proforma/proforma.entity';
 import { Invoice } from 'src/invoice/invoice.entity';
+import { Otp } from 'src/otp/otp.entity';
 
 @Entity('users')
 export class User {
@@ -65,6 +66,9 @@ export class User {
 
   @OneToMany(() => Notification, (notification) => notification.toUser)
   assignednotifications: Notification[];
+
+  @OneToMany(() => Otp, (otp) => otp.toUser)
+  userSentOtpCode: Notification[];
 
   @OneToMany(() => Customer, (customer) => customer.id)
   customers: Customer[];
