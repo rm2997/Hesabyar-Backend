@@ -47,13 +47,15 @@ export class AuthController {
   @Post('secondLogin')
   @Public()
   async secondLogin(@Body() data: { code: string; token: string }) {
-    return await this.authService.secondLogin(data.token, data.code);
+    const user = await this.authService.validateOtpToken(data.token);
+    if (!user) return;
+    return await this.authService.secondLogin(user, data.token, data.code);
   }
 
   @Post('resendValidationKey')
   @Public()
   async resendValidationKey(@Body() data: { mobile: string; token: string }) {
-    const user = this.authService.validateToken(data.token);
+    const user = await this.authService.validateOtpToken(data.token);
     if (!user) return;
     return this.authService.resendValidationKey(data);
   }

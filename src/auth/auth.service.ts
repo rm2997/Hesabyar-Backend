@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -9,10 +10,12 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/users/users.entity';
 import { OtpService } from 'src/otp/otp.service';
+import { SmsService } from 'src/sms/sms.service';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly smsService: SmsService,
     private readonly otpSevice: OtpService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -46,8 +49,19 @@ export class AuthService {
         sub: user.id,
         role: user.role,
       };
+      console.log('user:', user);
+
       const tempToken = this.jwtService.sign(payload, { expiresIn: '3m' });
-      await this.otpSevice.generateNewRandomCodeAndSend(user, tempToken);
+      console.log('temp token:', tempToken);
+
+      const otp = await this.otpSevice.generateNewOtp(user, tempToken);
+      console.log('otp :', otp);
+
+      await this.smsService.sendValidationKeySms(
+        user.usermobilenumber,
+        otp.code,
+      );
+
       return {
         mobilnumber: user.usermobilenumber,
         twoFactorAuthntication: true,
@@ -61,19 +75,15 @@ export class AuthService {
     return { accessToken, mobilnumber, twoFactorAuthntication };
   }
 
-  async secondLogin(token: string, code: string) {
+  async secondLogin(user: User, token: string, code: string) {
     try {
-      const secret = this.config.get('USER_LINK_SECRET');
-      const payload: any = this.jwtService.verify(token, secret);
-      const user = await this.usersService.findById(payload.userId);
-      if (!user) throw new NotFoundException('کاربر موجود نیست');
       const verifyCode = await this.otpSevice.verifyUserCodeForLogin(
         code,
         user,
         token,
       );
       if (!verifyCode)
-        throw new UnauthorizedException('کد ارسالی نامعتبر یا منقضی‌شده است');
+        throw new NotFoundException('کد ارسالی نامعتبر یا منقضی‌شده است');
 
       const userPayload = {
         username: user.username,
@@ -92,13 +102,6 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
     }
-  }
-
-  async validateToken(token: string) {
-    const user = await this.usersService.findByToken(token);
-    if (!user) throw new NotFoundException('توکن منقضی شده یا معتبر نیست');
-
-    return user;
   }
 
   async resendValidationKey(data: { token: string; mobile: string }) {
@@ -140,5 +143,18 @@ export class AuthService {
       return result;
     }
     return null;
+  }
+
+  async validateOtpToken(token: string) {
+    try {
+      const secret = this.config.get('USER_LINK_SECRET');
+      const payload: any = this.jwtService.verify(token, secret);
+      const user = await this.usersService.findById(payload.userId);
+
+      if (!user) throw new NotFoundException('کاربر موجود نیست');
+      return user;
+    } catch (err) {
+      throw new NotFoundException('لینک نامعتبر یا منقضی‌شده است');
+    }
   }
 }

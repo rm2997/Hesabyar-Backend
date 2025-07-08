@@ -7,11 +7,13 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { OtpModule } from 'src/otp/otp.module';
+import { SmsModule } from 'src/sms/sms.module';
 
 @Module({
   imports: [
     PassportModule,
     OtpModule,
+    SmsModule,
     UsersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

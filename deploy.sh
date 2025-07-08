@@ -22,6 +22,7 @@ if [ -f .env ]; then
   cp .env $DEPLOY_DIR/
 fi
 
+#cp -r node_modules ${DEPLOY_DIR}/
 echo "Compressing deploy..."
 zip -r ${DEPLOY_DIR}_${pattern}.zip $DEPLOY_DIR/
 

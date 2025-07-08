@@ -1,13 +1,14 @@
-import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { smsEndpoints } from './sms.endpoints';
 import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class SmsService {
-  constructor(private readonly httpservice: HttpService) {}
+  //constructor(private readonly httpservice: HttpService) {}
 
   async sendForgetPassSms(user: User, token: string) {
+    const fetch = (await import('node-fetch')).default;
+
     const userInfo = user.userfname + ' ' + user.userlname;
     let tokenBase = token;
     const token1 =
@@ -76,10 +77,25 @@ export class SmsService {
       ],
     };
 
-    this.httpservice.post(smsEndpoints.verify, reqBody);
+    const res = await fetch(smsEndpoints.verify, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': '7uyRcCHDKpobMJz0B0G3kOX4fO4gyTuwrrsSuWrgIrr50qvy',
+      },
+      body: JSON.stringify(reqBody),
+    });
+    return await res.json();
+
+    // const response = await firstValueFrom(
+    //   this.httpservice.post(smsEndpoints.verify, reqBody),
+    // );
+    // console.log(response?.data);
   }
 
   async sendValidationKeySms(mobileNumber: string, key: string) {
+    const fetch = (await import('node-fetch')).default;
+
     const reqBody = {
       mobile: mobileNumber,
       templateId: 580229,
@@ -90,6 +106,19 @@ export class SmsService {
         },
       ],
     };
-    this.httpservice.post(smsEndpoints.verify, reqBody);
+
+    const res = await fetch(smsEndpoints.verify, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': '7uyRcCHDKpobMJz0B0G3kOX4fO4gyTuwrrsSuWrgIrr50qvy',
+      },
+      body: JSON.stringify(reqBody),
+    });
+    return await res.json();
+    // const response = await firstValueFrom(
+    //   this.httpservice.post(smsEndpoints.verify, reqBody),
+    // );
+    // console.log(response?.data);
   }
 }

@@ -30,10 +30,7 @@ export class OtpService {
     return true;
   }
 
-  async generateNewRandomCodeAndSend(
-    user: User,
-    token: string,
-  ): Promise<number> {
+  async generateNewOtp(user: User, token: string): Promise<Otp> {
     const oldOtp = await this.otpRepository.findOne({
       where: { mobileNumber: user.usermobilenumber },
     });
@@ -47,12 +44,7 @@ export class OtpService {
     newOtp.token = token;
     newOtp.toUser = user;
     newOtp.expiresAt = new Date(Date.now() + 3 * 60 * 1000); //3 Min later
-    await this.otpRepository.save(newOtp);
-    await this.smsService.sendValidationKeySms(
-      newOtp.mobileNumber,
-      newOtp.code,
-    );
-    return rnd;
+    return await this.otpRepository.save(newOtp);
   }
 
   async verifyOtp(data: { token: string; mobile: string }) {
