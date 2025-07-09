@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -10,6 +11,8 @@ import { Proforma } from './proforma.entity';
 import { User } from 'src/users/users.entity';
 import { ConfigService } from '@nestjs/config';
 import { ProformaGoods } from './proforma-goods.entity';
+import { SmsService } from 'src/sms/sms.service';
+import { response } from 'express';
 
 @Injectable()
 export class ProformaService {
@@ -20,6 +23,7 @@ export class ProformaService {
     private proformaGoodsRepository: Repository<ProformaGoods>,
     private readonly dataSource: DataSource,
     private configService: ConfigService,
+    private readonly smsService: SmsService,
   ) {}
 
   async createProforma(data: Partial<Proforma>, user: User): Promise<Proforma> {
@@ -134,6 +138,14 @@ export class ProformaService {
   async setProformaIsSent(id: number) {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (proforma) {
+      const smsResult = await this.smsService.sendUpdateProformaSms(
+        proforma.customer,
+        proforma.customerLink,
+      );
+      if (smsResult.status !== 1)
+        throw new BadRequestException(
+          'ارسال پیامک شکست خورد ' + smsResult.message,
+        );
       return this.proformaRepository.save({ ...proforma, isSent: true });
     }
     throw new NotFoundException('پیش‌فاکتور وجود ندارد');
@@ -174,7 +186,7 @@ export class ProformaService {
         proforma.isSent = false;
         proforma.approvedFile = '';
         await this.proformaRepository.save(proforma);
-        return newToken;
+        return { message: 'توکن جدید صادر شد' };
       }
       throw new NotFoundException('پیش‌فاکتور وجود ندارد');
     } catch (error) {}

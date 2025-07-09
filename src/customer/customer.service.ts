@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Customer } from './customer.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class CustomerService {
@@ -15,6 +19,18 @@ export class CustomerService {
     data: Partial<Customer>,
     user: number,
   ): Promise<Customer> {
+    const mobileExist = await this.customerRepository.findOne({
+      where: { customerMobile: data.customerMobile },
+    });
+    if (mobileExist)
+      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
+
+    const natcodeExist = await this.customerRepository.findOne({
+      where: { customerNationalCode: data.customerNationalCode },
+    });
+    if (natcodeExist)
+      throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
+
     const customer = this.customerRepository.create({
       ...data,
       createdAt: new Date(),
@@ -65,6 +81,18 @@ export class CustomerService {
     id: number,
     data: Partial<Customer>,
   ): Promise<Customer | null> {
+    const exist = await this.customerRepository.findOne({
+      where: { customerMobile: data.customerMobile, id: Not(id) },
+    });
+    if (exist)
+      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
+
+    const natcodeExist = await this.customerRepository.findOne({
+      where: { customerNationalCode: data.customerNationalCode, id: Not(id) },
+    });
+    if (natcodeExist)
+      throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
+
     const customer = await this.customerRepository.findOne({
       where: { id: id },
     });

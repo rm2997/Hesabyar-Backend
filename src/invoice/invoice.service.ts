@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -13,6 +14,7 @@ import * as jwt from 'jsonwebtoken';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
 import { User } from 'src/users/users.entity';
 import { InvoiceGoods } from './invoice-good.entity';
+import { SmsService } from 'src/sms/sms.service';
 
 @Injectable()
 export class InvoiceService {
@@ -23,6 +25,7 @@ export class InvoiceService {
     private invoiceGoodsRepository: Repository<InvoiceGoods>,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly smsService: SmsService,
   ) {}
 
   async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
@@ -162,6 +165,14 @@ export class InvoiceService {
   async setInvoiceIsSent(id: number) {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (invoice) {
+      const smsResult = await this.smsService.sendUpdateProformaSms(
+        invoice.customer,
+        invoice.customerLink,
+      );
+      if (smsResult.status !== 1)
+        throw new BadRequestException(
+          'ارسال پیامک شکست خورد ' + smsResult.message,
+        );
       return this.invoiceRepository.save({ ...invoice, isSent: true });
     }
     throw new NotFoundException('فاکتور وجود ندارد');
@@ -178,7 +189,7 @@ export class InvoiceService {
         invoice.isSent = false;
         invoice.approvedFile = '';
         await this.invoiceRepository.save(invoice);
-        return newToken;
+        return { message: 'توکن جدید صادر شد' };
       }
       throw new NotFoundException('پیش‌فاکتور وجود ندارد');
     } catch (error) {}

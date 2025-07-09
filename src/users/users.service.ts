@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Not, Repository } from 'typeorm';
 import { User } from './users.entity';
 import * as bcrypt from 'bcrypt';
 import { Roles } from 'src/common/decorators/roles.enum';
@@ -80,6 +80,11 @@ export class UsersService {
   }
 
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
+    const exist = await this.usersRepository.findOne({
+      where: { usermobilenumber: updateData.usermobilenumber, id: Not(id) },
+    });
+    if (exist)
+      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
     const user = await this.findById(id);
 
     // if (updateData.password) {
@@ -207,6 +212,11 @@ export class UsersService {
     userData: Partial<User>,
     issuedUser: User,
   ): Promise<User | undefined> {
+    const exist = await this.usersRepository.findOne({
+      where: { usermobilenumber: userData.usermobilenumber },
+    });
+    if (exist)
+      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
     console.log('user password for create is:', userData.password);
 
     const salt = await bcrypt.genSalt();

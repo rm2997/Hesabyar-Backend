@@ -3,7 +3,7 @@
 DEPLOY_DIR="../hesabyaar_backend_deploy"
 pattern=`date  '+%Y-%m-%d_%H%M%S'`
 mv  ./dist/ dist_${pattern}
-
+mv ./dist_${pattern} ..
 echo "Start deploying..."
 
 npm install
