@@ -10,8 +10,8 @@ async function bootstrap() {
   app.enableCors({
     origin:
       process.env.NODE_ENV == 'production'
-        ? ['https://hesab-yaar.ir']
-        : ['http://localhost:3000'],
+        ? ['https://hesab-yaar.ir', 'https://www.hesab-yaar.ir']
+        : ['http://localhost:3000', 'http://www.localhost:3000'],
     // origin: [
     //   'http://localhost:3000',
     //   'https://hesab-yaar.ir',

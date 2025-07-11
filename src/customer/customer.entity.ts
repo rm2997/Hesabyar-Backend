@@ -30,7 +30,7 @@ export class Customer {
   @Column({ nullable: false, unique: true })
   customerMobile: string;
 
-  @Column({ nullable: false, unique: true })
+  @Column({ nullable: true })
   customerNationalCode: string;
 
   @Column({ nullable: true, length: 10 })
