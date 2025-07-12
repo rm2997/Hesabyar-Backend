@@ -13,6 +13,7 @@ import { Good } from 'src/goods/good.entity';
 import { Customer } from 'src/customer/customer.entity';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
 import { InvoiceGoods } from './invoice-good.entity';
+import { Banks } from 'src/common/decorators/banks.enum';
 
 @Entity()
 export class Invoice {
@@ -61,6 +62,9 @@ export class Invoice {
 
   @Column({ nullable: true })
   chequeSerial: number;
+
+  @Column({ type: 'enum', enum: Banks, default: Banks.Meli })
+  chequeIssuerName: Banks;
 
   @Column({ nullable: true })
   paperMoneyDate: Date;

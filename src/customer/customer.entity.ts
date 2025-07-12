@@ -12,7 +12,7 @@ export class Customer {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ default: 'آقای', nullable: true })
+  @Column({ default: 'آقای', nullable: false })
   customerGender: string;
 
   @Column()

@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  CreateDateColumn,
   OneToMany,
   JoinColumn,
   UpdateDateColumn,
@@ -12,6 +11,7 @@ import { User } from '../users/users.entity';
 import { Customer } from 'src/customer/customer.entity';
 import { PaymentTypes } from 'src/common/decorators/payment.enum';
 import { ProformaGoods } from './proforma-goods.entity';
+import { Banks } from 'src/common/decorators/banks.enum';
 
 @Entity()
 export class Proforma {
@@ -55,6 +55,9 @@ export class Proforma {
 
   @Column({ nullable: true })
   chequeSerial: number;
+
+  @Column({ type: 'enum', enum: Banks, default: Banks.Meli })
+  chequeIssuerName: Banks;
 
   @Column({ nullable: true })
   paperMoneyDate: Date;
