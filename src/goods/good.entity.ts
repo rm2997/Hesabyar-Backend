@@ -26,6 +26,9 @@ export class Good {
   @Column()
   goodPrice: number;
 
+  @Column({ default: 0, nullable: false })
+  goodCount: number;
+
   @Column({ nullable: true })
   goodInfo: string;
 

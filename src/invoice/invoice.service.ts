@@ -104,21 +104,19 @@ export class InvoiceService {
       where: { id },
       relations: ['invoiceGoods'],
     });
-    if (invoice) {
-      invoice.totalAmount = data?.totalAmount!;
-      data?.invoiceGoods?.map((g) => {
-        if (g.id == 0) {
-          g.createdAt = new Date();
-          g.createdBy = updatedBy;
-        } else {
-          g.createdBy = updatedBy;
-        }
-      });
-      await this.invoiceGoodsRepository.remove(invoice?.invoiceGoods!);
-      invoice.invoiceGoods = [...data?.invoiceGoods!];
-      return await this.invoiceRepository.save({ ...invoice, ...data });
-    }
-    throw new Error('Invoice not found');
+    if (!invoice) throw new NotFoundException('فاکتور موجود نیست');
+    invoice.totalAmount = data?.totalAmount!;
+    data?.invoiceGoods?.map((g) => {
+      if (g.id == 0) {
+        g.createdAt = new Date();
+        g.createdBy = updatedBy;
+      } else {
+        g.createdBy = updatedBy;
+      }
+    });
+    await this.invoiceGoodsRepository.remove(invoice?.invoiceGoods!);
+    invoice.invoiceGoods = [...data?.invoiceGoods!];
+    return await this.invoiceRepository.save({ ...invoice, ...data });
   }
 
   async deleteInvoice(id: number): Promise<void> {
@@ -146,7 +144,7 @@ export class InvoiceService {
       if (!invoice) throw new NotFoundException('فاکتور پیدا نشد');
       return invoice;
     } catch (err) {
-      throw new UnauthorizedException('لینک نامعتبر یا منقضی‌شده است');
+      throw new BadRequestException('لینک نامعتبر یا منقضی‌شده است');
     }
   }
 
@@ -165,7 +163,7 @@ export class InvoiceService {
   async setInvoiceIsSent(id: number) {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (invoice) {
-      const smsResult = await this.smsService.sendUpdateProformaSms(
+      const smsResult = await this.smsService.sendUpdateInvoiceSms(
         invoice.customer,
         invoice.customerLink,
       );

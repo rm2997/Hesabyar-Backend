@@ -85,8 +85,6 @@ export class InvoiceController {
   @Get('token/:token')
   @Public()
   async viewInvoice(@Param('token') token: string) {
-    console.log(token);
-
     return await this.invoiceService.verifyAndFetchInvoice(token);
   }
 
@@ -114,8 +112,8 @@ export class InvoiceController {
     const invoice = await this.invoiceService.verifyAndFetchInvoice(token);
     if (!invoice) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
 
-    if (invoice.customerLink == token && invoice.approvedFile != null) {
-      throw new BadRequestException('این توکن قبلا تایید شده است');
+    if (invoice.customerLink == token && invoice.approvedFile) {
+      throw new BadRequestException('این فاکتور قبلا تایید شده است');
     }
     const filePath = `/uploads/invoice/${image.filename}`;
     invoice.approvedFile = filePath;

@@ -17,30 +17,30 @@ export class DepotService {
       createdBy: { id: user },
     });
     const saved = await this.depotRepository.save(Depot);
-    return saved;
+    return saved; //
   }
 
   async getAllDepots(): Promise<Depot[]> {
-    return await this.depotRepository.find();
+    return await this.depotRepository.find({ relations: ['depotGood'] });
   }
 
   async getDepotById(id: number): Promise<Depot | null> {
-    const Depot = await this.depotRepository.findOne({ where: { id } });
+    const Depot = await this.depotRepository.findOne({
+      where: { id },
+      relations: ['depotGood'],
+    });
     if (!Depot) throw new NotFoundException();
 
     return Depot;
   }
 
   async updateDepot(id: number, data: Partial<Depot>): Promise<Depot | null> {
-    const Depot = await this.depotRepository.findOne({
+    const depot = await this.depotRepository.findOne({
       where: { id: id },
     });
-    if (!Depot) throw new NotFoundException();
-    Depot.depotName = data?.depotName!;
-    Depot.depotInfo = data?.depotInfo!;
-    console.log(Depot);
+    if (!depot) throw new NotFoundException('اطلاعات موردنظر وجود ندارد');
 
-    return this.depotRepository.save(Depot);
+    return await this.depotRepository.save(depot);
   }
 
   async deleteDepot(id: number): Promise<void> {

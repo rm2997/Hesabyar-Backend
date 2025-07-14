@@ -35,8 +35,6 @@ export class DepotController {
   @Get(':id')
   async getDepot(@Param('id') id: number) {
     const Depot = await this.depotService.getDepotById(id);
-    console.log(Depot);
-
     return Depot;
   }
 

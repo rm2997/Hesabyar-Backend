@@ -74,8 +74,10 @@ export class ProformaController {
     const proforma = await this.proformaService.verifyAndFetchProforma(token);
     if (!proforma) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
 
-    if (proforma.customerLink == token && proforma.approvedFile != null) {
-      throw new BadRequestException('این توکن قبلا تایید شده است');
+    console.log(proforma);
+
+    if (proforma.customerLink == token && proforma.approvedFile) {
+      throw new BadRequestException('این پیش فاکتور قبلا تایید شده است');
     }
     const filePath = `/uploads/proforma/${image.filename}`;
     proforma.approvedFile = filePath;
