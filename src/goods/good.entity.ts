@@ -1,3 +1,4 @@
+import { Depot } from 'src/depot/depot.entity';
 import { InvoiceGoods } from 'src/invoice/invoice-good.entity';
 import { Invoice } from 'src/invoice/invoice.entity';
 import { ProformaGoods } from 'src/proforma/proforma-goods.entity';
@@ -42,16 +43,22 @@ export class Good {
   sepidarId: string;
 
   @OneToMany(() => InvoiceGoods, (item) => item.good, {
-    cascade: true, // برای auto insert/update آیتم‌ها
+    cascade: true,
   })
   @JoinColumn()
   goodInvoice: InvoiceGoods[];
 
   @OneToMany(() => ProformaGoods, (item) => item.good, {
-    cascade: true, // برای auto insert/update آیتم‌ها
+    cascade: true,
   })
   @JoinColumn()
   goodProforma: ProformaGoods[];
+
+  @OneToMany(() => Depot, (depot) => depot.depotGood, {
+    cascade: true,
+  })
+  @JoinColumn()
+  goodDepot: Depot[];
 
   @ManyToOne(() => Unit, (unit) => unit.goods, {
     eager: true,

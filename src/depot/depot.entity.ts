@@ -22,7 +22,9 @@ export class Depot {
   @Column({ nullable: true })
   depotInfo: string;
 
-  @ManyToOne(() => Good, (good) => good.id, { nullable: false })
+  @ManyToOne(() => Good, (good) => good.goodDepot, {
+    onDelete: 'SET NULL',
+  })
   depotGood: Good;
 
   @Column({ nullable: true })
@@ -52,6 +54,6 @@ export class Depot {
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
   createdBy: User;
 
-  @ManyToOne(() => User, (user) => user.id, { nullable: false })
+  @ManyToOne(() => User, (user) => user.id)
   acceptedBy: User;
 }
