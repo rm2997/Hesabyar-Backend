@@ -76,6 +76,7 @@ export class DepotService {
 
     return { items, total };
   }
+
   async getDepotById(id: number): Promise<Depot | null> {
     const Depot = await this.depotRepository.findOne({
       where: { id },
@@ -89,10 +90,14 @@ export class DepotService {
   async updateDepot(id: number, data: Partial<Depot>): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id: id },
+      relations: ['depotGood'],
     });
     if (!depot) throw new NotFoundException('اطلاعات انبار وجود ندارد');
+    const res = await this.depotRepository.save({ ...depot, ...data });
+    console.log(data);
 
-    return await this.depotRepository.save({ ...depot, ...data });
+    console.log(res);
+    return res;
   }
 
   async deleteDepot(id: number): Promise<void> {
