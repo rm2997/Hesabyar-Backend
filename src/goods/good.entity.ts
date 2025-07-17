@@ -1,3 +1,4 @@
+import { DepotGoods } from 'src/depot/depot-goods.entity';
 import { Depot } from 'src/depot/depot.entity';
 import { InvoiceGoods } from 'src/invoice/invoice-good.entity';
 import { Invoice } from 'src/invoice/invoice.entity';
@@ -54,11 +55,11 @@ export class Good {
   @JoinColumn()
   goodProforma: ProformaGoods[];
 
-  @OneToMany(() => Depot, (depot) => depot.depotGood, {
+  @OneToMany(() => DepotGoods, (item) => item.good, {
     cascade: true,
   })
   @JoinColumn()
-  goodDepot: Depot[];
+  goodDepot: DepotGoods[];
 
   @ManyToOne(() => Unit, (unit) => unit.goods, {
     eager: true,

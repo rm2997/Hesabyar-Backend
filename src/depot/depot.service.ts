@@ -1,27 +1,55 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Depot } from './depot.entity';
 import { DepotTypes } from 'src/common/decorators/depotTypes.enum';
+import { DepotGoods } from './depot-goods.entity';
+import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class DepotService {
   constructor(
     @InjectRepository(Depot)
     private readonly depotRepository: Repository<Depot>,
+    @InjectRepository(DepotGoods)
+    private readonly depotGoodsRepository: Repository<DepotGoods>,
     private readonly dataSource: DataSource,
   ) {}
 
-  async createDepot(data: Partial<Depot>, user: number): Promise<Depot> {
+  async createDepot(data: Partial<Depot>, user: User): Promise<Depot> {
+    const depotGoods = [...data?.depotGoods!];
+    if (!depotGoods)
+      throw new BadRequestException(
+        'هیچ کالایی برای خروج از انبار تعیین نشده است',
+      );
+    depotGoods.map((g) => {
+      g.createdAt = new Date();
+      g.createdBy = user;
+    });
     const depot = this.depotRepository.create({
       ...data,
       createdAt: new Date(),
-      createdBy: { id: user },
+      createdBy: user,
     });
 
     const saved = await this.depotRepository.save(depot);
     return saved;
   }
+
+  // async saveDepotImages(depotId: number, imagePaths: string[]) {
+  //   for (const path of imagePaths) {
+  //     await this.depotGoodsRepository.create({
+  //       data: {
+  //         imageUrl: path,
+  //         depotId: depotId,
+  //       },
+  //     });
+  //   }
+  // }
 
   async getAllInputDepots(
     page: number,
@@ -32,9 +60,12 @@ export class DepotService {
       .getRepository(Depot)
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.in })
-      .leftJoinAndSelect('depot.depotGood', 'good')
-      .leftJoinAndSelect('depot.createdBy', 'user')
-      .leftJoinAndSelect('depot.deliveredBy', 'customer');
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -45,7 +76,7 @@ export class DepotService {
     const items = await query
       .skip(limit == -1 ? 0 : (page - 1) * limit)
       .take(limit == -1 ? undefined : limit)
-      .orderBy('depot.deliveredAt', 'DESC')
+      .orderBy('good.id', 'DESC')
       .getMany();
 
     return { items, total };
@@ -60,10 +91,15 @@ export class DepotService {
       .getRepository(Depot)
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.out })
-      .leftJoinAndSelect('depot.depotGood', 'good');
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user');
 
     if (search) {
-      query.andWhere('depot.id= :search', { search: `%${search}%` });
+      query.andWhere(`depot.id=${search}`);
     }
 
     const total = await query.getCount();
@@ -78,13 +114,22 @@ export class DepotService {
   }
 
   async getDepotById(id: number): Promise<Depot | null> {
-    const Depot = await this.depotRepository.findOne({
+    const depot = await this.depotRepository.findOne({
       where: { id },
       relations: ['depotGood'],
     });
-    if (!Depot) throw new NotFoundException();
+    if (!depot) throw new NotFoundException();
 
-    return Depot;
+    return depot;
+  }
+
+  async getDepotGoodById(id: number): Promise<DepotGoods | null> {
+    const depotGood = await this.depotGoodsRepository.findOne({
+      where: { id },
+    });
+    if (!depotGood) throw new NotFoundException('رکورد مورد نظر وجود ندارد');
+
+    return depotGood;
   }
 
   async updateDepot(id: number, data: Partial<Depot>): Promise<Depot | null> {
@@ -94,9 +139,18 @@ export class DepotService {
     });
     if (!depot) throw new NotFoundException('اطلاعات انبار وجود ندارد');
     const res = await this.depotRepository.save({ ...depot, ...data });
-    console.log(data);
+    return res;
+  }
 
-    console.log(res);
+  async updateDepotGood(
+    id: number,
+    data: Partial<Depot>,
+  ): Promise<DepotGoods | null> {
+    const depotGood = await this.depotGoodsRepository.findOne({
+      where: { id: id },
+    });
+    if (!depotGood) throw new NotFoundException('اطلاعات موردنظر وجود ندارد');
+    const res = await this.depotGoodsRepository.save({ ...depotGood, ...data });
     return res;
   }
 

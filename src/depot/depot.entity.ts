@@ -6,10 +6,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DepotGoods } from './depot-goods.entity';
+import { Invoice } from 'src/invoice/invoice.entity';
 
 @Entity()
 export class Depot {
@@ -20,33 +24,39 @@ export class Depot {
   depotType: DepotTypes;
 
   @Column({ nullable: true })
-  depotInfo: string;
+  description: string;
 
-  @ManyToOne(() => Good, (good) => good.goodDepot, {
-    onDelete: 'SET NULL',
+  @ManyToOne(() => Invoice, (invoice) => invoice.id, {
+    onDelete: 'CASCADE',
   })
-  depotGood: Good;
+  @JoinColumn()
+  depotInvoice: Invoice[];
 
-  @Column({ nullable: true })
-  goodSerial: string;
-
-  @Column({ nullable: true })
-  goodImage: string;
+  @OneToMany(() => DepotGoods, (item) => item.depot, {
+    cascade: true,
+    eager: true,
+    orphanedRowAction: 'delete',
+  })
+  @JoinColumn()
+  depotGoods: DepotGoods[];
 
   @Column({ nullable: true, default: 0 })
   totalAmount: number;
 
   @Column({ nullable: false, default: 1 })
-  quantity: number;
-
-  @ManyToOne(() => Customer, (c) => c.id, { nullable: false })
-  deliveredBy: Customer;
-
-  @Column({ nullable: false })
-  deliveredAt: Date;
+  totalQuantity: number;
 
   @Column({ nullable: true })
   isAccepted: string;
+
+  @Column({ nullable: true })
+  driver: string;
+
+  @Column({ length: 11, nullable: true })
+  driverCarNumber: string;
+
+  @Column({ length: 10, nullable: true })
+  driverNatCode: string;
 
   @CreateDateColumn()
   createdAt: Date;
