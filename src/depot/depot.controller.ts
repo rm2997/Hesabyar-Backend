@@ -148,12 +148,25 @@ export class DepotController {
   }
 
   @Put(':id')
-  async updateDepot(@Param('id') id: number, @Body() data: Partial<Depot>) {
-    return await this.depotService.updateDepot(id, data);
+  async updateDepot(
+    @Param('id') id: number,
+    @Req() req: Request,
+    @Body() data: Partial<Depot>,
+  ) {
+    const user = req.user as User;
+    console.log(data);
+
+    return await this.depotService.updateDepot(id, data, user);
   }
 
   @Delete(':id')
   async deleteDepot(@Param('id') id: number) {
     return await this.depotService.deleteDepot(id);
+  }
+
+  @Patch('accept/:id')
+  async setDepotIsAccepted(@Param('id') id: number, @Req() req: Request) {
+    const user = req.user as User;
+    return await this.depotService.setDepotIsAccepted(id, user);
   }
 }

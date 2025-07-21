@@ -47,7 +47,7 @@ export class Depot {
   totalQuantity: number;
 
   @Column({ nullable: true })
-  isAccepted: string;
+  isAccepted: boolean;
 
   @Column({ nullable: true })
   driver: string;

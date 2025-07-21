@@ -132,12 +132,24 @@ export class DepotService {
     return depotGood;
   }
 
-  async updateDepot(id: number, data: Partial<Depot>): Promise<Depot | null> {
+  async updateDepot(
+    id: number,
+    data: Partial<Depot>,
+    user: User,
+  ): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id: id },
-      relations: ['depotGood'],
+      relations: ['depotGoods'],
     });
     if (!depot) throw new NotFoundException('اطلاعات انبار وجود ندارد');
+    console.log('Depot found:', depot);
+
+    if (data.isAccepted) {
+      data.acceptedBy = user;
+      console.log('accepted user added....');
+    }
+    console.log(data);
+
     const res = await this.depotRepository.save({ ...depot, ...data });
     return res;
   }
@@ -161,5 +173,18 @@ export class DepotService {
     if (!Depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
 
     await this.depotRepository.delete(id);
+  }
+
+  async setDepotIsAccepted(id: number, user: User): Promise<Depot> {
+    const depot = await this.depotRepository.findOne({
+      where: { id: id },
+    });
+    if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
+
+    return await this.depotRepository.save({
+      ...depot,
+      isAccepted: true,
+      acceptedBy: user,
+    });
   }
 }
