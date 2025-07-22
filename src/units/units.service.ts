@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Not, Repository } from 'typeorm';
 import { Unit } from './unit.entity';
 
 @Injectable()
@@ -12,6 +16,15 @@ export class UnitsService {
   ) {}
 
   async createUnit(data: Partial<Unit>, user: number): Promise<Unit> {
+    const nameExist = await this.unitRepository.findOne({
+      where: {
+        unitName: data.unitName?.trim(),
+      },
+    });
+    if (nameExist != null) {
+      throw new BadRequestException('این واحد قبلا ثبت شده است');
+    }
+
     const Unit = this.unitRepository.create({
       ...data,
       createdAt: new Date(),
@@ -56,6 +69,16 @@ export class UnitsService {
       where: { id: id },
     });
     if (!unit) throw new NotFoundException();
+    const nameExist = await this.unitRepository.findOne({
+      where: {
+        unitName: data.unitName?.trim(),
+        id: Not(id),
+      },
+    });
+    if (nameExist != null) {
+      throw new BadRequestException('امکان ثبت واحد تکراری وجود ندارد');
+    }
+
     unit.unitName = data?.unitName!;
     unit.unitInfo = data?.unitInfo!;
     console.log(Unit);

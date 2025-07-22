@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Not, Repository } from 'typeorm';
 import { Good } from './good.entity';
 import { Unit } from 'src/units/unit.entity';
 import { UnitsService } from 'src/units/units.service';
@@ -16,6 +20,14 @@ export class GoodsService {
   ) {}
 
   async createGood(data: Partial<Good>, user: number): Promise<Good> {
+    const nameExist = await this.goodRepository.findOne({
+      where: {
+        goodName: data.goodName?.trim(),
+      },
+    });
+    if (nameExist != null) {
+      throw new BadRequestException('این کالا قبلا ثبت شده است');
+    }
     const Good = this.goodRepository.create({
       ...data,
       createdAt: new Date(),
@@ -89,6 +101,17 @@ export class GoodsService {
       where: { id: id },
     });
     if (!Good) throw new NotFoundException();
+
+    const nameExist = await this.goodRepository.findOne({
+      where: {
+        goodName: data.goodName?.trim(),
+        id: Not(id),
+      },
+      relations: ['goodUnit'],
+    });
+    if (nameExist != null) {
+      throw new BadRequestException('امکان ثبت تکراری کالا وجود ندارد');
+    }
 
     const unit = await this.unitService.getUnitById(data?.goodUnit?.id!);
     if (!unit)

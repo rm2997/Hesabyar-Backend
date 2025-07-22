@@ -25,14 +25,14 @@ export class DepotGoods {
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  depot: Depot[];
+  depot: Depot;
 
   @ManyToOne(() => Good, (good) => good.goodDepot, {
     onDelete: 'CASCADE',
     eager: true,
   })
   @JoinColumn()
-  good: Good[];
+  good: Good;
 
   @ManyToOne(() => Customer, (c) => c.id, { eager: true, nullable: false })
   issuedBy: Customer;

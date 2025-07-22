@@ -29,6 +29,8 @@ import { extname, join } from 'path';
 import { DepotTypes } from 'src/common/decorators/depotTypes.enum';
 import { existsSync } from 'fs';
 import { DepotGoods } from './depot-goods.entity';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('depot')
@@ -115,8 +117,6 @@ export class DepotController {
     @Param('id') id: number,
     @UploadedFile() image: Express.Multer.File,
   ) {
-    console.log(image);
-
     if (!image) {
       throw new BadRequestException('فایلی ارسال نشده است');
     }
@@ -154,8 +154,6 @@ export class DepotController {
     @Body() data: Partial<Depot>,
   ) {
     const user = req.user as User;
-    console.log(data);
-
     return await this.depotService.updateDepot(id, data, user);
   }
 
@@ -164,6 +162,7 @@ export class DepotController {
     return await this.depotService.deleteDepot(id);
   }
 
+  @UserRoles(Roles.Admin)
   @Patch('accept/:id')
   async setDepotIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const user = req.user as User;

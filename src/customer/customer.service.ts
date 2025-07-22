@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Customer } from './customer.entity';
-import { DataSource, Not, Repository } from 'typeorm';
+import { DataSource, Not, Repository, TypeORMError } from 'typeorm';
 
 @Injectable()
 export class CustomerService {
@@ -19,17 +19,32 @@ export class CustomerService {
     data: Partial<Customer>,
     user: number,
   ): Promise<Customer> {
+    const nameExist = await this.customerRepository.findOne({
+      where: {
+        customerFName: data.customerFName?.trim(),
+        customerLName: data.customerLName?.trim(),
+      },
+    });
+    if (nameExist != null) {
+      throw new BadRequestException('این مشتری قبلا ثبت شده است');
+    }
+
     const mobileExist = await this.customerRepository.findOne({
       where: { customerMobile: data.customerMobile },
     });
-    if (mobileExist)
-      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
 
-    const natcodeExist = await this.customerRepository.findOne({
-      where: { customerNationalCode: data.customerNationalCode },
-    });
-    if (natcodeExist)
-      throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
+    if (mobileExist != null) {
+      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
+    }
+
+    if (data.customerNationalCode) {
+      const natcodeExist = await this.customerRepository.findOne({
+        where: { customerNationalCode: data.customerNationalCode },
+      });
+      if (natcodeExist) {
+        throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
+      }
+    }
 
     const customer = this.customerRepository.create({
       ...data,
@@ -81,18 +96,35 @@ export class CustomerService {
     id: number,
     data: Partial<Customer>,
   ): Promise<Customer | null> {
-    const exist = await this.customerRepository.findOne({
+    const nameExist = await this.customerRepository.findOne({
+      where: {
+        customerFName: data.customerFName?.trim(),
+        customerLName: data.customerLName?.trim(),
+        id: Not(id),
+      },
+    });
+    if (nameExist != null) {
+      throw new BadRequestException(
+        'امکان استفاده از این نام و نام خانوادگی وجود ندارد، این اطلاعات تکراری است',
+      );
+    }
+
+    const mobileExist = await this.customerRepository.findOne({
       where: { customerMobile: data.customerMobile, id: Not(id) },
     });
-    if (exist)
+
+    if (mobileExist != null) {
       throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
+    }
 
-    const natcodeExist = await this.customerRepository.findOne({
-      where: { customerNationalCode: data.customerNationalCode, id: Not(id) },
-    });
-    if (natcodeExist)
-      throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
-
+    if (data.customerNationalCode) {
+      const natcodeExist = await this.customerRepository.findOne({
+        where: { customerNationalCode: data.customerNationalCode, id: Not(id) },
+      });
+      if (natcodeExist) {
+        throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
+      }
+    }
     const customer = await this.customerRepository.findOne({
       where: { id: id },
     });
@@ -114,8 +146,18 @@ export class CustomerService {
     const customer = await this.customerRepository.findOne({
       where: { id: id },
     });
-    if (!customer) throw new NotFoundException();
+    if (!customer) throw new NotFoundException('مشتری مورد نظر وجود ندارد');
 
-    await this.customerRepository.delete(id);
+    try {
+      await this.customerRepository.delete(id);
+    } catch (error) {
+      console.log(error);
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451)
+        throw new BadRequestException(
+          'اطلاعات این مشتری درحال استفاده میباشد، امکان حذف وجود ندارد',
+        );
+      else
+        throw new BadRequestException('خطای داخلی سرور، امکان حذف وجود ندارد');
+    }
   }
 }

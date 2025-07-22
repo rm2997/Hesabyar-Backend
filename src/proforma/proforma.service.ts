@@ -45,8 +45,30 @@ export class ProformaService {
     return this.proformaRepository.save(savedProforma);
   }
 
-  async getAll(): Promise<Proforma[] | null> {
-    return this.proformaRepository.find({ order: { createdAt: 'DESC' } });
+  async getAll(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ items: Proforma[]; total: number }> {
+    const query = this.dataSource
+      .getRepository(Proforma)
+      .createQueryBuilder('proforma')
+      .leftJoinAndSelect('proforma.createdBy', 'user')
+      .leftJoinAndSelect('proforma.customer', 'customer')
+      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+      .leftJoinAndSelect('proformaGoods.good', 'good');
+
+    if (search) {
+      query.andWhere('proforma.id= :id', { id: search });
+    }
+
+    const total = await query.getCount();
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('proforma.createdAt', 'DESC')
+      .getMany();
+    return { total, items };
   }
 
   async getProforma(id: number): Promise<Proforma | null> {
@@ -180,15 +202,13 @@ export class ProformaService {
       const proforma = await this.proformaRepository.findOne({
         where: { id: proformaId },
       });
-      if (proforma) {
-        const newToken = await this.generateShareableLink(proformaId);
-        proforma.customerLink = newToken;
-        proforma.isSent = false;
-        proforma.approvedFile = '';
-        await this.proformaRepository.save(proforma);
-        return { message: 'توکن جدید صادر شد' };
-      }
-      throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+      if (!proforma) throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+      const newToken = await this.generateShareableLink(proformaId);
+      proforma.customerLink = newToken;
+      proforma.isSent = false;
+      proforma.approvedFile = '';
+      await this.proformaRepository.save(proforma);
+      return { message: 'توکن جدید صادر شد' };
     } catch (error) {}
   }
 

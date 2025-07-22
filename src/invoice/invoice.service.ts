@@ -57,8 +57,32 @@ export class InvoiceService {
     return await this.invoiceRepository.save(invoice);
   }
 
-  async getAllInvoices(): Promise<Invoice[] | null> {
-    return await this.invoiceRepository.find();
+  async getAllInvoices(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Invoice[] }> {
+    const query = this.dataSource
+      .getRepository(Invoice)
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.createdBy', 'user')
+      .leftJoinAndSelect('invoice.customer', 'customer')
+      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+      .leftJoinAndSelect('invoiceGoods.good', 'good');
+
+    if (search) {
+      query.andWhere('invoice.id= :search', { search: search });
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('invoice.createdAt', 'DESC')
+      .getMany();
+
+    return { items, total };
   }
 
   async getInvoice(id: number): Promise<Invoice | null> {
@@ -124,9 +148,9 @@ export class InvoiceService {
   }
 
   async generateShareableLink(invoiceId: number): Promise<string> {
-    const payload = { invoiceId };
+    const payload = { sub: invoiceId };
     const secret = this.configService.get('INVOICE_LINK_SECRET');
-    const expiresIn = this.configService.get('INVOICE_LINK_EXPIRES_IN');
+    const expiresIn = this.configService.get<string>('INVOICE_LINK_EXPIRES_IN');
 
     const token = jwt.sign(payload, secret, { expiresIn });
     return token;
@@ -181,15 +205,14 @@ export class InvoiceService {
       const invoice = await this.invoiceRepository.findOne({
         where: { id: invoiceId },
       });
-      if (invoice) {
-        const newToken = await this.generateShareableLink(invoiceId);
-        invoice.customerLink = newToken;
-        invoice.isSent = false;
-        invoice.approvedFile = '';
-        await this.invoiceRepository.save(invoice);
-        return { message: 'توکن جدید صادر شد' };
-      }
-      throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+      if (!invoice) throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+
+      const newToken = await this.generateShareableLink(invoiceId);
+      invoice.customerLink = newToken;
+      invoice.isSent = false;
+      invoice.approvedFile = '';
+      await this.invoiceRepository.save(invoice);
+      return { message: 'توکن جدید صادر شد' };
     } catch (error) {}
   }
 }

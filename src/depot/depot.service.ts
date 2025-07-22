@@ -9,6 +9,7 @@ import { Depot } from './depot.entity';
 import { DepotTypes } from 'src/common/decorators/depotTypes.enum';
 import { DepotGoods } from './depot-goods.entity';
 import { User } from 'src/users/users.entity';
+import { Good } from 'src/goods/good.entity';
 
 @Injectable()
 export class DepotService {
@@ -142,13 +143,12 @@ export class DepotService {
       relations: ['depotGoods'],
     });
     if (!depot) throw new NotFoundException('اطلاعات انبار وجود ندارد');
-    console.log('Depot found:', depot);
 
-    if (data.isAccepted) {
-      data.acceptedBy = user;
-      console.log('accepted user added....');
-    }
-    console.log(data);
+    // if (data.isAccepted && !depot.acceptedBy) {
+    //   // data.acceptedBy = user;
+    //   // console.log('accepted user added....');
+    //   await this.setDepotIsAccepted(depot.id, user);
+    // }
 
     const res = await this.depotRepository.save({ ...depot, ...data });
     return res;
@@ -175,16 +175,51 @@ export class DepotService {
     await this.depotRepository.delete(id);
   }
 
-  async setDepotIsAccepted(id: number, user: User): Promise<Depot> {
-    const depot = await this.depotRepository.findOne({
-      where: { id: id },
-    });
-    if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
+  async setDepotIsAccepted(id: number, user: User): Promise<any> {
+    await this.dataSource.transaction(async (manager) => {
+      const depot = await manager.findOne(Depot, {
+        where: { id: id },
+        relations: ['depotGoods', 'depotGoods.good'],
+      });
 
-    return await this.depotRepository.save({
-      ...depot,
-      isAccepted: true,
-      acceptedBy: user,
+      if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
+
+      if (depot.isAccepted)
+        throw new BadRequestException('این سند قبلا تایید شده است');
+
+      for (const depotGood of depot.depotGoods) {
+        const good = depotGood.good as Good;
+        const qty = depotGood.quantity;
+
+        if (!good) {
+          throw new NotFoundException(
+            `کالای مربوط به رکورد ${depotGood.id} یافت نشد`,
+          );
+        }
+
+        if (depot.depotType === DepotTypes.in) {
+          good.goodCount += qty;
+        } else if (depot.depotType === DepotTypes.out) {
+          if (good.goodCount < qty) {
+            throw new BadRequestException(
+              `موجودی کافی برای کالای "${good.goodName}" وجود ندارد`,
+            );
+          }
+          good.goodCount -= qty;
+        }
+
+        await manager.save(Good, good);
+      }
+
+      depot.isAccepted = true;
+      depot.acceptedBy = user;
+
+      return await manager.save(Depot, depot);
+      // return await this.depotRepository.save({
+      //   ...depot,
+      //   isAccepted: true,
+      //   acceptedBy: user,
+      // });
     });
   }
 }
