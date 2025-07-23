@@ -47,6 +47,8 @@ export class AuthController {
   @Post('secondLogin')
   @Public()
   async secondLogin(@Body() data: { code: string; token: string }) {
+    console.log('request key and token is:', data);
+
     const user = await this.authService.validateOtpToken(data.token);
     if (!user) return;
     return await this.authService.secondLogin(user, data.token, data.code);

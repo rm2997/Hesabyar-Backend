@@ -22,7 +22,7 @@ export class User {
   @Column({ unique: true })
   username: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @Column({ type: 'enum', enum: Roles })
@@ -68,7 +68,7 @@ export class User {
   assignednotifications: Notification[];
 
   @OneToMany(() => Otp, (otp) => otp.toUser)
-  userSentOtpCode: Notification[];
+  userSentOtpCode: Otp[];
 
   @OneToMany(() => Customer, (customer) => customer.id)
   customers: Customer[];

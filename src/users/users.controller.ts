@@ -78,12 +78,15 @@ export class UsersController {
   ) {
     const issuedUser = req.user as User;
 
-    if (issuedUser.role === Roles.Admin)
-      return await this.usersService.changePass(id, data, issuedUser);
+    if (issuedUser.role === Roles.Admin) {
+      const result = await this.usersService.changePass(id, data, issuedUser);
+      return { ...result, password: '' };
+    }
 
-    if (issuedUser.id == id)
-      return await this.usersService.changePass(id, data, issuedUser);
-    else
+    if (issuedUser.id == id) {
+      const result = await this.usersService.changePass(id, data, issuedUser);
+      return { ...result, password: '' };
+    } else
       throw new UnauthorizedException(
         'شما نمی توانید کلمه عبور سایر کاربران را تغییر دهید',
       );

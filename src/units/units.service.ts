@@ -92,6 +92,16 @@ export class UnitsService {
     });
     if (!unit) throw new NotFoundException();
 
-    await this.unitRepository.delete(id);
+    try {
+      await this.unitRepository.delete(id);
+    } catch (error) {
+      console.log(error);
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451)
+        throw new BadRequestException(
+          'اطلاعات این واحد درحال استفاده میباشد، امکان حذف وجود ندارد',
+        );
+      else
+        throw new BadRequestException('خطای داخلی سرور، امکان حذف وجود ندارد');
+    }
   }
 }

@@ -25,7 +25,7 @@ export class Good {
   @Column()
   goodName: string;
 
-  @Column()
+  @Column({ default: 0 })
   goodPrice: number;
 
   @Column({ default: 0, nullable: false })
@@ -63,7 +63,8 @@ export class Good {
 
   @ManyToOne(() => Unit, (unit) => unit.goods, {
     eager: true,
-    onDelete: 'SET NULL',
+    nullable: false,
+    onDelete: 'RESTRICT',
   })
   goodUnit: Unit;
 

@@ -26,18 +26,26 @@ export class Proforma {
 
   @ManyToOne(() => User, (user) => user.userConvertedProforma, {
     nullable: true,
+    eager: true,
+    onDelete: 'RESTRICT',
   })
-  convertedBy: User;
+  convertedBy: User | null;
 
   @Column({ type: 'bool', nullable: true, default: false })
   isAccepted: boolean;
 
   @ManyToOne(() => User, (user) => user.userAcceptedProforma, {
     nullable: true,
+    eager: true,
+    onDelete: 'RESTRICT',
   })
-  acceptedBy: User;
+  acceptedBy: User | null;
 
-  @ManyToOne(() => Customer, { eager: true })
+  @ManyToOne(() => Customer, {
+    eager: true,
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'customer_id' })
   customer: Customer;
 
@@ -93,13 +101,17 @@ export class Proforma {
   isSent: boolean;
 
   @OneToMany(() => ProformaGoods, (item) => item.proforma, {
-    cascade: true, // برای auto insert/update آیتم‌ها
-    eager: true, // برای لود اتوماتیک آیتم‌ها با خود فاکتور
+    cascade: true,
+    eager: true,
     orphanedRowAction: 'delete',
   })
   @JoinColumn()
   proformaGoods: ProformaGoods[];
 
-  @ManyToOne(() => User, (user) => user.id)
+  @ManyToOne(() => User, (user) => user.id, {
+    nullable: false,
+    eager: true,
+    onDelete: 'RESTRICT',
+  })
   createdBy: User;
 }

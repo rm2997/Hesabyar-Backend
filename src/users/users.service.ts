@@ -25,8 +25,12 @@ export class UsersService {
 
   // یافتن کاربر با نام کاربری
   async findByUsername(username: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { username } });
-
+    const query = this.dataSource
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.userName= :search', { search: `${username}` });
+    const user = await query.getOne();
     if (!user) throw new NotFoundException('کاربر مورد نظر شما موجود نیست');
 
     return user;
@@ -53,17 +57,34 @@ export class UsersService {
     return { total, items };
   }
 
-  async findById(id: number): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست ${id}`);
+  async findById(id: number, selectPass: boolean = false): Promise<User> {
+    const query = this.dataSource
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.userSentOtpCode', 'otp')
+      .where(`user.id=${id}`);
+    if (selectPass) query.addSelect('user.password');
+    const user = await query.getOne();
+    if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست`);
+    return user;
+    // const user = await this.usersRepository.findOne({ where: { id } });
+    // if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست ${id}`);
 
-    return { ...user, password: '' };
+    // return { ...user, password: '' };
   }
 
   async findByMobileNumber(usermobilenumber: string): Promise<any | null> {
-    const user = await this.usersRepository.findOne({
-      where: { usermobilenumber },
-    });
+    const query = this.dataSource
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.userSentOtpCode', 'otp')
+      .where(`user.mobileNumber=${usermobilenumber}`);
+    const user = await query.getOne();
+    if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست`);
+    // return user;
+    // const user = await this.usersRepository.findOne({
+    //   where: { usermobilenumber },
+    // });
 
     if (!user) throw new NotFoundException('Moblie number not found');
     const token = await this.generateUserChangePassToken(user?.id);
@@ -80,9 +101,14 @@ export class UsersService {
   }
 
   async updateUser(id: number, updateData: Partial<User>): Promise<User> {
-    const exist = await this.usersRepository.findOne({
-      where: { usermobilenumber: updateData.usermobilenumber, id: Not(id) },
-    });
+    const query = this.dataSource
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.userSentOtpCode', 'otp')
+      .where(`user.id=${id}`)
+      .andWhere(`user.usermobilenumber=${updateData.usermobilenumber}`)
+      .andWhere(`user.id<>${id}`);
+    const exist = await query.getOne();
     if (exist)
       throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
     const user = await this.findById(id);
@@ -142,7 +168,10 @@ export class UsersService {
     id: number,
     password: string,
   ): Promise<{ result: boolean }> {
-    const user = await this.usersRepository.findOne({ where: { id: id } });
+    const user = await this.usersRepository.findOne({
+      where: { id: id },
+      select: { password: true },
+    });
     if (!user) throw new NotFoundException('کاربر مورد نظر پیدا نشد');
     const result = await this.validatePassword(user.password, password);
 
@@ -166,7 +195,8 @@ export class UsersService {
       newPass = await bcrypt.hash(passwordData.new, salt);
     }
     user.password = newPass;
-    return this.usersRepository.save(user);
+    const result = this.usersRepository.save(user);
+    return { ...result, password: '' };
   }
 
   async changePass(
@@ -174,7 +204,7 @@ export class UsersService {
     passwordData: { current: string; confirm: string; new: string },
     issuedUser: User,
   ): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id: id } });
+    const user = await this.findById(id, true);
     if (!user) throw new NotFoundException('کاربر موجود نیست');
 
     const checkPass =
@@ -191,13 +221,25 @@ export class UsersService {
       newPass = await bcrypt.hash(passwordData.new, salt);
     }
     user.password = newPass;
+
+    console.log(user);
+
     return this.usersRepository.save(user);
   }
 
   async deleteUser(id: number): Promise<void> {
-    const result = await this.usersRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('User not found');
+    const user = await this.usersRepository.findOne({ where: { id: id } });
+    if (!user) throw new NotFoundException('کاربر مورد نظر وجود ندارد');
+    try {
+      await this.usersRepository.delete(id);
+    } catch (error) {
+      console.log(error);
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451)
+        throw new BadRequestException(
+          'اطلاعات این کاربر درحال استفاده میباشد، امکان حذف وجود ندارد',
+        );
+      else
+        throw new BadRequestException('خطای داخلی سرور، امکان حذف وجود ندارد');
     }
   }
 
@@ -280,9 +322,7 @@ export class UsersService {
     try {
       const secret = this.configService.get('USER_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
-      const user = await this.usersRepository.findOne({
-        where: { id: payload.userId },
-      });
+      const user = await this.findById(payload.userId);
 
       if (!user) throw new NotFoundException('کاربر موجود نیست');
       return user;
@@ -305,9 +345,7 @@ export class UsersService {
     try {
       const secret = this.configService.get('USER_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
-      const user = await this.usersRepository.findOne({
-        where: { id: payload.userId },
-      });
+      const user = await this.findById(payload.userId);
 
       if (!user) throw new NotFoundException('کاربر موجود نیست');
       return user;

@@ -22,6 +22,10 @@ export class Sale {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User, (user) => user.id, { nullable: false })
+  @ManyToOne(() => User, (user) => user.id, {
+    eager: true,
+    onDelete: 'RESTRICT',
+    nullable: false,
+  })
   createdBy: User;
 }

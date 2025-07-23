@@ -14,24 +14,24 @@ export class ProformaGoods {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ default: 0 })
   quantity: number;
 
-  @Column()
+  @Column({ default: 0 })
   price: number;
 
-  @Column()
+  @Column({ default: 0 })
   total: number;
 
   @ManyToOne(() => Proforma, (proforma) => proforma.proformaGoods, {
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  proforma: Proforma[];
+  proforma: Proforma;
 
   @ManyToOne(() => Good, (good) => good.goodProforma, {
-    onDelete: 'CASCADE',
-    eager: true,
+    onDelete: 'RESTRICT',
+    nullable: false,
   })
   @JoinColumn()
   good: Good[];
@@ -42,6 +42,10 @@ export class ProformaGoods {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @ManyToOne(() => User, (user) => user.id)
+  @ManyToOne(() => User, (user) => user.id, {
+    eager: true,
+    onDelete: 'RESTRICT',
+    nullable: false,
+  })
   createdBy: User;
 }

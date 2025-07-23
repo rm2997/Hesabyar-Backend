@@ -25,6 +25,7 @@ export class AuthService {
   // بررسی ورود کاربر
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
+    console.log('User is:', user);
 
     if (!user) {
       console.log('User not found', user);
@@ -49,7 +50,7 @@ export class AuthService {
         sub: user.id,
         role: user.role,
       };
-      console.log('user:', user);
+      console.log('user with twoFactor:', user);
 
       const tempToken = this.jwtService.sign(payload, { expiresIn: '3m' });
       console.log('temp token:', tempToken);
@@ -148,12 +149,18 @@ export class AuthService {
   async validateOtpToken(token: string) {
     try {
       const secret = this.config.get('USER_LINK_SECRET');
+      console.log('secret is :', secret);
+
       const payload: any = this.jwtService.verify(token, secret);
-      const user = await this.usersService.findById(payload.userId);
+      console.log('paylod is:', payload);
+
+      const user = await this.usersService.findById(payload.sub);
+      console.log('User for validateOtpToken is :', user);
 
       if (!user) throw new NotFoundException('کاربر موجود نیست');
       return user;
     } catch (err) {
+      console.log(err);
       throw new NotFoundException('لینک نامعتبر یا منقضی‌شده است');
     }
   }
