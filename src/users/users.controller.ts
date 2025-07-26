@@ -12,7 +12,6 @@ import {
   UnauthorizedException,
   ParseIntPipe,
   BadRequestException,
-  NotFoundException,
   Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -39,7 +38,8 @@ export class UsersController {
   @UserRoles(Roles.Admin)
   async create(@Body() data: Partial<User>, @Req() req: Request) {
     const issuedUser = req.user as User;
-    return await this.usersService.createUser(data, issuedUser);
+    const newUser = await this.usersService.createUser(data, issuedUser);
+    return { ...newUser, password: '' };
   }
 
   @Get()

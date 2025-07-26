@@ -27,12 +27,15 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync } from 'fs';
+import { Roles } from 'src/common/decorators/roles.enum';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
 export class ProformaController {
   constructor(private readonly proformaService: ProformaService) {}
 
+  @UserRoles(Roles.Admin)
   @Post()
   async create(@Body() data: Partial<Proforma>, @Req() req: Request) {
     const user = req.user as User;
@@ -89,6 +92,7 @@ export class ProformaController {
     );
   }
 
+  @UserRoles(Roles.Admin || Roles.Accountant)
   @Patch('accept/:id')
   async setProformaIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const acceptedBy = req.user as User;
@@ -131,6 +135,7 @@ export class ProformaController {
     const user = req.user as User;
     return this.proformaService.convertToInvoice(id, user);
   }
+
   @Get('view/:token')
   @Public()
   async viewProforma(@Param('token') token: string) {
@@ -148,6 +153,7 @@ export class ProformaController {
     return this.proformaService.getAllByUser(page, limit, search, user);
   }
 
+  @UserRoles(Roles.Admin || Roles.Accountant)
   @Get()
   async getAll(
     @Query('page') page: number = 1,
