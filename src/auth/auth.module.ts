@@ -8,9 +8,12 @@ import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { OtpModule } from 'src/otp/otp.module';
 import { SmsModule } from 'src/sms/sms.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Captcha } from './captcha.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([Captcha]),
     PassportModule,
     OtpModule,
     SmsModule,

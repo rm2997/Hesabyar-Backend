@@ -6,11 +6,16 @@ import {
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
+import * as svgCaptcha from 'svg-captcha';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/users/users.entity';
 import { OtpService } from 'src/otp/otp.service';
 import { SmsService } from 'src/sms/sms.service';
+import { randomUUID } from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Captcha } from './captcha.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class AuthService {
@@ -20,9 +25,10 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    @InjectRepository(Captcha)
+    private readonly captchaRepository: Repository<Captcha>,
   ) {}
 
-  // بررسی ورود کاربر
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
     console.log('User is:', user);
@@ -74,6 +80,66 @@ export class AuthService {
     const mobilnumber = user?.usermobilenumber;
     const twoFactorAuthntication = user?.twoFactorAuthntication;
     return { accessToken, mobilnumber, twoFactorAuthntication };
+  }
+
+  async generateCaptcha(ip: string) {
+    const captcha = svgCaptcha.create({
+      size: 5,
+      noise: 2,
+      color: true,
+      background: '#eee',
+    });
+
+    const token = randomUUID();
+
+    const captchaEntity = this.captchaRepository.create({
+      token,
+      text: captcha.text,
+      ip: ip,
+    });
+
+    await this.captchaRepository.save(captchaEntity);
+    return { svg: captcha.data, token };
+  }
+
+  async getFailedLoginCountByIp(ip: string) {
+    return await this.captchaRepository.findAndCount({
+      where: { ip: ip, isUsed: false },
+    });
+  }
+
+  async getFailedLoginCountByUserName(username: string) {
+    return await this.captchaRepository.findAndCount({
+      where: { userName: username, isUsed: false },
+    });
+  }
+
+  async deleteCapthaHistory(ip: string, userName: string) {
+    if (ip) await this.captchaRepository.delete(ip);
+    if (userName) await this.captchaRepository.delete(userName);
+  }
+
+  async verifyCaptha(token: string, userAnswer: string, ip: string) {
+    const captcha = await this.captchaRepository.findOne({
+      where: { token, isUsed: false },
+    });
+
+    if (!captcha || captcha.ip !== ip) {
+      throw new UnauthorizedException('کپچا پیدا نشد یا معتبر نیست');
+    }
+
+    const isExpired =
+      Date.now() - new Date(captcha.createdAt).getTime() > 3 * 60 * 1000;
+    if (isExpired) {
+      throw new UnauthorizedException('کپچا منقضی شده است');
+    }
+
+    if (captcha.text.toLowerCase() !== userAnswer.toLowerCase()) {
+      throw new UnauthorizedException('پاسخ کپچا اشتباه است');
+    }
+
+    captcha.isUsed = true;
+    await this.captchaRepository.save(captcha);
   }
 
   async secondLogin(user: User, token: string, code: string) {
@@ -136,7 +202,6 @@ export class AuthService {
     }
   }
 
-  // بررسی شماره موبایل کاربر
   async validateMobileNumber(mobile: string) {
     const user = await this.usersService.findByMobileNumber(mobile);
     if (user && user.usermobilenumber) {

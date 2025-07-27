@@ -52,6 +52,15 @@ export class User {
   @Column({ type: Boolean, nullable: false, default: 1 })
   twoFactorAuthntication: boolean;
 
+  @Column({ type: Boolean, default: true })
+  mustChangePassword: boolean;
+
+  @Column({ type: Boolean, default: true })
+  isUserActive: boolean;
+
+  @Column({ nullable: true, type: 'char', length: 5 })
+  capcha: string;
+
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
   userAcceptedProforma: Proforma[];
 
