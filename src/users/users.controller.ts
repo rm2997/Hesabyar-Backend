@@ -59,7 +59,9 @@ export class UsersController {
 
   @Get('forgetpassword/:mobileNumber')
   @Public()
-  async getUserByMobileNumber(@Param('mobile') mobile: string) {
+  async getUserByMobileNumber(@Param('mobileNumber') mobile: string) {
+    console.log('mobileNumber is :', mobile);
+
     return await this.usersService.findByMobileNumber(mobile);
   }
 

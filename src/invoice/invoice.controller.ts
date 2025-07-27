@@ -57,7 +57,7 @@ export class InvoiceController {
   }
 
   @Patch('accept/:id')
-  async setProformaIsAccepted(@Param('id') id: number, @Req() req: Request) {
+  async setInvoiceIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const acceptedBy = req.user as User;
     return await this.invoiceService.setInvoiceIsAccepted(id, acceptedBy);
   }
@@ -143,6 +143,22 @@ export class InvoiceController {
   ) {
     const user = req.user as User;
     return this.invoiceService.getUserInvoices(page, limit, search, user.id);
+  }
+
+  @Get('user/accepted')
+  async getUserAcceptedInvoices(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return this.invoiceService.getUserAcceptedInvoices(
+      page,
+      limit,
+      search,
+      user.id,
+    );
   }
 
   @Put(':id')

@@ -78,7 +78,7 @@ export class UsersService {
       .getRepository(User)
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.userSentOtpCode', 'otp')
-      .where(`user.mobileNumber=${usermobilenumber}`);
+      .where(`user.usermobilenumber=${usermobilenumber}`);
     const user = await query.getOne();
     if (!user) throw new NotFoundException(`کاربر مورد نظر موجود نیست`);
     // return user;

@@ -107,7 +107,35 @@ export class ProformaService {
     return { total, items };
   }
 
-  // این متد برای به روزرسانی اطلاعات پیش‌فاکتور است
+  async getAcceptedProformasByUserId(
+    page: number,
+    limit: number,
+    search: string,
+    user: Partial<User>,
+  ): Promise<{ items: Proforma[]; total: number }> {
+    const query = this.dataSource
+      .getRepository(Proforma)
+      .createQueryBuilder('proforma')
+      .leftJoinAndSelect('proforma.createdBy', 'user')
+      .leftJoinAndSelect('proforma.customer', 'customer')
+      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+      .leftJoinAndSelect('proformaGoods.good', 'good')
+      .andWhere('proforma.createdBy= :user', { user: user.id })
+      .andWhere('proforma.isAccepted=1');
+
+    if (search) {
+      query.andWhere('proforma.id= :id', { id: search });
+    }
+
+    const total = await query.getCount();
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('proforma.createdAt', 'DESC')
+      .getMany();
+    return { total, items };
+  }
+
   async updateProforma(
     id: number,
     data: Partial<Proforma>,

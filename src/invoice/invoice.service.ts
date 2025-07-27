@@ -119,6 +119,37 @@ export class InvoiceService {
     return { items, total };
   }
 
+  async getUserAcceptedInvoices(
+    page: number,
+    limit: number,
+    search: string,
+    userId: number,
+  ): Promise<{ total: number; items: Invoice[] }> {
+    const query = this.dataSource
+      .getRepository(Invoice)
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.createdBy', 'user')
+      .leftJoinAndSelect('invoice.customer', 'customer')
+      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+      .leftJoinAndSelect('invoiceGoods.good', 'good')
+      .andWhere('invoice.createdBy= :user', { user: userId })
+      .andWhere('invoice.isAccepted=1');
+
+    if (search) {
+      query.andWhere('invoice.id= :search', { search: search });
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('invoice.createdAt', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
   async updateInvoice(
     id: number,
     data: Partial<Invoice>,
