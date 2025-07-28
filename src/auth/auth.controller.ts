@@ -41,7 +41,7 @@ export class AuthController {
 
     if (!body || !body.username || !body.password) {
       console.log('خطا در دریافت داده', body);
-      throw new NotFoundException('نام کاربری یا رمز ارسال نشده است');
+      throw new BadRequestException('نام کاربری یا رمز ارسال نشده است');
     }
 
     const ipAttemps = await this.authService.getFailedLoginCountByIp(clintIp);
@@ -71,7 +71,7 @@ export class AuthController {
     );
 
     if (!user) {
-      throw new NotFoundException('نام کاربری یا رمز اشتباه است');
+      throw new BadRequestException('نام کاربری یا رمز اشتباه است');
     }
     Logger.log(
       `New login request received...[username:${body.username} password:${body.password}]`,

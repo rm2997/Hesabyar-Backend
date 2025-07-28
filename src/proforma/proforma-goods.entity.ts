@@ -30,6 +30,7 @@ export class ProformaGoods {
   proforma: Proforma;
 
   @ManyToOne(() => Good, (good) => good.goodProforma, {
+    eager: true,
     onDelete: 'RESTRICT',
     nullable: false,
   })

@@ -246,7 +246,7 @@ export class ProformaService {
       const payload: any = jwt.verify(token, secret);
       const proforma = await this.proformaRepository.findOne({
         where: { id: payload.proformaId },
-        relations: ['createdBy'],
+        relations: ['createdBy', 'proformaGoods'],
       });
 
       if (!proforma) throw new NotFoundException('پیش‌فاکتور یافت نشد');

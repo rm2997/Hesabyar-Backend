@@ -115,8 +115,8 @@ export class AuthService {
   }
 
   async deleteCapthaHistory(ip: string, userName: string) {
-    if (ip) await this.captchaRepository.delete(ip);
-    if (userName) await this.captchaRepository.delete(userName);
+    if (ip) await this.captchaRepository.delete({ ip: ip });
+    if (userName) await this.captchaRepository.delete({ userName: userName });
   }
 
   async verifyCaptha(token: string, userAnswer: string, ip: string) {
@@ -125,17 +125,17 @@ export class AuthService {
     });
 
     if (!captcha || captcha.ip !== ip) {
-      throw new UnauthorizedException('کپچا پیدا نشد یا معتبر نیست');
+      throw new BadRequestException('کپچا پیدا نشد یا معتبر نیست');
     }
 
     const isExpired =
       Date.now() - new Date(captcha.createdAt).getTime() > 3 * 60 * 1000;
     if (isExpired) {
-      throw new UnauthorizedException('کپچا منقضی شده است');
+      throw new BadRequestException('کپچا منقضی شده است');
     }
 
     if (captcha.text.toLowerCase() !== userAnswer.toLowerCase()) {
-      throw new UnauthorizedException('پاسخ کپچا اشتباه است');
+      throw new BadRequestException('پاسخ کپچا اشتباه است');
     }
 
     captcha.isUsed = true;
