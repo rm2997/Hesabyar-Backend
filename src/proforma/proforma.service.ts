@@ -245,7 +245,7 @@ export class ProformaService {
       const secret = this.configService.get('PROFORMA_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
       const proforma = await this.proformaRepository.findOne({
-        where: { id: payload.proformaId },
+        where: { id: payload.sub },
         relations: ['createdBy', 'proformaGoods'],
       });
 

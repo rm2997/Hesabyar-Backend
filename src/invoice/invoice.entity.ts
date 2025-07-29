@@ -87,6 +87,7 @@ export class Invoice {
   @OneToMany(() => InvoiceGoods, (item) => item.invoice, {
     cascade: true,
     eager: true,
+    orphanedRowAction: 'delete',
   })
   @JoinColumn()
   invoiceGoods: InvoiceGoods[];

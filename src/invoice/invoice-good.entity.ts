@@ -27,11 +27,12 @@ export class InvoiceGoods {
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  invoice: Invoice[];
+  invoice: Invoice;
 
   @ManyToOne(() => Good, (good) => good.goodInvoice, {
-    onDelete: 'CASCADE',
     eager: true,
+    onDelete: 'RESTRICT',
+    nullable: false,
   })
   @JoinColumn()
   good: Good[];
