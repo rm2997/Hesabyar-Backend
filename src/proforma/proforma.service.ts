@@ -245,9 +245,10 @@ export class ProformaService {
       const secret = this.configService.get('PROFORMA_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
       const proforma = await this.proformaRepository.findOne({
-        where: { id: payload.sub },
+        where: { id: payload.proformaId },
         relations: ['createdBy', 'proformaGoods'],
       });
+      console.log('Start fetching proforma to show to customer:', payload);
 
       if (!proforma) throw new NotFoundException('پیش‌فاکتور یافت نشد');
       return proforma;

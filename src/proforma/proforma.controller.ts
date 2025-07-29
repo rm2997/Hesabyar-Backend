@@ -84,7 +84,7 @@ export class ProformaController {
     }
     const filePath = `/uploads/proforma/${image.filename}`;
     proforma.approvedFile = filePath;
-
+    console.log('Start updating proforma by customer:', proforma);
     return this.proformaService.updateProforma(
       proforma?.id,
       proforma,

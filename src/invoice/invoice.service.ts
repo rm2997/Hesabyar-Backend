@@ -192,7 +192,7 @@ export class InvoiceService {
       const secret = this.configService.get('INVOICE_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
       const invoice = await this.invoiceRepository.findOne({
-        where: { id: payload.sub },
+        where: { id: payload.invoiceId },
         relations: ['createdBy', 'invoiceGoods'],
       });
 

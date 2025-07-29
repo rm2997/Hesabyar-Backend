@@ -121,6 +121,7 @@ export class InvoiceController {
     }
     const filePath = `/uploads/invoice/${image.filename}`;
     invoice.approvedFile = filePath;
+    console.log('Start updating invoice by customer:', invoice);
 
     return this.invoiceService.updateInvoice(
       invoice?.id,
