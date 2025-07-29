@@ -30,7 +30,7 @@ export class Depot {
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  depotInvoice: Invoice[];
+  depotInvoice: Invoice;
 
   @OneToMany(() => DepotGoods, (item) => item.depot, {
     cascade: true,
@@ -57,6 +57,9 @@ export class Depot {
 
   @Column({ length: 10, nullable: true })
   driverNatCode: string;
+
+  @Column({ length: 11, nullable: true })
+  driverMobile: string;
 
   @CreateDateColumn()
   createdAt: Date;

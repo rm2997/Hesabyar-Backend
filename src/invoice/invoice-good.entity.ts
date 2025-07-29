@@ -35,7 +35,7 @@ export class InvoiceGoods {
     nullable: false,
   })
   @JoinColumn()
-  good: Good[];
+  good: Good;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

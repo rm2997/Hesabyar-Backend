@@ -172,4 +172,35 @@ export class SmsService {
     });
     return await res.json();
   }
+  async sendDepotExitSms(
+    mobileNumber: string,
+    invoiceNumber: number,
+    token: string,
+  ) {
+    const fetch = (await import('node-fetch')).default;
+
+    const reqBody = {
+      mobile: mobileNumber,
+      templateId: 251064,
+      parameters: [
+        {
+          name: 'INVOICENO',
+          value: invoiceNumber,
+        },
+        {
+          name: 'TOKEN',
+          value: token,
+        },
+      ],
+    };
+    const res = await fetch(smsEndpoints.verify, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': '7uyRcCHDKpobMJz0B0G3kOX4fO4gyTuwrrsSuWrgIrr50qvy',
+      },
+      body: JSON.stringify(reqBody),
+    });
+    return await res.json();
+  }
 }

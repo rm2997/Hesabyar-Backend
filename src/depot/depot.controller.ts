@@ -166,6 +166,8 @@ export class DepotController {
   @Patch('accept/:id')
   async setDepotIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const user = req.user as User;
-    return await this.depotService.setDepotIsAccepted(id, user);
+    const depot: Depot = await this.depotService.setDepotIsAccepted(id, user);
+
+    return depot;
   }
 }

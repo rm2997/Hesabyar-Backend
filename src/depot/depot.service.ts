@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as jwt from 'jsonwebtoken';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Depot } from './depot.entity';
@@ -10,6 +11,9 @@ import { DepotTypes } from 'src/common/decorators/depotTypes.enum';
 import { DepotGoods } from './depot-goods.entity';
 import { User } from 'src/users/users.entity';
 import { Good } from 'src/goods/good.entity';
+import { SmsService } from 'src/sms/sms.service';
+import { Invoice } from 'src/invoice/invoice.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DepotService {
@@ -18,7 +22,11 @@ export class DepotService {
     private readonly depotRepository: Repository<Depot>,
     @InjectRepository(DepotGoods)
     private readonly depotGoodsRepository: Repository<DepotGoods>,
+    @InjectRepository(Invoice)
+    private readonly invoiceRepository: Repository<Invoice>,
     private readonly dataSource: DataSource,
+    private readonly smsService: SmsService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createDepot(data: Partial<Depot>, user: User): Promise<Depot> {
@@ -175,8 +183,8 @@ export class DepotService {
     await this.depotRepository.delete(id);
   }
 
-  async setDepotIsAccepted(id: number, user: User): Promise<any> {
-    await this.dataSource.transaction(async (manager) => {
+  async setDepotIsAccepted(id: number, user: User): Promise<Depot | any> {
+    const depot = await this.dataSource.transaction(async (manager) => {
       const depot = await manager.findOne(Depot, {
         where: { id: id },
         relations: ['depotGoods', 'depotGoods.good'],
@@ -221,5 +229,43 @@ export class DepotService {
       //   acceptedBy: user,
       // });
     });
+
+    if (depot && depot?.depotType == DepotTypes.out && depot?.driverMobile) {
+      const sms = await this.sendSmsForDepotExit(
+        depot?.driverMobile,
+        depot?.depotInvoice?.id,
+      );
+      console.log('SMS status:', sms);
+    }
+  }
+
+  async generateNewToken(invoiceId: number): Promise<string> {
+    const payload = { invoiceId };
+    const secret = this.configService.get('INVOICE_LINK_SECRET');
+    const expiresIn = this.configService.get<string>('INVOICE_LINK_EXPIRES_IN');
+
+    const token = jwt.sign(payload, secret, { expiresIn });
+    return token;
+  }
+
+  async verifyAndFetchInvoice(token: string): Promise<Invoice> {
+    try {
+      const secret = this.configService.get('INVOICE_LINK_SECRET');
+      const payload: any = jwt.verify(token, secret);
+      const invoice = await this.invoiceRepository.findOne({
+        where: { id: payload.invoiceId },
+        relations: ['createdBy', 'invoiceGoods'],
+      });
+      console.log('Start fetching invoice to show to customer:', payload);
+      if (!invoice) throw new NotFoundException('فاکتور پیدا نشد');
+      return invoice;
+    } catch (err) {
+      throw new BadRequestException('لینک نامعتبر یا منقضی‌شده است');
+    }
+  }
+
+  async sendSmsForDepotExit(driverMobile: string, invoiceId: number) {
+    const token = await this.generateNewToken(invoiceId);
+    await this.smsService.sendDepotExitSms(driverMobile, invoiceId, token);
   }
 }

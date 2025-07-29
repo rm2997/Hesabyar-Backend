@@ -29,32 +29,68 @@ export class InvoiceService {
   ) {}
 
   async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
-    const proforma = await this.proformaService.getProforma(
-      data?.proforma?.id!,
-    );
-    if (!proforma) {
-      throw new Error('Proforma not found');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const proforma = await this.proformaService.getProforma(
+        data?.proforma?.id!,
+      );
+      if (!proforma) {
+        throw new BadRequestException('پیش فاکتور انتخاب شده معتبر نمی باشد.');
+      }
+      const invoice = queryRunner.manager.create(Invoice, {
+        title: data?.title,
+        customer: proforma.customer,
+        totalAmount: proforma.totalAmount,
+        createdBy: user,
+        proforma: proforma,
+      });
+
+      const savedInvoice = await queryRunner.manager.save(invoice);
+      const customerToken = await this.generateShareableLink(savedInvoice.id);
+      const invoiceGoods = data?.invoiceGoods?.map((item) =>
+        queryRunner.manager.create(InvoiceGoods, {
+          quantity: item.quantity,
+          price: item.price,
+          total: item.total,
+          good: item.good,
+          invoice: savedInvoice,
+          createdBy: user,
+        }),
+      );
+      savedInvoice.customerLink = customerToken;
+      await queryRunner.manager.save(invoiceGoods);
+      await queryRunner.manager.save(savedInvoice);
+      await queryRunner.commitTransaction();
+
+      return savedInvoice;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-    const invoiceGoods = [...data?.invoiceGoods!];
 
-    invoiceGoods.map((item) => {
-      item.createdBy = user;
-    });
-    const invoice = this.invoiceRepository.create({
-      ...data,
-      invoiceGoods: [...invoiceGoods],
-      createdAt: Date(),
-      createdBy: user,
-      proforma: proforma,
-    });
-
-    const shareableLink = await this.generateShareableLink(invoice.id);
-    invoice.customerLink = shareableLink;
-
-    Logger.log(
-      `Incomming invoice data is : ${invoice.invoiceGoods[0].quantity}`,
-    );
-    return await this.invoiceRepository.save(invoice);
+    // const invoice = this.invoiceRepository.create({
+    //   ...data,
+    //   createdAt: Date(),
+    //   createdBy: user,
+    //   proforma: proforma,
+    // });
+    // const savedInvoice = await this.invoiceRepository.save(invoice);
+    // const shareableLink = await this.generateShareableLink(savedInvoice.id);
+    // savedInvoice.customerLink = shareableLink;
+    // const invoiceGoods = data?.invoiceGoods?.map(async (item) => {
+    //   const newInvoiceGood = this.invoiceGoodsRepository.create({
+    //     ...item,
+    //     createdBy: user,
+    //     invoice: savedInvoice,
+    //   });
+    //   return await this.invoiceGoodsRepository.save(newInvoiceGood);
+    // });
+    // //if (invoiceGoods) savedInvoice.invoiceGoods = invoiceGoods;
+    // return await this.invoiceRepository.save(savedInvoice);
   }
 
   async getAllInvoices(
@@ -179,7 +215,7 @@ export class InvoiceService {
   }
 
   async generateShareableLink(invoiceId: number): Promise<string> {
-    const payload = { sub: invoiceId };
+    const payload = { invoiceId };
     const secret = this.configService.get('INVOICE_LINK_SECRET');
     const expiresIn = this.configService.get<string>('INVOICE_LINK_EXPIRES_IN');
 
@@ -195,7 +231,7 @@ export class InvoiceService {
         where: { id: payload.invoiceId },
         relations: ['createdBy', 'invoiceGoods'],
       });
-
+      console.log('Start fetching invoice to show to customer:', payload);
       if (!invoice) throw new NotFoundException('فاکتور پیدا نشد');
       return invoice;
     } catch (err) {
@@ -218,6 +254,8 @@ export class InvoiceService {
   async setInvoiceIsSent(id: number) {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (invoice) {
+      if (!invoice.customerLink)
+        invoice.customerLink = await this.generateShareableLink(invoice.id);
       const smsResult = await this.smsService.sendUpdateInvoiceSms(
         invoice.customer,
         invoice.customerLink,
