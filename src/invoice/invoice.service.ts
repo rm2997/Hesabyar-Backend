@@ -169,7 +169,8 @@ export class InvoiceService {
       .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
       .leftJoinAndSelect('invoiceGoods.good', 'good')
       .andWhere('invoice.createdBy= :user', { user: userId })
-      .andWhere('invoice.isAccepted=1');
+      .andWhere('invoice.isAccepted=1')
+      .andWhere('invoice.finished=0');
 
     if (search) {
       query.andWhere('invoice.id= :search', { search: search });

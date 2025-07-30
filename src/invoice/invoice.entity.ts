@@ -92,6 +92,9 @@ export class Invoice {
   @JoinColumn()
   invoiceGoods: InvoiceGoods[];
 
+  @Column({ type: Boolean, nullable: false, default: 0 })
+  finished: boolean;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

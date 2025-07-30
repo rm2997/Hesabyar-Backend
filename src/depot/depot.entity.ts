@@ -27,7 +27,8 @@ export class Depot {
   description: string;
 
   @ManyToOne(() => Invoice, (invoice) => invoice.id, {
-    onDelete: 'CASCADE',
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn()
   depotInvoice: Invoice;
@@ -46,8 +47,11 @@ export class Depot {
   @Column({ nullable: false, default: 1 })
   totalQuantity: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, default: false })
   isAccepted: boolean;
+
+  @Column({ nullable: true, default: false })
+  isSent: boolean;
 
   @Column({ nullable: true })
   driver: string;
@@ -60,6 +64,9 @@ export class Depot {
 
   @Column({ length: 11, nullable: true })
   driverMobile: string;
+
+  @Column({ nullable: true })
+  customerToken: string;
 
   @CreateDateColumn()
   createdAt: Date;

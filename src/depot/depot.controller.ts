@@ -31,6 +31,7 @@ import { existsSync } from 'fs';
 import { DepotGoods } from './depot-goods.entity';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
 import { Roles } from 'src/common/decorators/roles.enum';
+import { Public } from 'src/common/decorators/jwt.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('depot')
@@ -147,6 +148,40 @@ export class DepotController {
     return Depot;
   }
 
+  @Post('generateNewToken/:id')
+  async generateNewToken(@Param('id') id: number) {
+    const token = await this.depotService.generateNewToken(id);
+    const data: Partial<Depot> = { customerToken: token };
+    return await this.depotService.updateDepot(id, data);
+  }
+
+  @Get('token/:token')
+  @Public()
+  async getInvoiceByToken(@Param('token') token: string) {
+    return await this.depotService.verifyAndFetchInvoice(token);
+  }
+
+  @Patch('token/:token')
+  @Public()
+  async updateInvoiceByToken(
+    @Param('token') token: string,
+    @Body() data: Partial<Depot>,
+  ) {
+    const depot = await this.depotService.verifyAndFetchInvoice(token);
+    if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+
+    // if (depot.customerLink == token && depot.approvedFile) {
+    //   throw new BadRequestException('این فاکتور قبلا تایید شده است');
+    // }
+
+    return this.depotService.updateDepot(depot?.id, data);
+  }
+
+  @Patch('sent/:id')
+  async setInvoiceIsSent(@Param('id') id: number) {
+    return await this.depotService.setDepotIsSent(id);
+  }
+
   @Put(':id')
   async updateDepot(
     @Param('id') id: number,
@@ -154,7 +189,7 @@ export class DepotController {
     @Body() data: Partial<Depot>,
   ) {
     const user = req.user as User;
-    return await this.depotService.updateDepot(id, data, user);
+    return await this.depotService.updateDepot(id, data);
   }
 
   @Delete(':id')

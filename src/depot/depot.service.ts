@@ -35,6 +35,7 @@ export class DepotService {
       throw new BadRequestException(
         'هیچ کالایی برای خروج از انبار تعیین نشده است',
       );
+
     depotGoods.map((g) => {
       g.createdAt = new Date();
       g.createdBy = user;
@@ -46,7 +47,9 @@ export class DepotService {
     });
 
     const saved = await this.depotRepository.save(depot);
-    return saved;
+    const token = await this.generateNewToken(saved.id);
+    saved.customerToken = token;
+    return await this.depotRepository.save(saved);
   }
 
   // async saveDepotImages(depotId: number, imagePaths: string[]) {
@@ -74,7 +77,8 @@ export class DepotService {
       .leftJoinAndSelect('depotGoods.good', 'good')
       .leftJoinAndSelect('good.goodUnit', 'unit')
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
-      .leftJoinAndSelect('depot.createdBy', 'user');
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -101,11 +105,13 @@ export class DepotService {
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.out })
       .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
       .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
       .leftJoinAndSelect('depotGoods.good', 'good')
       .leftJoinAndSelect('good.goodUnit', 'unit')
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
-      .leftJoinAndSelect('depot.createdBy', 'user');
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -141,11 +147,7 @@ export class DepotService {
     return depotGood;
   }
 
-  async updateDepot(
-    id: number,
-    data: Partial<Depot>,
-    user: User,
-  ): Promise<Depot | null> {
+  async updateDepot(id: number, data: Partial<Depot>): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id: id },
       relations: ['depotGoods'],
@@ -187,7 +189,7 @@ export class DepotService {
     const depot = await this.dataSource.transaction(async (manager) => {
       const depot = await manager.findOne(Depot, {
         where: { id: id },
-        relations: ['depotGoods', 'depotGoods.good'],
+        relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
       });
 
       if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
@@ -221,7 +223,9 @@ export class DepotService {
 
       depot.isAccepted = true;
       depot.acceptedBy = user;
-
+      const invoice = depot.depotInvoice;
+      invoice.finished = true;
+      await manager.save(Invoice, invoice);
       return await manager.save(Depot, depot);
       // return await this.depotRepository.save({
       //   ...depot,
@@ -237,12 +241,38 @@ export class DepotService {
       );
       console.log('SMS status:', sms);
     }
+    return depot;
+  }
+
+  async setDepotIsSent(id: number) {
+    const depot = await this.depotRepository.findOne({
+      where: { id },
+      relations: ['depotInvoice'],
+    });
+    if (depot) {
+      if (!depot.customerToken)
+        depot.customerToken = await this.generateNewToken(depot.id);
+      const smsResult = await this.smsService.sendUpdateDepotSms(
+        depot.depotInvoice.customer,
+        depot.customerToken,
+        depot.depotInvoice.id,
+      );
+      if (smsResult.status !== 1)
+        throw new BadRequestException(
+          'ارسال پیامک شکست خورد ' + smsResult.message,
+        );
+      return this.updateDepot(id, {
+        customerToken: depot.customerToken,
+        isSent: true,
+      });
+    }
+    throw new NotFoundException('فاکتور وجود ندارد');
   }
 
   async generateNewToken(invoiceId: number): Promise<string> {
     const payload = { invoiceId };
-    const secret = this.configService.get('INVOICE_LINK_SECRET');
-    const expiresIn = this.configService.get<string>('INVOICE_LINK_EXPIRES_IN');
+    const secret = this.configService.get('DEPOT_LINK_SECRET');
+    const expiresIn = this.configService.get<string>('DEPOT_LINK_EXPIRES_IN');
 
     const token = jwt.sign(payload, secret, { expiresIn });
     return token;
@@ -250,14 +280,14 @@ export class DepotService {
 
   async verifyAndFetchInvoice(token: string): Promise<Invoice> {
     try {
-      const secret = this.configService.get('INVOICE_LINK_SECRET');
+      const secret = this.configService.get('DEPOT_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
       const invoice = await this.invoiceRepository.findOne({
         where: { id: payload.invoiceId },
         relations: ['createdBy', 'invoiceGoods'],
       });
       console.log('Start fetching invoice to show to customer:', payload);
-      if (!invoice) throw new NotFoundException('فاکتور پیدا نشد');
+      if (!invoice) throw new NotFoundException('سند خروج پیدا نشد');
       return invoice;
     } catch (err) {
       throw new BadRequestException('لینک نامعتبر یا منقضی‌شده است');
