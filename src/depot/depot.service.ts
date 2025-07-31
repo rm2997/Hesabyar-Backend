@@ -291,6 +291,8 @@ export class DepotService {
       }
 
       depot.isAccepted = true;
+      console.log('depot will accept by:', user);
+
       depot.acceptedBy = user;
       if (depot.depotType == DepotTypes.out) {
         const invoice = depot?.depotInvoice!;
@@ -304,13 +306,16 @@ export class DepotService {
       //   acceptedBy: user,
       // });
     });
-    const mobile = depot?.depotInvoice.customer?.customerMobile;
-    if (depot && depot?.depotType == DepotTypes.out && mobile) {
-      const sms = await this.sendSmsForDepotExit(
-        mobile,
-        depot?.depotInvoice?.id,
-      );
-      console.log('SMS status:', sms);
+
+    if (depot && depot?.depotType == DepotTypes.out) {
+      const mobile = depot?.depotInvoice.customer?.customerMobile;
+      if (mobile) {
+        const sms = await this.sendSmsForDepotExit(
+          mobile,
+          depot?.depotInvoice?.id,
+        );
+        console.log('SMS status:', sms);
+      }
     }
     return depot;
   }

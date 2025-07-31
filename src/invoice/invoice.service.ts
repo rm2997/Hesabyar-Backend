@@ -196,6 +196,8 @@ export class InvoiceService {
       where: { id },
       relations: ['invoiceGoods'],
     });
+    console.log('update invoice data:', data);
+
     if (!invoice) throw new NotFoundException('فاکتور موجود نیست');
     invoice.totalAmount = data?.totalAmount!;
     data?.invoiceGoods?.map((g) => {

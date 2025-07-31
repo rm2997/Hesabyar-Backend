@@ -3,7 +3,7 @@
 /node_modules
 /build
 /hesabyaar_backend_deploy
-/deploy*
+/deploy/*
 /uploads/*
 # Logs
 logs
