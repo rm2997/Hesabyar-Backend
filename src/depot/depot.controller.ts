@@ -142,6 +142,27 @@ export class DepotController {
     else return await this.depotService.getAllOutputDepots(page, limit, search);
   }
 
+  @Get('accept-request')
+  async getDepotsForAccept(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('type') type: DepotTypes,
+    @Query('search') search: string,
+  ) {
+    if (type == DepotTypes.in)
+      return await this.depotService.getAllInputDepotsForAccept(
+        page,
+        limit,
+        search,
+      );
+    else
+      return await this.depotService.getAllOutputDepotsForAccept(
+        page,
+        limit,
+        search,
+      );
+  }
+
   @Get(':id')
   async getDepot(@Param('id') id: number) {
     const Depot = await this.depotService.getDepotById(id);
@@ -151,24 +172,25 @@ export class DepotController {
   @Post('generateNewToken/:id')
   async generateNewToken(@Param('id') id: number) {
     const token = await this.depotService.generateNewToken(id);
-    const data: Partial<Depot> = { customerToken: token };
+    const data: Partial<Depot> = { customerToken: token, isSent: false };
     return await this.depotService.updateDepot(id, data);
   }
 
   @Get('token/:token')
   @Public()
-  async getInvoiceByToken(@Param('token') token: string) {
-    return await this.depotService.verifyAndFetchInvoice(token);
+  async getDepotByToken(@Param('token') token: string) {
+    return await this.depotService.verifyAndFetchDepot(token);
   }
 
   @Patch('token/:token')
   @Public()
-  async updateInvoiceByToken(
+  async updateDepotByToken(
     @Param('token') token: string,
     @Body() data: Partial<Depot>,
   ) {
-    const depot = await this.depotService.verifyAndFetchInvoice(token);
+    const depot = await this.depotService.verifyAndFetchDepot(token);
     if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+    console.log('data is:', data);
 
     // if (depot.customerLink == token && depot.approvedFile) {
     //   throw new BadRequestException('این فاکتور قبلا تایید شده است');
@@ -178,7 +200,7 @@ export class DepotController {
   }
 
   @Patch('sent/:id')
-  async setInvoiceIsSent(@Param('id') id: number) {
+  async setDepotIsSent(@Param('id') id: number) {
     return await this.depotService.setDepotIsSent(id);
   }
 

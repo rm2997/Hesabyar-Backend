@@ -89,7 +89,7 @@ export class DepotService {
     const items = await query
       .skip(limit == -1 ? 0 : (page - 1) * limit)
       .take(limit == -1 ? undefined : limit)
-      .orderBy('good.id', 'DESC')
+      .orderBy('depot.id', 'DESC')
       .getMany();
 
     return { items, total };
@@ -122,7 +122,76 @@ export class DepotService {
     const items = await query
       .skip(limit == -1 ? 0 : (page - 1) * limit)
       .take(limit == -1 ? undefined : limit)
-      .orderBy('good.id', 'DESC')
+      .orderBy('depot.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
+  async getAllOutputDepotsForAccept(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Depot[] }> {
+    const query = this.dataSource
+      .getRepository(Depot)
+      .createQueryBuilder('depot')
+      .where('depot.depotType= :type', { type: DepotTypes.out })
+      .andWhere('depot.isAccepted=0')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver <> '' ")
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+
+    if (search) {
+      query.andWhere(`depot.id=${search}`);
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
+      .orderBy('depot.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+  async getAllInputDepotsForAccept(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Depot[] }> {
+    const query = this.dataSource
+      .getRepository(Depot)
+      .createQueryBuilder('depot')
+      .where('depot.depotType= :type', { type: DepotTypes.in })
+      .andWhere('depot.isAccepted=0')
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+
+    if (search) {
+      query.andWhere(`depot.id=${search}`);
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
+      .orderBy('depot.id', 'DESC')
       .getMany();
 
     return { items, total };
@@ -223,9 +292,11 @@ export class DepotService {
 
       depot.isAccepted = true;
       depot.acceptedBy = user;
-      const invoice = depot.depotInvoice;
-      invoice.finished = true;
-      await manager.save(Invoice, invoice);
+      if (depot.depotType == DepotTypes.out) {
+        const invoice = depot?.depotInvoice!;
+        invoice.finished = true;
+        await manager.save(Invoice, invoice);
+      }
       return await manager.save(Depot, depot);
       // return await this.depotRepository.save({
       //   ...depot,
@@ -233,10 +304,10 @@ export class DepotService {
       //   acceptedBy: user,
       // });
     });
-
-    if (depot && depot?.depotType == DepotTypes.out && depot?.driverMobile) {
+    const mobile = depot?.depotInvoice.customer?.customerMobile;
+    if (depot && depot?.depotType == DepotTypes.out && mobile) {
       const sms = await this.sendSmsForDepotExit(
-        depot?.driverMobile,
+        mobile,
         depot?.depotInvoice?.id,
       );
       console.log('SMS status:', sms);
@@ -269,8 +340,8 @@ export class DepotService {
     throw new NotFoundException('فاکتور وجود ندارد');
   }
 
-  async generateNewToken(invoiceId: number): Promise<string> {
-    const payload = { invoiceId };
+  async generateNewToken(depotId: number): Promise<string> {
+    const payload = { depotId };
     const secret = this.configService.get('DEPOT_LINK_SECRET');
     const expiresIn = this.configService.get<string>('DEPOT_LINK_EXPIRES_IN');
 
@@ -278,24 +349,24 @@ export class DepotService {
     return token;
   }
 
-  async verifyAndFetchInvoice(token: string): Promise<Invoice> {
+  async verifyAndFetchDepot(token: string): Promise<Depot> {
     try {
       const secret = this.configService.get('DEPOT_LINK_SECRET');
       const payload: any = jwt.verify(token, secret);
-      const invoice = await this.invoiceRepository.findOne({
-        where: { id: payload.invoiceId },
-        relations: ['createdBy', 'invoiceGoods'],
+      const depot = await this.depotRepository.findOne({
+        where: { id: payload.depotId },
+        relations: ['createdBy', 'depotGoods', 'depotInvoice'],
       });
-      console.log('Start fetching invoice to show to customer:', payload);
-      if (!invoice) throw new NotFoundException('سند خروج پیدا نشد');
-      return invoice;
+      console.log('Start fetching depot to show to customer:', payload);
+      if (!depot) throw new NotFoundException('سند خروج پیدا نشد');
+      return depot;
     } catch (err) {
       throw new BadRequestException('لینک نامعتبر یا منقضی‌شده است');
     }
   }
 
-  async sendSmsForDepotExit(driverMobile: string, invoiceId: number) {
-    const token = await this.generateNewToken(invoiceId);
-    await this.smsService.sendDepotExitSms(driverMobile, invoiceId, token);
+  async sendSmsForDepotExit(driverMobile: string, depotId: number) {
+    //const token = await this.generateNewToken(depotId);
+    await this.smsService.sendDepotExitSms(driverMobile, depotId);
   }
 }

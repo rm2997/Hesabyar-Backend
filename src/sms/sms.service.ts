@@ -226,11 +226,7 @@ export class SmsService {
     });
     return await res.json();
   }
-  async sendDepotExitSms(
-    mobileNumber: string,
-    invoiceNumber: number,
-    token: string,
-  ) {
+  async sendDepotExitSms(mobileNumber: string, invoiceNumber: number) {
     const fetch = (await import('node-fetch')).default;
 
     const reqBody = {
@@ -240,10 +236,6 @@ export class SmsService {
         {
           name: 'INVOICENO',
           value: invoiceNumber,
-        },
-        {
-          name: 'TOKEN',
-          value: token,
         },
       ],
     };
@@ -255,6 +247,9 @@ export class SmsService {
       },
       body: JSON.stringify(reqBody),
     });
-    return await res.json();
+    const result = await res.json();
+    console.log(result);
+
+    return result;
   }
 }

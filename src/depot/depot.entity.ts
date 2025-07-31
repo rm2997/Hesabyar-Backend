@@ -47,7 +47,7 @@ export class Depot {
   @Column({ nullable: false, default: 1 })
   totalQuantity: number;
 
-  @Column({ nullable: true, default: false })
+  @Column({ default: false })
   isAccepted: boolean;
 
   @Column({ nullable: true, default: false })
