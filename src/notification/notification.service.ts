@@ -20,7 +20,11 @@ export class NotificationService {
   async createNotification(data: Partial<Notification>, user: User) {
     const notification = this.notificationRepo.create(data);
     notification.fromUser = data?.fromUser!;
+    notification.createdAt = new Date();
+    notification. = user;
     notification.fromUser = user;
+    console.log('notofication is:', notification);
+
     return await this.notificationRepo.save(notification);
   }
 
