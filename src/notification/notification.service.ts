@@ -21,7 +21,7 @@ export class NotificationService {
     const notification = this.notificationRepo.create(data);
     notification.fromUser = data?.fromUser!;
     notification.createdAt = new Date();
-    notification. = user;
+
     notification.fromUser = user;
     console.log('notofication is:', notification);
 
