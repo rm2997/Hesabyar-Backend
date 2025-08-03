@@ -53,7 +53,7 @@ export class InvoiceController {
 
   @Post('generateNewToken/:id')
   async generateNewToken(@Param('id') id: number) {
-    return this.invoiceService.renewInvoiceToken(id);
+    return await this.invoiceService.renewInvoiceToken(id);
   }
 
   @Patch('accept/:id')
@@ -65,6 +65,11 @@ export class InvoiceController {
   @Patch('sent/:id')
   async setInvoiceIsSent(@Param('id') id: number) {
     return await this.invoiceService.setInvoiceIsSent(id);
+  }
+
+  @Patch('sendDriverLink/:id')
+  async sendDriverLink(@Param('id') id: number) {
+    return await this.invoiceService.sendDriverLink(id);
   }
 
   @Get('file/:id')
@@ -123,16 +128,20 @@ export class InvoiceController {
     invoice.approvedFile = filePath;
     console.log('Start updating invoice by customer:', invoice);
 
-    return this.invoiceService.updateInvoice(
+    return await this.invoiceService.updateInvoice(
       invoice?.id,
       invoice,
       invoice.createdBy,
     );
   }
 
-  @Get(':id')
-  async get(@Param('id') id: number) {
-    return await this.invoiceService.getInvoice(id);
+  @Public()
+  @Patch('driver/token/:token')
+  async updateInvoiceDriverInfo(
+    @Param('token') token: string,
+    @Body() data: Partial<Invoice>,
+  ) {
+    return await this.invoiceService.updateInvoiceDriverInfo(token, data);
   }
 
   @Get('user/my')
@@ -143,10 +152,15 @@ export class InvoiceController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
-    return this.invoiceService.getUserInvoices(page, limit, search, user.id);
+    return await this.invoiceService.getUserInvoices(
+      page,
+      limit,
+      search,
+      user.id,
+    );
   }
 
-  @Get('user/accepted')
+  @Get('all/accepted')
   async getUserAcceptedInvoices(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
@@ -154,12 +168,35 @@ export class InvoiceController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
-    return this.invoiceService.getUserAcceptedInvoices(
+    return await this.invoiceService.getUserAcceptedInvoices(
       page,
       limit,
       search,
       user.id,
     );
+  }
+
+  @Get('customer/accepted/:customerId')
+  async getUserAcceptedInvoicesByCustomerId(
+    @Param('customerId') customerId: number,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return await this.invoiceService.getUserAcceptedInvoicesByCustomerId(
+      customerId,
+      limit,
+      search,
+      page,
+      user.id,
+    );
+  }
+
+  @Get(':id')
+  async getInvoiceById(@Param('id') id: number) {
+    return await this.invoiceService.getInvoice(id);
   }
 
   @Put(':id')

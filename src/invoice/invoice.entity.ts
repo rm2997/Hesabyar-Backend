@@ -92,6 +92,24 @@ export class Invoice {
   @JoinColumn()
   invoiceGoods: InvoiceGoods[];
 
+  @Column({ nullable: true })
+  driver: string;
+
+  @Column({ length: 11, nullable: true })
+  driverCarNumber: string;
+
+  @Column({ length: 10, nullable: true })
+  driverNatCode: string;
+
+  @Column({ length: 11, nullable: true })
+  driverMobile: string;
+
+  @Column({ nullable: true })
+  driverToken: string;
+
+  @Column({ type: Boolean, default: false })
+  driverTokenIsSent: boolean;
+
   @Column({ type: Boolean, default: false })
   finished: boolean;
 

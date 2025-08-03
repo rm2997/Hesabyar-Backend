@@ -148,6 +148,58 @@ export class SmsService {
       throw new BadRequestException('ارسال پیامک شکست خورد');
     }
   }
+  async sendUpdateInvoiceDriverNameSms(
+    customer: Customer,
+    token: string,
+    invoiceId: number,
+  ) {
+    try {
+      const fetch = (await import('node-fetch')).default;
+
+      const userInfo =
+        customer.customerGender +
+        ' ' +
+        customer.customerFName +
+        ' ' +
+        customer.customerLName;
+
+      const reqBody = {
+        mobile: customer.customerMobile,
+        templateId: 714566,
+        parameters: [
+          {
+            name: 'CUSTOMER',
+            value: userInfo,
+          },
+          {
+            name: 'TOKEN',
+            value: token,
+          },
+          {
+            name: 'INVOICEID',
+            value: invoiceId,
+          },
+        ],
+      };
+      console.log(reqBody);
+
+      const res = await fetch(smsEndpoints.verify, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': '7uyRcCHDKpobMJz0B0G3kOX4fO4gyTuwrrsSuWrgIrr50qvy',
+        },
+        body: JSON.stringify(reqBody),
+      });
+      const result = await res.json();
+      console.log(result);
+
+      return result;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException('ارسال پیامک شکست خورد');
+    }
+  }
 
   async sendUpdateDepotSms(
     customer: Customer,

@@ -187,6 +187,40 @@ export class InvoiceService {
     return { items, total };
   }
 
+  async getUserAcceptedInvoicesByCustomerId(
+    customerId: number,
+    limit: number,
+    search: string,
+    page: number,
+    userId: number,
+  ): Promise<{ total: number; items: Invoice[] }> {
+    const query = this.dataSource
+      .getRepository(Invoice)
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.createdBy', 'user')
+      .leftJoinAndSelect('invoice.customer', 'customer')
+      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+      .leftJoinAndSelect('invoiceGoods.good', 'good')
+      .where('invoice.customer= :customer', { customer: customerId })
+      .andWhere('invoice.createdBy= :user', { user: userId })
+      .andWhere('invoice.isAccepted=1')
+      .andWhere('invoice.finished=0');
+
+    if (search) {
+      query.andWhere('invoice.id= :search', { search: search });
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('invoice.createdAt', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
   async updateInvoice(
     id: number,
     data: Partial<Invoice>,
@@ -210,6 +244,15 @@ export class InvoiceService {
     });
     await this.invoiceGoodsRepository.remove(invoice?.invoiceGoods!);
     invoice.invoiceGoods = [...data?.invoiceGoods!];
+    return await this.invoiceRepository.save({ ...invoice, ...data });
+  }
+
+  async updateInvoiceDriverInfo(
+    token: string,
+    data: Partial<Invoice>,
+  ): Promise<Invoice> {
+    const invoice = await this.verifyAndFetchInvoice(token);
+    if (!invoice) throw new NotFoundException('فاکتور مورد نظر موجود نیست');
     return await this.invoiceRepository.save({ ...invoice, ...data });
   }
 
@@ -254,22 +297,43 @@ export class InvoiceService {
     throw new NotFoundException('فاکتور وجود ندارد');
   }
 
+  async sendDriverLink(id: number) {
+    const invoice = await this.invoiceRepository.findOne({ where: { id } });
+    if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
+    const token = await this.generateShareableLink(invoice.id);
+
+    const smsResult = await this.smsService.sendUpdateInvoiceDriverNameSms(
+      invoice.customer,
+      token,
+      invoice.id,
+    );
+    if (smsResult.status !== 1)
+      throw new BadRequestException(
+        'ارسال پیامک شکست خورد ' + smsResult.message,
+      );
+    return await this.invoiceRepository.save({
+      ...invoice,
+      driverTokenIsSent: true,
+      driverToken: token,
+    });
+  }
+
   async setInvoiceIsSent(id: number) {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
-    if (invoice) {
-      if (!invoice.customerLink)
-        invoice.customerLink = await this.generateShareableLink(invoice.id);
-      const smsResult = await this.smsService.sendUpdateInvoiceSms(
-        invoice.customer,
-        invoice.customerLink,
+    if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
+
+    const token = await this.generateShareableLink(invoice.id);
+
+    invoice.customerLink = token;
+    const smsResult = await this.smsService.sendUpdateInvoiceSms(
+      invoice.customer,
+      token,
+    );
+    if (smsResult.status !== 1)
+      throw new BadRequestException(
+        'ارسال پیامک شکست خورد ' + smsResult.message,
       );
-      if (smsResult.status !== 1)
-        throw new BadRequestException(
-          'ارسال پیامک شکست خورد ' + smsResult.message,
-        );
-      return this.invoiceRepository.save({ ...invoice, isSent: true });
-    }
-    throw new NotFoundException('فاکتور وجود ندارد');
+    return await this.invoiceRepository.save({ ...invoice, isSent: true });
   }
 
   async renewInvoiceToken(invoiceId: number) {
