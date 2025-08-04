@@ -36,9 +36,9 @@ export class InvoiceService {
       const proforma = await this.proformaService.getProforma(
         data?.proforma?.id!,
       );
-      if (!proforma) {
+      if (!proforma)
         throw new BadRequestException('پیش فاکتور انتخاب شده معتبر نمی باشد.');
-      }
+      proforma.isConverted = true;
       const invoice = queryRunner.manager.create(Invoice, {
         title: data?.title,
         customer: proforma.customer,
@@ -62,6 +62,7 @@ export class InvoiceService {
       savedInvoice.customerLink = customerToken;
       await queryRunner.manager.save(invoiceGoods);
       await queryRunner.manager.save(savedInvoice);
+      await queryRunner.manager.save(proforma);
       await queryRunner.commitTransaction();
 
       return savedInvoice;
@@ -323,8 +324,6 @@ export class InvoiceService {
     if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
 
     const token = await this.generateShareableLink(invoice.id);
-
-    invoice.customerLink = token;
     const smsResult = await this.smsService.sendUpdateInvoiceSms(
       invoice.customer,
       token,
@@ -333,7 +332,11 @@ export class InvoiceService {
       throw new BadRequestException(
         'ارسال پیامک شکست خورد ' + smsResult.message,
       );
-    return await this.invoiceRepository.save({ ...invoice, isSent: true });
+    return await this.invoiceRepository.save({
+      ...invoice,
+      isSent: true,
+      customerLink: token,
+    });
   }
 
   async renewInvoiceToken(invoiceId: number) {

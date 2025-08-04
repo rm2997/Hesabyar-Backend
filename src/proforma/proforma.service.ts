@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as jwt from 'jsonwebtoken';
@@ -12,7 +11,6 @@ import { User } from 'src/users/users.entity';
 import { ConfigService } from '@nestjs/config';
 import { ProformaGoods } from './proforma-goods.entity';
 import { SmsService } from 'src/sms/sms.service';
-import { response } from 'express';
 
 @Injectable()
 export class ProformaService {
@@ -72,10 +70,7 @@ export class ProformaService {
   }
 
   async getProforma(id: number): Promise<Proforma | null> {
-    const proforma = this.proformaRepository.findOne({ where: { id } }); // پیدا کردن پیش‌فاکتور بر اساس شناسه
-    proforma.then((res) => {
-      console.log(res?.customer);
-    });
+    const proforma = await this.proformaRepository.findOne({ where: { id } });
     return proforma;
   }
 
@@ -121,7 +116,40 @@ export class ProformaService {
       .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
       .leftJoinAndSelect('proformaGoods.good', 'good')
       .andWhere('proforma.createdBy= :user', { user: user.id })
-      .andWhere('proforma.isAccepted=1');
+      .andWhere('proforma.isAccepted=1')
+      .andWhere('proforma.isConverted=0');
+
+    if (search) {
+      query.andWhere('proforma.id= :id', { id: search });
+    }
+
+    const total = await query.getCount();
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('proforma.createdAt', 'DESC')
+      .getMany();
+    return { total, items };
+  }
+
+  async getAcceptedProformasByCustomerId(
+    customerId: number,
+    page: number,
+    limit: number,
+    search: string,
+    user: Partial<User>,
+  ): Promise<{ items: Proforma[]; total: number }> {
+    const query = this.dataSource
+      .getRepository(Proforma)
+      .createQueryBuilder('proforma')
+      .leftJoinAndSelect('proforma.createdBy', 'user')
+      .leftJoinAndSelect('proforma.customer', 'customer')
+      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+      .leftJoinAndSelect('proformaGoods.good', 'good')
+      .where('proforma.customer= :customer', { customer: customerId })
+      .andWhere('proforma.createdBy= :user', { user: user.id })
+      .andWhere('proforma.isAccepted=1')
+      .andWhere('proforma.isConverted=0');
 
     if (search) {
       query.andWhere('proforma.id= :id', { id: search });
@@ -145,75 +173,62 @@ export class ProformaService {
       where: { id },
       relations: ['proformaGoods'],
     });
-    if (proforma) {
-      proforma.totalAmount = data?.totalAmount!;
-      data?.proformaGoods?.map((g) => {
-        if (g.id == 0) {
-          g.createdAt = new Date();
-          g.createdBy = updatedBy;
-        } else {
-          g.createdBy = updatedBy;
-        }
-      });
-
-      await this.proformaGoodsRepository.remove(proforma.proformaGoods);
-      proforma.proformaGoods = [...data?.proformaGoods!];
-      return await this.proformaRepository.save({ ...proforma, ...data });
-      // //Remove deleted items
-      // if (updatedItems?.length! < existItems.length) {
-      //   const removedItems = existItems.filter(
-      //     (item) => !updatedItems?.includes(item),
-      //   );
-
-      //   removedItems.map(
-      //     async (item) => await this.proformaGoodsRepository.remove(item),
-      //   );
-      // }
-    }
-    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    if (!proforma) throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    proforma.totalAmount = data?.totalAmount!;
+    data?.proformaGoods?.map((g) => {
+      if (g.id == 0) {
+        g.createdAt = new Date();
+        g.createdBy = updatedBy;
+      } else {
+        g.createdBy = updatedBy;
+      }
+    });
+    await this.proformaGoodsRepository.remove(proforma.proformaGoods);
+    proforma.proformaGoods = [...data?.proformaGoods!];
+    return await this.proformaRepository.save({ ...proforma, ...data });
   }
 
   async setProformaIsAccepted(id: number, acceptedBy: User) {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
-    if (proforma) {
-      return this.proformaRepository.save({
-        ...proforma,
-        isAccepted: true,
-        acceptedBy: acceptedBy,
-      });
-    }
-    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
+    return await this.proformaRepository.save({
+      ...proforma,
+      isAccepted: true,
+      acceptedBy: acceptedBy,
+    });
   }
 
   async setProformaIsSent(id: number) {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
-    if (proforma) {
-      const smsResult = await this.smsService.sendUpdateProformaSms(
-        proforma.customer,
-        proforma.customerLink,
+    if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
+    const token = await this.generateShareableLink(proforma.id);
+
+    const smsResult = await this.smsService.sendUpdateProformaSms(
+      proforma.customer,
+      token,
+    );
+    if (smsResult.status !== 1)
+      throw new BadRequestException(
+        'ارسال پیامک شکست خورد ' + smsResult.message,
       );
-      if (smsResult.status !== 1)
-        throw new BadRequestException(
-          'ارسال پیامک شکست خورد ' + smsResult.message,
-        );
-      return this.proformaRepository.save({ ...proforma, isSent: true });
-    }
-    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    return await this.proformaRepository.save({
+      ...proforma,
+      isSent: true,
+      customerLink: token,
+    });
   }
 
   async convertToInvoice(id: number, user: User): Promise<Proforma> {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
 
-    if (proforma) {
-      proforma.isConverted = true;
-      proforma.convertedBy = user;
-      return this.proformaRepository.save(proforma);
-    }
-    throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+    if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
+    proforma.isConverted = true;
+    proforma.convertedBy = user;
+    return await this.proformaRepository.save(proforma);
   }
-  // این متد برای حذف پیش‌فاکتور است
-  async deleteProforma(id: number): Promise<void> {
-    await this.proformaRepository.delete(id); // حذف پیش‌فاکتور از دیتابیس
+
+  async deleteProforma(id: number) {
+    return await this.proformaRepository.delete(id);
   }
 
   async generateShareableLink(proformaId: number): Promise<string> {
@@ -230,7 +245,7 @@ export class ProformaService {
       const proforma = await this.proformaRepository.findOne({
         where: { id: proformaId },
       });
-      if (!proforma) throw new NotFoundException('پیش‌فاکتور وجود ندارد');
+      if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
       const newToken = await this.generateShareableLink(proformaId);
       proforma.customerLink = newToken;
       proforma.isSent = false;

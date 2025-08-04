@@ -169,6 +169,24 @@ export class ProformaController {
     );
   }
 
+  @Get('customer/accepted/:customerId')
+  async getUserAcceptedProformasByCustomerId(
+    @Param('customerId') customerId: number,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return await this.proformaService.getAcceptedProformasByCustomerId(
+      customerId,
+      page,
+      limit,
+      search,
+      user,
+    );
+  }
+
   @UserRoles(Roles.Admin || Roles.Accountant)
   @Get()
   async getAll(
