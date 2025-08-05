@@ -68,6 +68,18 @@ export class Depot {
   @Column({ nullable: true })
   customerToken: string;
 
+  @Column({ nullable: true })
+  exitGoodImage: string;
+
+  @Column({ nullable: true })
+  driverSignImage: string;
+
+  @ManyToOne(() => User, (user) => user.id, { eager: true })
+  warehouseAcceptedBy: User;
+
+  @Column({ nullable: true })
+  warehouseAcceptedAt: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -44,6 +44,64 @@ export class DepotController {
     return this.depotService.createDepot(data, user);
   }
 
+  @Post('/driverSignImage')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads/depot',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            'depot_' + Date.now() + Math.round(Math.random() * 1e9);
+          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async insertDriverSignImage(
+    @Param('id') id: number,
+    @UploadedFile() image: Express.Multer.File,
+  ) {
+    if (!image) {
+      throw new BadRequestException('فایلی ارسال نشده است');
+    }
+    const depot = await this.depotService.getDepotById(id);
+    if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+
+    const filePath = `/uploads/depot/${image.filename}`;
+    depot.driverSignImage = filePath;
+
+    return await this.depotService.updateDepot(depot?.id, depot);
+  }
+
+  @Post('exitGoodImage/:id')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads/depot',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            'depot_' + Date.now() + Math.round(Math.random() * 1e9);
+          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async insertExitGoodImage(
+    @Param('id') id: number,
+    @UploadedFile() image: Express.Multer.File,
+  ) {
+    if (!image) {
+      throw new BadRequestException('فایلی ارسال نشده است');
+    }
+    const depot = await this.depotService.getDepotById(id);
+    if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+
+    const filePath = `/uploads/depot/${image.filename}`;
+    depot.exitGoodImage = filePath;
+
+    return await this.depotService.updateDepot(depot?.id, depot);
+  }
+
   // @Post()
   // @UseInterceptors(
   //   FilesInterceptor('images', 5, {
@@ -82,7 +140,6 @@ export class DepotController {
 
   //   return newDepotGood;
   // }
-
   @Get('image/:id')
   async getDepotImageFile(@Param('id') id: number, @Res() res: Response) {
     const depotGood = await this.depotService.getDepotGoodById(id);
@@ -163,6 +220,27 @@ export class DepotController {
       );
   }
 
+  @Get('warehouseList')
+  async getDepotsForWareHouseAccept(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('type') type: DepotTypes,
+    @Query('search') search: string,
+  ) {
+    if (type == DepotTypes.in)
+      return await this.depotService.getAllInputDepotsForWareHouseAccept(
+        page,
+        limit,
+        search,
+      );
+    else
+      return await this.depotService.getAllOutputDepotsForWareHouseAccept(
+        page,
+        limit,
+        search,
+      );
+  }
+
   @Get(':id')
   async getDepot(@Param('id') id: number) {
     const Depot = await this.depotService.getDepotById(id);
@@ -191,11 +269,6 @@ export class DepotController {
     const depot = await this.depotService.verifyAndFetchDepot(token);
     if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
     console.log('data is:', data);
-
-    // if (depot.customerLink == token && depot.approvedFile) {
-    //   throw new BadRequestException('این فاکتور قبلا تایید شده است');
-    // }
-
     return this.depotService.updateDepot(depot?.id, data);
   }
 

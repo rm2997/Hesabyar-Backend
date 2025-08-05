@@ -163,6 +163,44 @@ export class DepotService {
 
     return { items, total };
   }
+
+  async getAllInputDepotsForWareHouseAccept(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Depot[] }> {
+    const query = this.dataSource
+      .getRepository(Depot)
+      .createQueryBuilder('depot')
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
+      .where('depot.depotType= :type', { type: DepotTypes.in })
+      .andWhere('depot.isSent=true')
+      .andWhere('depot.isAccepted=true')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver<>''");
+
+    if (search) {
+      query.andWhere(`depot.id=${search}`);
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
+      .orderBy('depot.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
   async getAllInputDepotsForAccept(
     page: number,
     limit: number,
@@ -181,6 +219,43 @@ export class DepotService {
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
       .leftJoinAndSelect('depot.createdBy', 'user')
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+
+    if (search) {
+      query.andWhere(`depot.id=${search}`);
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
+      .orderBy('depot.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
+  async getAllOutputDepotsForWareHouseAccept(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Depot[] }> {
+    const query = this.dataSource
+      .getRepository(Depot)
+      .createQueryBuilder('depot')
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
+      .where('depot.depotType= :type', { type: DepotTypes.out })
+      .andWhere('depot.isSent=true')
+      .andWhere('depot.isAccepted=true')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver<>''");
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
