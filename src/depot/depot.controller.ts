@@ -44,14 +44,14 @@ export class DepotController {
     return this.depotService.createDepot(data, user);
   }
 
-  @Post('/driverSignImage')
+  @Post('driverSignImage/:id')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
         destination: './uploads/depot',
         filename: (req, file, cb) => {
           const uniqueSuffix =
-            'depot_' + Date.now() + Math.round(Math.random() * 1e9);
+            'depotDriverSign_' + Date.now() + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -80,7 +80,7 @@ export class DepotController {
         destination: './uploads/depot',
         filename: (req, file, cb) => {
           const uniqueSuffix =
-            'depot_' + Date.now() + Math.round(Math.random() * 1e9);
+            'depotExitGood_' + Date.now() + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -88,17 +88,21 @@ export class DepotController {
   )
   async insertExitGoodImage(
     @Param('id') id: number,
+    @Req() req: Request,
     @UploadedFile() image: Express.Multer.File,
   ) {
+    console.log('new request for insert depot image...');
     if (!image) {
       throw new BadRequestException('فایلی ارسال نشده است');
     }
+    const user = req.user as User;
     const depot = await this.depotService.getDepotById(id);
     if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
 
     const filePath = `/uploads/depot/${image.filename}`;
     depot.exitGoodImage = filePath;
-
+    depot.warehouseAcceptedBy = user;
+    depot.warehouseAcceptedAt = new Date();
     return await this.depotService.updateDepot(depot?.id, depot);
   }
 

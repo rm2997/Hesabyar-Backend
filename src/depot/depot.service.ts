@@ -138,6 +138,7 @@ export class DepotService {
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.out })
       .andWhere('depot.isAccepted=0')
+      .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
       .andWhere('depot.driver IS NOT NULL')
       .andWhere("depot.driver <> '' ")
       .leftJoinAndSelect('depot.depotInvoice', 'invoice')
@@ -253,7 +254,6 @@ export class DepotService {
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
       .where('depot.depotType= :type', { type: DepotTypes.out })
       .andWhere('depot.isSent=true')
-      .andWhere('depot.isAccepted=true')
       .andWhere('depot.driver IS NOT NULL')
       .andWhere("depot.driver<>''");
 
@@ -275,9 +275,9 @@ export class DepotService {
   async getDepotById(id: number): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id },
-      relations: ['depotGood'],
+      relations: ['depotGoods'],
     });
-    if (!depot) throw new NotFoundException();
+    if (!depot) throw new NotFoundException('سند مورد نظر موجود نیست');
 
     return depot;
   }
@@ -294,7 +294,7 @@ export class DepotService {
   async updateDepot(id: number, data: Partial<Depot>): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id: id },
-      relations: ['depotGoods'],
+      relations: ['depotGoods', 'warehouseAcceptedBy', 'acceptedBy'],
     });
     if (!depot) throw new NotFoundException('اطلاعات انبار وجود ندارد');
 
