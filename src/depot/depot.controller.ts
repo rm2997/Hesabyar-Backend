@@ -32,6 +32,7 @@ import { DepotGoods } from './depot-goods.entity';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { Public } from 'src/common/decorators/jwt.decorator';
+import * as fs from 'fs';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('depot')
@@ -70,7 +71,9 @@ export class DepotController {
     const filePath = `/uploads/depot/${image.filename}`;
     depot.driverSignImage = filePath;
 
-    return await this.depotService.updateDepot(depot?.id, depot);
+    return await this.depotService.updateDepot(depot?.id, {
+      driverSignImage: filePath,
+    });
   }
 
   @Post('exitGoodImage/:id')
@@ -101,9 +104,11 @@ export class DepotController {
 
     const filePath = `/uploads/depot/${image.filename}`;
     depot.exitGoodImage = filePath;
-    depot.warehouseAcceptedBy = user;
-    depot.warehouseAcceptedAt = new Date();
-    return await this.depotService.updateDepot(depot?.id, depot);
+    // depot.warehouseAcceptedBy = user;
+    // depot.warehouseAcceptedAt = new Date();
+    return await this.depotService.updateDepot(depot?.id, {
+      exitGoodImage: filePath,
+    });
   }
 
   // @Post()
@@ -303,5 +308,46 @@ export class DepotController {
     const depot: Depot = await this.depotService.setDepotIsAccepted(id, user);
 
     return depot;
+  }
+
+  @UserRoles(Roles.Admin)
+  @Patch('warehouseAccept/:id')
+  async setDepotIsAcceptedByWarehouse(
+    @Param('id') id: number,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    const depot: Depot = await this.depotService.setDepotIsAcceptedByWarehouse(
+      id,
+      user,
+    );
+
+    return depot;
+  }
+
+  @Get('warehouseImages/:id')
+  async getDepotWarehouseImages(
+    @Param('id') id: number,
+  ): Promise<{ driverSignImage: string; carImage: string }> {
+    const depot = await this.depotService.getDepotById(id);
+    if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+
+    let carImage = '';
+    if (!depot.exitGoodImage) carImage = '';
+    else {
+      const carFilePath = join(__dirname, '..', '..', depot.exitGoodImage);
+      if (!existsSync(carFilePath)) carImage = '';
+      else carImage = fs.readFileSync(carFilePath).toString('base64');
+    }
+
+    let driverSignImage = '';
+    if (!depot.driverSignImage) driverSignImage = '';
+    else {
+      const driverFilePath = join(__dirname, '..', '..', depot.driverSignImage);
+      if (!existsSync(driverFilePath)) driverSignImage = '';
+      else driverSignImage = fs.readFileSync(driverFilePath).toString('base64');
+    }
+
+    return { driverSignImage, carImage };
   }
 }

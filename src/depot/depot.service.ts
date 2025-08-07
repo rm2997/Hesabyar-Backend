@@ -128,43 +128,6 @@ export class DepotService {
     return { items, total };
   }
 
-  async getAllOutputDepotsForAccept(
-    page: number,
-    limit: number,
-    search: string,
-  ): Promise<{ total: number; items: Depot[] }> {
-    const query = this.dataSource
-      .getRepository(Depot)
-      .createQueryBuilder('depot')
-      .where('depot.depotType= :type', { type: DepotTypes.out })
-      .andWhere('depot.isAccepted=0')
-      .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
-      .andWhere('depot.driver IS NOT NULL')
-      .andWhere("depot.driver <> '' ")
-      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
-      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
-      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
-      .leftJoinAndSelect('depotGoods.good', 'good')
-      .leftJoinAndSelect('good.goodUnit', 'unit')
-      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
-      .leftJoinAndSelect('depot.createdBy', 'user')
-      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
-
-    if (search) {
-      query.andWhere(`depot.id=${search}`);
-    }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip(limit == -1 ? 0 : (page - 1) * limit)
-      .take(limit == -1 ? undefined : limit)
-      .orderBy('depot.id', 'DESC')
-      .getMany();
-
-    return { items, total };
-  }
-
   async getAllInputDepotsForWareHouseAccept(
     page: number,
     limit: number,
@@ -183,7 +146,7 @@ export class DepotService {
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
       .where('depot.depotType= :type', { type: DepotTypes.in })
       .andWhere('depot.isSent=true')
-      .andWhere('depot.isAccepted=true')
+      .andWhere('depot.warehouseAcceptedBy IS NULL')
       .andWhere('depot.driver IS NOT NULL')
       .andWhere("depot.driver<>''");
 
@@ -236,6 +199,43 @@ export class DepotService {
     return { items, total };
   }
 
+  async getAllOutputDepotsForAccept(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Depot[] }> {
+    const query = this.dataSource
+      .getRepository(Depot)
+      .createQueryBuilder('depot')
+      .where('depot.depotType= :type', { type: DepotTypes.out })
+      .andWhere('depot.isAccepted=0')
+      .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver <> '' ")
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+
+    if (search) {
+      query.andWhere(`depot.id=${search}`);
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
+      .orderBy('depot.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
   async getAllOutputDepotsForWareHouseAccept(
     page: number,
     limit: number,
@@ -255,7 +255,8 @@ export class DepotService {
       .where('depot.depotType= :type', { type: DepotTypes.out })
       .andWhere('depot.isSent=true')
       .andWhere('depot.driver IS NOT NULL')
-      .andWhere("depot.driver<>''");
+      .andWhere("depot.driver<>''")
+      .andWhere('depot.warehouseAcceptedById IS NULL');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -380,6 +381,41 @@ export class DepotService {
       //   isAccepted: true,
       //   acceptedBy: user,
       // });
+    });
+
+    if (depot && depot?.depotType == DepotTypes.out) {
+      const mobile = depot?.depotInvoice.customer?.customerMobile;
+      if (mobile) {
+        const sms = await this.sendSmsForDepotExit(
+          mobile,
+          depot?.depotInvoice?.id,
+        );
+        console.log('SMS status:', sms);
+      }
+    }
+    return depot;
+  }
+
+  async setDepotIsAcceptedByWarehouse(
+    id: number,
+    user: User,
+  ): Promise<Depot | any> {
+    const depot = await this.dataSource.transaction(async (manager) => {
+      const depot = await manager.findOne(Depot, {
+        where: { id: id },
+        relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
+      });
+
+      if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
+
+      if (!depot.warehouseAcceptedBy)
+        throw new BadRequestException('این سند قبلا تایید شده است');
+
+      depot.warehouseAcceptedBy = user;
+      depot.warehouseAcceptedAt = new Date();
+      console.log('depot will accept by warehouse user:', user);
+
+      return await manager.save(Depot, depot);
     });
 
     if (depot && depot?.depotType == DepotTypes.out) {
