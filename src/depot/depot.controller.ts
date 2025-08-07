@@ -208,7 +208,7 @@ export class DepotController {
     else return await this.depotService.getAllOutputDepots(page, limit, search);
   }
 
-  @Get('accept-request')
+  @Get('acceptList')
   async getDepotsForAccept(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
@@ -337,7 +337,10 @@ export class DepotController {
     else {
       const carFilePath = join(__dirname, '..', '..', depot.exitGoodImage);
       if (!existsSync(carFilePath)) carImage = '';
-      else carImage = fs.readFileSync(carFilePath).toString('base64');
+      else
+        carImage =
+          'data:image/jpeg;base64,' +
+          fs.readFileSync(carFilePath).toString('base64');
     }
 
     let driverSignImage = '';
@@ -345,9 +348,63 @@ export class DepotController {
     else {
       const driverFilePath = join(__dirname, '..', '..', depot.driverSignImage);
       if (!existsSync(driverFilePath)) driverSignImage = '';
-      else driverSignImage = fs.readFileSync(driverFilePath).toString('base64');
+      else
+        driverSignImage =
+          'data:image/jpeg;base64,' +
+          fs.readFileSync(driverFilePath).toString('base64');
     }
 
     return { driverSignImage, carImage };
+  }
+
+  @Public()
+  @Get('warehouseImages/token/:token')
+  async getDepotWarehouseImagesByToken(@Param('token') token: string): Promise<{
+    driverSignImage: string;
+    carImage: string;
+    invoiceImage: string;
+  }> {
+    const depot = await this.depotService.verifyAndFetchDepot(token);
+    if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
+
+    let carImage = '';
+    if (!depot.exitGoodImage) carImage = '';
+    else {
+      const carFilePath = join(__dirname, '..', '..', depot.exitGoodImage);
+      if (!existsSync(carFilePath)) carImage = '';
+      else
+        carImage =
+          'data:image/jpeg;base64,' +
+          fs.readFileSync(carFilePath).toString('base64');
+    }
+
+    let driverSignImage = '';
+    if (!depot.driverSignImage) driverSignImage = '';
+    else {
+      const driverFilePath = join(__dirname, '..', '..', depot.driverSignImage);
+      if (!existsSync(driverFilePath)) driverSignImage = '';
+      else
+        driverSignImage =
+          'data:image/jpeg;base64,' +
+          fs.readFileSync(driverFilePath).toString('base64');
+    }
+
+    let invoiceImage = '';
+    if (!depot.depotInvoice?.approvedFile) invoiceImage = '';
+    else {
+      const invoiceFilePath = join(
+        __dirname,
+        '..',
+        '..',
+        depot.depotInvoice?.approvedFile,
+      );
+      if (!existsSync(invoiceFilePath)) invoiceImage = '';
+      else
+        invoiceImage =
+          'data:image/jpeg;base64,' +
+          fs.readFileSync(invoiceFilePath).toString('base64');
+    }
+
+    return { driverSignImage, carImage, invoiceImage };
   }
 }

@@ -182,7 +182,8 @@ export class DepotService {
       .leftJoinAndSelect('good.goodUnit', 'unit')
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
       .leftJoinAndSelect('depot.createdBy', 'user')
-      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
+      .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -219,7 +220,8 @@ export class DepotService {
       .leftJoinAndSelect('good.goodUnit', 'unit')
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
       .leftJoinAndSelect('depot.createdBy', 'user')
-      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
+      .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -385,13 +387,18 @@ export class DepotService {
 
     if (depot && depot?.depotType == DepotTypes.out) {
       const mobile = depot?.depotInvoice.customer?.customerMobile;
-      if (mobile) {
-        const sms = await this.sendSmsForDepotExit(
-          mobile,
-          depot?.depotInvoice?.id,
-        );
-        console.log('SMS status:', sms);
-      }
+      const token = await this.generateNewToken(depot?.id);
+      console.log(token);
+
+      // if (mobile) {
+      //   const sms = await this.sendSmsForDepotExit(
+      //     mobile,
+      //     depot?.depotInvoice?.id,
+      //     depot?.driver,
+      //     token,
+      //   );
+      //   console.log('SMS status:', sms);
+      // }
     }
     return depot;
   }
@@ -408,7 +415,7 @@ export class DepotService {
 
       if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
 
-      if (!depot.warehouseAcceptedBy)
+      if (depot.warehouseAcceptedBy)
         throw new BadRequestException('این سند قبلا تایید شده است');
 
       depot.warehouseAcceptedBy = user;
@@ -417,17 +424,6 @@ export class DepotService {
 
       return await manager.save(Depot, depot);
     });
-
-    if (depot && depot?.depotType == DepotTypes.out) {
-      const mobile = depot?.depotInvoice.customer?.customerMobile;
-      if (mobile) {
-        const sms = await this.sendSmsForDepotExit(
-          mobile,
-          depot?.depotInvoice?.id,
-        );
-        console.log('SMS status:', sms);
-      }
-    }
     return depot;
   }
 
@@ -481,8 +477,18 @@ export class DepotService {
     }
   }
 
-  async sendSmsForDepotExit(driverMobile: string, depotId: number) {
+  async sendSmsForDepotExit(
+    driverMobile: string,
+    depotId: number,
+    driverInfo: string,
+    token: string,
+  ) {
     //const token = await this.generateNewToken(depotId);
-    await this.smsService.sendDepotExitSms(driverMobile, depotId);
+    await this.smsService.sendDepotExitSms(
+      driverMobile,
+      depotId,
+      driverInfo,
+      token,
+    );
   }
 }
