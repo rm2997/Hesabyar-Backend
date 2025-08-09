@@ -383,6 +383,7 @@ export class DepotService {
         invoice.finished = true;
         await manager.save(Invoice, invoice);
       }
+      depot.finished = true;
       return await manager.save(Depot, depot);
       // return await this.depotRepository.save({
       //   ...depot,

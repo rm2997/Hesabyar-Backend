@@ -50,6 +50,9 @@ export class Depot {
   @Column({ default: false })
   isAccepted: boolean;
 
+  @Column({ default: false })
+  finished: boolean;
+
   @Column({ nullable: true, default: false })
   isSent: boolean;
 
