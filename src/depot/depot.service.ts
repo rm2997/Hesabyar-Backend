@@ -73,12 +73,14 @@ export class DepotService {
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.in })
       .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
       .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
       .leftJoinAndSelect('depotGoods.good', 'good')
       .leftJoinAndSelect('good.goodUnit', 'unit')
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
       .leftJoinAndSelect('depot.createdBy', 'user')
-      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
+      .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -111,44 +113,8 @@ export class DepotService {
       .leftJoinAndSelect('good.goodUnit', 'unit')
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
       .leftJoinAndSelect('depot.createdBy', 'user')
-      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user');
-
-    if (search) {
-      query.andWhere(`depot.id=${search}`);
-    }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip(limit == -1 ? 0 : (page - 1) * limit)
-      .take(limit == -1 ? undefined : limit)
-      .orderBy('depot.id', 'DESC')
-      .getMany();
-
-    return { items, total };
-  }
-
-  async getAllInputDepotsForWareHouseAccept(
-    page: number,
-    limit: number,
-    search: string,
-  ): Promise<{ total: number; items: Depot[] }> {
-    const query = this.dataSource
-      .getRepository(Depot)
-      .createQueryBuilder('depot')
-      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
-      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
-      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
-      .leftJoinAndSelect('depotGoods.good', 'good')
-      .leftJoinAndSelect('good.goodUnit', 'unit')
-      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
-      .leftJoinAndSelect('depot.createdBy', 'user')
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
-      .where('depot.depotType= :type', { type: DepotTypes.in })
-      .andWhere('depot.isSent=true')
-      .andWhere('depot.warehouseAcceptedBy IS NULL')
-      .andWhere('depot.driver IS NOT NULL')
-      .andWhere("depot.driver<>''");
+      .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -175,6 +141,9 @@ export class DepotService {
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.in })
       .andWhere('depot.isAccepted=0')
+      .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver <> '' ")
       .leftJoinAndSelect('depot.depotInvoice', 'invoice')
       .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
       .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
@@ -222,6 +191,43 @@ export class DepotService {
       .leftJoinAndSelect('depot.createdBy', 'user')
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
       .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user');
+
+    if (search) {
+      query.andWhere(`depot.id=${search}`);
+    }
+
+    const total = await query.getCount();
+
+    const items = await query
+      .skip(limit == -1 ? 0 : (page - 1) * limit)
+      .take(limit == -1 ? undefined : limit)
+      .orderBy('depot.id', 'DESC')
+      .getMany();
+
+    return { items, total };
+  }
+
+  async getAllInputDepotsForWareHouseAccept(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Depot[] }> {
+    const query = this.dataSource
+      .getRepository(Depot)
+      .createQueryBuilder('depot')
+      .leftJoinAndSelect('depot.depotInvoice', 'invoice')
+      .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
+      .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
+      .leftJoinAndSelect('depotGoods.good', 'good')
+      .leftJoinAndSelect('good.goodUnit', 'unit')
+      .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
+      .leftJoinAndSelect('depot.createdBy', 'user')
+      .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
+      .where('depot.depotType= :type', { type: DepotTypes.in })
+      .andWhere('depot.isSent=true')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver<>''")
+      .andWhere('depot.warehouseAcceptedById IS NULL');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
