@@ -88,6 +88,7 @@ export class NotificationService {
     const items = await query
       .skip((page - 1) * limit)
       .take(limit)
+      .orderBy('notification.createdAt', 'DESC')
       .getMany();
     return { total, items };
   }
@@ -103,7 +104,7 @@ export class NotificationService {
       .createQueryBuilder('notification')
       .leftJoinAndSelect('notification.toUser', 'user')
       .andWhere(`notification.fromUser= :user`, { user: userId })
-      .andWhere('notification.receiverDelete=false');
+      .andWhere('notification.senderDelete=false');
 
     if (search) {
       query.andWhere('notification.title LIKE :search', {
@@ -115,6 +116,7 @@ export class NotificationService {
     const items = await query
       .skip((page - 1) * limit)
       .take(limit)
+      .orderBy('notification.createdAt', 'DESC')
       .getMany();
 
     return { total, items };

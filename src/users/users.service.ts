@@ -57,6 +57,35 @@ export class UsersService {
     return { total, items };
   }
 
+  async findAllProfiles(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ items: User[]; total: number } | null> {
+    const query = this.dataSource
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.username',
+        'user.userfname',
+        'user.userlname',
+        'user.role',
+      ])
+      .where('user.isUserActive=true');
+
+    if (search) {
+      query.andWhere('user.userName LIKE :search', { search: `%${search}%` });
+    }
+    const total = await query.getCount();
+    const items = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { total, items };
+  }
+
   async findById(id: number, selectPass: boolean = false): Promise<User> {
     const query = this.dataSource
       .getRepository(User)
