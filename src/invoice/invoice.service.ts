@@ -15,6 +15,9 @@ import { PaymentTypes } from 'src/common/decorators/payment.enum';
 import { User } from 'src/users/users.entity';
 import { InvoiceGoods } from './invoice-good.entity';
 import { SmsService } from 'src/sms/sms.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { UsersService } from 'src/users/users.service';
+import { Notification } from 'src/notification/notification.entity';
 
 @Injectable()
 export class InvoiceService {
@@ -26,6 +29,8 @@ export class InvoiceService {
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly smsService: SmsService,
+    private readonly notificationService: NotificationService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
@@ -246,6 +251,29 @@ export class InvoiceService {
     await this.invoiceGoodsRepository.remove(invoice?.invoiceGoods!);
     invoice.invoiceGoods = [...data?.invoiceGoods!];
     return await this.invoiceRepository.save({ ...invoice, ...data });
+  }
+
+  async updateInvoiceByPublicCustomer(invoice: Invoice) {
+    const saved = await this.updateInvoice(
+      invoice?.id,
+      invoice,
+      invoice.createdBy,
+    );
+
+    const admins: User[] = await this.usersService.getAdminUsers();
+    if (!admins || admins?.length == 0) return saved;
+    admins.forEach(async (user) => {
+      const notif = new Notification();
+      notif.fromUser = invoice.createdBy;
+      notif.toUser = user;
+      notif.message = ` همکار گرامی لطفا جهت تایید فاکتور شماره ${invoice.id} .اقدام فرمایید`;
+      notif.title = ` تایید فاکتور شماره ${invoice.id}`;
+      await this.notificationService.createNotification(
+        notif,
+        invoice.createdBy,
+      );
+    });
+    return saved;
   }
 
   async updateInvoiceDriverInfo(

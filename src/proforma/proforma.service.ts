@@ -11,6 +11,9 @@ import { User } from 'src/users/users.entity';
 import { ConfigService } from '@nestjs/config';
 import { ProformaGoods } from './proforma-goods.entity';
 import { SmsService } from 'src/sms/sms.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { UsersService } from 'src/users/users.service';
+import { Notification } from 'src/notification/notification.entity';
 
 @Injectable()
 export class ProformaService {
@@ -22,6 +25,8 @@ export class ProformaService {
     private readonly dataSource: DataSource,
     private configService: ConfigService,
     private readonly smsService: SmsService,
+    private readonly notificationService: NotificationService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createProforma(data: Partial<Proforma>, user: User): Promise<Proforma> {
@@ -186,6 +191,29 @@ export class ProformaService {
     await this.proformaGoodsRepository.remove(proforma.proformaGoods);
     proforma.proformaGoods = [...data?.proformaGoods!];
     return await this.proformaRepository.save({ ...proforma, ...data });
+  }
+
+  async updateProformaByPublicCustomer(proforma: Proforma) {
+    const saved = await this.updateProforma(
+      proforma?.id,
+      proforma,
+      proforma.createdBy,
+    );
+
+    const admins: User[] = await this.usersService.getAdminUsers();
+    if (!admins || admins?.length == 0) return saved;
+    admins.forEach(async (user) => {
+      const notif = new Notification();
+      notif.fromUser = proforma.createdBy;
+      notif.toUser = user;
+      notif.message = ` همکار گرامی لطفا جهت تایید پیش فاکتور شماره ${proforma.id} اقدام فرمایید`;
+      notif.title = ` تایید پیش فاکتور شماره ${proforma.id}`;
+      await this.notificationService.createNotification(
+        notif,
+        proforma.createdBy,
+      );
+    });
+    return saved;
   }
 
   async setProformaIsAccepted(id: number, acceptedBy: User) {

@@ -128,18 +128,11 @@ export class CustomerService {
     const customer = await this.customerRepository.findOne({
       where: { id: id },
     });
-    if (!customer) throw new NotFoundException();
-    customer.customerFName = data?.customerFName!;
-    customer.customerLName = data?.customerLName!;
-    customer.customerAddress = data?.customerAddress!;
-    customer.customerNationalCode = data?.customerNationalCode!;
-    customer.customerPhone = data?.customerPhone!;
-    customer.customerMobile = data?.customerMobile!;
-    customer.customerGender = data?.customerGender!;
-    customer.customerPostalCode = data?.customerPostalCode!;
-    console.log(customer);
+    if (!customer) throw new NotFoundException('مشتری مورد نظر موجود نیست');
 
-    return this.customerRepository.save(customer);
+    const saved = await this.customerRepository.save({ ...customer, ...data });
+    console.log('saved:', saved);
+    return saved;
   }
 
   async deleteCustomer(id: number): Promise<void> {

@@ -29,6 +29,8 @@ import { extname, join } from 'path';
 import { existsSync } from 'fs';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { NotificationService } from 'src/notification/notification.service';
+import { Notification } from 'src/notification/notification.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
@@ -39,12 +41,12 @@ export class ProformaController {
   @Post()
   async create(@Body() data: Partial<Proforma>, @Req() req: Request) {
     const user = req.user as User;
-    return this.proformaService.createProforma(data, user);
+    return await this.proformaService.createProforma(data, user);
   }
 
   @Post('generateNewToken/:id')
   async generateNewToken(@Param('id') id: number) {
-    return this.proformaService.renewProformaToken(id);
+    return await this.proformaService.renewProformaToken(id);
   }
 
   @Get('token/:token')
@@ -85,11 +87,10 @@ export class ProformaController {
     const filePath = `/uploads/proforma/${image.filename}`;
     proforma.approvedFile = filePath;
     console.log('Start updating proforma by customer:', proforma);
-    return this.proformaService.updateProforma(
-      proforma?.id,
-      proforma,
-      proforma.createdBy,
-    );
+    const saved =
+      await this.proformaService.updateProformaByPublicCustomer(proforma);
+
+    return saved;
   }
 
   @UserRoles(Roles.Admin || Roles.Accountant)
@@ -133,7 +134,7 @@ export class ProformaController {
   @Put('convert/:id')
   async convert(@Param('id') id: number, @Req() req: Request) {
     const user = req.user as User;
-    return this.proformaService.convertToInvoice(id, user);
+    return await this.proformaService.convertToInvoice(id, user);
   }
 
   @Get('view/:token')
@@ -150,7 +151,7 @@ export class ProformaController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
-    return this.proformaService.getAllByUser(page, limit, search, user);
+    return await this.proformaService.getAllByUser(page, limit, search, user);
   }
 
   @Get('user/accepted')
@@ -161,7 +162,7 @@ export class ProformaController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
-    return this.proformaService.getAcceptedProformasByUserId(
+    return await this.proformaService.getAcceptedProformasByUserId(
       page,
       limit,
       search,
@@ -194,12 +195,12 @@ export class ProformaController {
     @Query('limit') limit: number = 10,
     @Query('search') search: string,
   ) {
-    return this.proformaService.getAll(page, limit, search);
+    return await this.proformaService.getAll(page, limit, search);
   }
 
   @Get(':id')
   async get(@Param('id') id: number) {
-    const response = this.proformaService.getProforma(id);
+    const response = await this.proformaService.getProforma(id);
     return response;
   }
 
@@ -210,11 +211,11 @@ export class ProformaController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
-    return this.proformaService.updateProforma(id, data, user);
+    return await this.proformaService.updateProforma(id, data, user);
   }
 
   @Delete(':id')
   async delete(@Param('id') id: number) {
-    return this.proformaService.deleteProforma(id);
+    return await this.proformaService.deleteProforma(id);
   }
 }

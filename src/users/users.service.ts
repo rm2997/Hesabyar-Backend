@@ -12,6 +12,7 @@ import { Roles } from 'src/common/decorators/roles.enum';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { SmsService } from 'src/sms/sms.service';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
 
 @Injectable()
 export class UsersService {
@@ -381,5 +382,21 @@ export class UsersService {
     } catch (err) {
       throw new BadRequestException('لینک نامعتبر یا منقضی‌شده است');
     }
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    const admins: User[] = await this.usersRepository.find({
+      where: { role: Roles.Admin },
+    });
+
+    return admins;
+  }
+
+  async getWarehouseUsers(): Promise<User[]> {
+    const admins: User[] = await this.usersRepository.find({
+      where: { role: Roles.Warehouseman },
+    });
+
+    return admins;
   }
 }

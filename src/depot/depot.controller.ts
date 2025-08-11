@@ -278,7 +278,10 @@ export class DepotController {
     const depot = await this.depotService.verifyAndFetchDepot(token);
     if (!depot) throw new NotFoundException('اطلاعات مورد نظر وجود ندارد');
     console.log('data is:', data);
-    return this.depotService.updateDepot(depot?.id, data);
+    const requestedDepot: Depot = { ...depot, ...data };
+    const saved =
+      await this.depotService.updateDepotByPublicCustomer(requestedDepot);
+    return saved;
   }
 
   @Patch('sent/:id')

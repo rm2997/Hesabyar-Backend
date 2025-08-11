@@ -38,7 +38,6 @@ export class InvoiceController {
   async create(@Body() data: Partial<Invoice>, @Req() req: Request) {
     const user = req.user as User;
     console.log('Invoice data:', JSON.stringify(data));
-
     return await this.invoiceService.createInvoice(data, user);
   }
 
@@ -127,12 +126,7 @@ export class InvoiceController {
     const filePath = `/uploads/invoice/${image.filename}`;
     invoice.approvedFile = filePath;
     console.log('Start updating invoice by customer:', invoice);
-
-    return await this.invoiceService.updateInvoice(
-      invoice?.id,
-      invoice,
-      invoice.createdBy,
-    );
+    return await this.invoiceService.updateInvoiceByPublicCustomer(invoice);
   }
 
   @Public()

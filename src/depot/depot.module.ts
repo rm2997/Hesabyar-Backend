@@ -6,9 +6,16 @@ import { Depot } from './depot.entity';
 import { DepotGoods } from './depot-goods.entity';
 import { Invoice } from 'src/invoice/invoice.entity';
 import { SmsModule } from 'src/sms/sms.module';
+import { UsersModule } from 'src/users/users.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Depot, DepotGoods, Invoice]), SmsModule],
+  imports: [
+    TypeOrmModule.forFeature([Depot, DepotGoods, Invoice]),
+    SmsModule,
+    UsersModule,
+    NotificationModule,
+  ],
   controllers: [DepotController],
   providers: [DepotService],
 })

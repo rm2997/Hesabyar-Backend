@@ -14,6 +14,9 @@ import { Good } from 'src/goods/good.entity';
 import { SmsService } from 'src/sms/sms.service';
 import { Invoice } from 'src/invoice/invoice.entity';
 import { ConfigService } from '@nestjs/config';
+import { NotificationService } from 'src/notification/notification.service';
+import { UsersService } from 'src/users/users.service';
+import { Notification } from 'src/notification/notification.entity';
 
 @Injectable()
 export class DepotService {
@@ -27,6 +30,8 @@ export class DepotService {
     private readonly dataSource: DataSource,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createDepot(data: Partial<Depot>, user: User): Promise<Depot> {
@@ -47,9 +52,27 @@ export class DepotService {
     });
 
     const saved = await this.depotRepository.save(depot);
-    const token = await this.generateNewToken(saved.id);
-    saved.customerToken = token;
-    return await this.depotRepository.save(saved);
+
+    if (depot.depotType == DepotTypes.out) {
+      const token = await this.generateNewToken(saved.id);
+      saved.customerToken = token;
+      return await this.depotRepository.save(saved);
+    } else {
+      const admins: User[] = await this.usersService.getWarehouseUsers();
+      if (!admins || admins?.length == 0) return saved;
+      admins.forEach(async (user) => {
+        const notif = new Notification();
+        notif.fromUser = saved.createdBy;
+        notif.toUser = user;
+        notif.message = ` همکار گرامی لطفا جهت تایید سند ورودی شماره ${saved.id} اقدام فرمایید`;
+        notif.title = ` تایید سند ورودی شماره ${saved.id}`;
+        await this.notificationService.createNotification(
+          notif,
+          saved.createdBy,
+        );
+      });
+      return saved;
+    }
   }
 
   // async saveDepotImages(depotId: number, imagePaths: string[]) {
@@ -315,6 +338,22 @@ export class DepotService {
 
     const res = await this.depotRepository.save({ ...depot, ...data });
     return res;
+  }
+
+  async updateDepotByPublicCustomer(depot: Depot) {
+    const saved = await this.updateDepot(depot.id, depot);
+
+    const admins: User[] = await this.usersService.getAdminUsers();
+    if (!admins || admins?.length == 0) return saved;
+    admins.forEach(async (user) => {
+      const notif = new Notification();
+      notif.fromUser = depot.createdBy;
+      notif.toUser = user;
+      notif.message = ` همکار گرامی لطفا جهت تایید سند خروج کالا شماره ${depot.id} اقدام فرمایید`;
+      notif.title = ` تایید سند خروج کالا شماره ${depot.id}`;
+      await this.notificationService.createNotification(notif, depot.createdBy);
+    });
+    return saved;
   }
 
   async updateDepotGood(
