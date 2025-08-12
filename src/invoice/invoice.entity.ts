@@ -61,7 +61,10 @@ export class Invoice {
   chequeAmount: number;
 
   @Column({ nullable: true })
-  chequeSerial: number;
+  chequeSayad: string;
+
+  @Column({ nullable: true })
+  chequeSerial: string;
 
   @Column({ type: 'enum', enum: Banks, default: Banks.Meli })
   chequeIssuerName: Banks;
@@ -73,7 +76,7 @@ export class Invoice {
   paperMoneyAmount: number;
 
   @Column({ nullable: true })
-  paperMoneySerial: number;
+  paperMoneySerial: string;
 
   @Column({ nullable: true })
   trustIssueDate: Date;

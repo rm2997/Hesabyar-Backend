@@ -329,6 +329,14 @@ export class InvoiceService {
   async sendDriverLink(id: number) {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
+
+    const badGood = invoice.invoiceGoods.find((g) => g?.good?.goodCount <= 0);
+    if (badGood) {
+      throw new BadRequestException(
+        `کالای "${badGood.good.goodName}" در انبار موجود نیست`,
+      );
+    }
+
     const token = await this.generateShareableLink(invoice.id);
 
     const smsResult = await this.smsService.sendUpdateInvoiceDriverNameSms(

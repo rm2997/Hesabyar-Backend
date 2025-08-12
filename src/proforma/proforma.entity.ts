@@ -62,7 +62,10 @@ export class Proforma {
   chequeAmount: number;
 
   @Column({ nullable: true })
-  chequeSerial: number;
+  chequeSerial: string;
+
+  @Column({ nullable: true })
+  chequeSayad: string;
 
   @Column({ type: 'enum', enum: Banks, default: Banks.Meli })
   chequeIssuerName: Banks;
@@ -74,7 +77,7 @@ export class Proforma {
   paperMoneyAmount: number;
 
   @Column({ nullable: true })
-  paperMoneySerial: number;
+  paperMoneySerial: string;
 
   @Column({ nullable: true })
   trustIssueDate: Date;

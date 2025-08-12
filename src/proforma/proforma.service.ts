@@ -42,10 +42,13 @@ export class ProformaService {
       createdBy: { id: user.id },
     });
 
+    console.log('input Data is:', data);
+
     const savedProforma = await this.proformaRepository.save(proforma);
+    console.log('After save:', savedProforma);
     const shareableLink = await this.generateShareableLink(savedProforma.id);
     savedProforma.customerLink = shareableLink;
-    return this.proformaRepository.save(savedProforma);
+    return await this.proformaRepository.save(savedProforma);
   }
 
   async getAll(
