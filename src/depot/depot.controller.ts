@@ -13,7 +13,6 @@ import {
   Req,
   Res,
   UploadedFile,
-  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -23,12 +22,11 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { DepotService } from './depot.service';
 import { Depot } from './depot.entity';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { DepotTypes } from 'src/common/decorators/depotTypes.enum';
 import { existsSync } from 'fs';
-import { DepotGoods } from './depot-goods.entity';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { Public } from 'src/common/decorators/jwt.decorator';
@@ -42,6 +40,16 @@ export class DepotController {
   @Post()
   async create(@Body() data: Partial<Depot>, @Req() req: Request) {
     const user = req.user as User;
+    if (data.depotType == DepotTypes.out) {
+      console.log('Invoice id is:', data?.depotInvoice?.id);
+      const existingDepot = await this.depotService.getDepotByInvoiceId(
+        data?.depotInvoice?.id!,
+      );
+      if (existingDepot)
+        throw new BadRequestException(
+          'شماره فاکتور انتخاب شده قبلا استفاده شده است',
+        );
+    }
     return this.depotService.createDepot(data, user);
   }
 
@@ -308,9 +316,13 @@ export class DepotController {
   @Patch('accept/:id')
   async setDepotIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const user = req.user as User;
-    const depot: Depot = await this.depotService.setDepotIsAccepted(id, user);
-
-    return depot;
+    const depot = await this.depotService.getDepotById(id);
+    if (!depot) throw new NotFoundException('سند مورد نظر وجود ندارد');
+    if (depot.isAccepted)
+      throw new BadRequestException('این سند قبلا تایید شده است');
+    if (depot.depotType == DepotTypes.in)
+      return await this.depotService.setInputDepotIsAccepted(depot, user);
+    else return await this.depotService.setOutputtDepotIsAccepted(depot, user);
   }
 
   @UserRoles(Roles.Admin)
@@ -320,10 +332,13 @@ export class DepotController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
-    const depot: Depot = await this.depotService.setDepotIsAcceptedByWarehouse(
-      id,
-      user,
-    );
+    const depot = await this.depotService.getDepotById(id);
+    if (!depot) throw new NotFoundException('سند مورد نظر وجود ندارد');
+    if (depot.warehouseAcceptedBy)
+      throw new BadRequestException('این سند قبلا توسط انبادار تایید شده است');
+    if (depot.depotType == DepotTypes.in)
+      throw new BadRequestException('انباردار اجازه تایید این سند را ندارد');
+    return await this.depotService.setDepotIsAcceptedByWarehouse(depot, user);
 
     return depot;
   }

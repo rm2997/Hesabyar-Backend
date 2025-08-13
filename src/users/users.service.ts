@@ -143,13 +143,8 @@ export class UsersService {
       throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
     const user = await this.findById(id);
 
-    // if (updateData.password) {
-    //   const salt = await bcrypt.genSalt();
-    //   updateData.password = await bcrypt.hash(updateData.password, salt);
-    // }
-
-    Object.assign(user, updateData);
-    return this.usersRepository.save(user);
+    //Object.assign(user, updateData);
+    return this.usersRepository.save({ ...user, ...updateData });
   }
 
   async updateUserLocation(

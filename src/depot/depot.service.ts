@@ -37,9 +37,7 @@ export class DepotService {
   async createDepot(data: Partial<Depot>, user: User): Promise<Depot> {
     const depotGoods = [...data?.depotGoods!];
     if (!depotGoods)
-      throw new BadRequestException(
-        'هیچ کالایی برای خروج از انبار تعیین نشده است',
-      );
+      throw new BadRequestException('هیچ کالایی برای سند انبار تعیین نشده است');
 
     depotGoods.map((g) => {
       g.createdAt = new Date();
@@ -56,11 +54,24 @@ export class DepotService {
     if (depot.depotType == DepotTypes.out) {
       const token = await this.generateNewToken(saved.id);
       saved.customerToken = token;
-      return await this.depotRepository.save(saved);
-    } else {
-      const admins: User[] = await this.usersService.getWarehouseUsers();
+      const admins: User[] = await this.usersService.getAdminUsers();
       if (!admins || admins?.length == 0) return saved;
       admins.forEach(async (user) => {
+        const notif = new Notification();
+        notif.fromUser = saved.createdBy;
+        notif.toUser = user;
+        notif.message = ` همکار گرامی لطفا جهت تایید سند خروجی شماره ${saved.id} اقدام فرمایید`;
+        notif.title = ` تایید سند خروجی شماره ${saved.id}`;
+        await this.notificationService.createNotification(
+          notif,
+          saved.createdBy,
+        );
+      });
+      return await this.depotRepository.save(saved);
+    } else {
+      const warehouseMen: User[] = await this.usersService.getWarehouseUsers();
+      if (!warehouseMen || warehouseMen?.length == 0) return saved;
+      warehouseMen.forEach(async (user) => {
         const notif = new Notification();
         notif.fromUser = saved.createdBy;
         notif.toUser = user;
@@ -202,7 +213,7 @@ export class DepotService {
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.out })
       .andWhere('depot.isAccepted=0')
-      .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
+      // .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
       .andWhere('depot.driver IS NOT NULL')
       .andWhere("depot.driver <> '' ")
       .leftJoinAndSelect('depot.depotInvoice', 'invoice')
@@ -213,7 +224,8 @@ export class DepotService {
       .leftJoinAndSelect('depotGoods.issuedBy', 'customer')
       .leftJoinAndSelect('depot.createdBy', 'user')
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
-      .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user');
+      .leftJoinAndSelect('depot.warehouseAcceptedBy', 'warehouse_user')
+      .andWhere('invoice.approvedFile IS NOT NULL');
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -287,6 +299,7 @@ export class DepotService {
       .andWhere('depot.isSent=true')
       .andWhere('depot.driver IS NOT NULL')
       .andWhere("depot.driver<>''")
+      .andWhere('depot.isAccepted=true')
       .andWhere('depot.warehouseAcceptedById IS NULL');
 
     if (search) {
@@ -307,9 +320,24 @@ export class DepotService {
   async getDepotById(id: number): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id },
-      relations: ['depotGoods'],
+      relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
     });
     if (!depot) throw new NotFoundException('سند مورد نظر موجود نیست');
+
+    return depot;
+  }
+
+  async getDepotByInvoiceId(invoiceId: number): Promise<Depot | null> {
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id: invoiceId },
+    });
+    if (!invoice)
+      throw new BadRequestException('شماره فاکتور درج شده برای سند اشتباه است');
+
+    const depot = await this.depotRepository.findOne({
+      where: { depotInvoice: { id: invoice.id } },
+      relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
+    });
 
     return depot;
   }
@@ -377,19 +405,12 @@ export class DepotService {
     await this.depotRepository.delete(id);
   }
 
-  async setDepotIsAccepted(id: number, user: User): Promise<Depot | any> {
+  async setInputDepotIsAccepted(
+    inputDepot: Depot,
+    user: User,
+  ): Promise<Depot | any> {
     const depot = await this.dataSource.transaction(async (manager) => {
-      const depot = await manager.findOne(Depot, {
-        where: { id: id },
-        relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
-      });
-
-      if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
-
-      if (depot.isAccepted)
-        throw new BadRequestException('این سند قبلا تایید شده است');
-
-      for (const depotGood of depot.depotGoods) {
+      for (const depotGood of inputDepot.depotGoods) {
         const good = depotGood.good as Good;
         const qty = depotGood.quantity;
 
@@ -398,78 +419,72 @@ export class DepotService {
             `کالای مربوط به رکورد ${depotGood.id} یافت نشد`,
           );
         }
-
-        if (depot.depotType === DepotTypes.in) {
-          good.goodCount += qty;
-        } else if (depot.depotType === DepotTypes.out) {
-          if (good.goodCount < qty) {
-            throw new BadRequestException(
-              `موجودی کافی برای کالای "${good.goodName}" وجود ندارد`,
-            );
-          }
-          good.goodCount -= qty;
-        }
-
+        good.goodCount += qty;
         await manager.save(Good, good);
       }
-
-      depot.isAccepted = true;
+      inputDepot.isAccepted = true;
       console.log('depot will accept by:', user);
-
-      depot.acceptedBy = user;
-      if (depot.depotType == DepotTypes.out) {
-        const invoice = depot?.depotInvoice!;
-        invoice.finished = true;
-        await manager.save(Invoice, invoice);
-      }
-      depot.finished = true;
-      return await manager.save(Depot, depot);
-      // return await this.depotRepository.save({
-      //   ...depot,
-      //   isAccepted: true,
-      //   acceptedBy: user,
-      // });
+      inputDepot.acceptedBy = user;
+      inputDepot.finished = true;
+      return await manager.save(Depot, inputDepot);
     });
 
-    if (depot && depot?.depotType == DepotTypes.out) {
-      const mobile = depot?.depotInvoice.customer?.customerMobile;
-      const token = await this.generateNewToken(depot?.id);
-      console.log(token);
-
-      // if (mobile) {
-      //   const sms = await this.sendSmsForDepotExit(
-      //     mobile,
-      //     depot?.depotInvoice?.id,
-      //     depot?.driver,
-      //     token,
-      //   );
-      //   console.log('SMS status:', sms);
-      // }
-    }
     return depot;
   }
 
+  async setOutputtDepotIsAccepted(
+    outputDepot: Depot,
+    user: User,
+  ): Promise<Depot | any> {
+    outputDepot.isAccepted = true;
+    outputDepot.acceptedBy = user;
+    return await this.depotRepository.save(outputDepot);
+  }
+
   async setDepotIsAcceptedByWarehouse(
-    id: number,
+    outputDepot: Depot,
     user: User,
   ): Promise<Depot | any> {
     const depot = await this.dataSource.transaction(async (manager) => {
-      const depot = await manager.findOne(Depot, {
-        where: { id: id },
-        relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
-      });
-
-      if (!depot) throw new NotFoundException('اطلاعات انبار پیدا نشد');
-
-      if (depot.warehouseAcceptedBy)
-        throw new BadRequestException('این سند قبلا تایید شده است');
-
-      depot.warehouseAcceptedBy = user;
-      depot.warehouseAcceptedAt = new Date();
+      for (const depotGood of outputDepot.depotGoods) {
+        const good = depotGood.good as Good;
+        const qty = depotGood.quantity;
+        if (!good) {
+          throw new NotFoundException(
+            `کالای مربوط به رکورد ${depotGood.id} یافت نشد`,
+          );
+        }
+        if (good.goodCount < qty) {
+          throw new BadRequestException(
+            `موجودی کافی برای کالای "${good.goodName}" وجود ندارد`,
+          );
+        }
+        good.goodCount -= qty;
+        await manager.save(Good, good);
+      }
+      outputDepot.warehouseAcceptedBy = user;
+      outputDepot.warehouseAcceptedAt = new Date();
       console.log('depot will accept by warehouse user:', user);
+      const invoice = depot?.depotInvoice!;
+      invoice.finished = true;
+      await manager.save(Invoice, invoice);
 
-      return await manager.save(Depot, depot);
+      outputDepot.finished = true;
+      return await manager.save(Depot, outputDepot);
     });
+    if (depot && depot?.depotType == DepotTypes.out) {
+      const mobile = depot?.depotInvoice.customer?.customerMobile;
+      const token = await this.generateNewToken(depot?.id);
+      if (mobile) {
+        const sms = await this.sendSmsForDepotExit(
+          mobile,
+          depot?.depotInvoice?.id,
+          depot?.driver,
+          token,
+        );
+        console.log('SMS status:', sms);
+      }
+    }
     return depot;
   }
 
