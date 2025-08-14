@@ -49,41 +49,15 @@ export class DepotService {
       createdBy: user,
     });
 
-    const saved = await this.depotRepository.save(depot);
+    let saved = await this.depotRepository.save(depot);
 
-    if (depot.depotType == DepotTypes.out) {
+    if (saved.depotType == DepotTypes.out) {
       const token = await this.generateNewToken(saved.id);
       saved.customerToken = token;
-      const admins: User[] = await this.usersService.getAdminUsers();
-      if (!admins || admins?.length == 0) return saved;
-      admins.forEach(async (user) => {
-        const notif = new Notification();
-        notif.fromUser = saved.createdBy;
-        notif.toUser = user;
-        notif.message = ` همکار گرامی لطفا جهت تایید سند خروجی شماره ${saved.id} اقدام فرمایید`;
-        notif.title = ` تایید سند خروجی شماره ${saved.id}`;
-        await this.notificationService.createNotification(
-          notif,
-          saved.createdBy,
-        );
-      });
-      return await this.depotRepository.save(saved);
-    } else {
-      const warehouseMen: User[] = await this.usersService.getWarehouseUsers();
-      if (!warehouseMen || warehouseMen?.length == 0) return saved;
-      warehouseMen.forEach(async (user) => {
-        const notif = new Notification();
-        notif.fromUser = saved.createdBy;
-        notif.toUser = user;
-        notif.message = ` همکار گرامی لطفا جهت تایید سند ورودی شماره ${saved.id} اقدام فرمایید`;
-        notif.title = ` تایید سند ورودی شماره ${saved.id}`;
-        await this.notificationService.createNotification(
-          notif,
-          saved.createdBy,
-        );
-      });
-      return saved;
+      saved = await this.depotRepository.save(saved);
     }
+    await this.sendNotifToAdmins(saved.depotType, user, saved.id);
+    return saved;
   }
 
   // async saveDepotImages(depotId: number, imagePaths: string[]) {
@@ -175,9 +149,9 @@ export class DepotService {
       .createQueryBuilder('depot')
       .where('depot.depotType= :type', { type: DepotTypes.in })
       .andWhere('depot.isAccepted=0')
-      .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
-      .andWhere('depot.driver IS NOT NULL')
-      .andWhere("depot.driver <> '' ")
+      // .andWhere('depot.warehouseAcceptedBy IS NOT NULL')
+      // .andWhere('depot.driver IS NOT NULL')
+      // .andWhere("depot.driver <> '' ")
       .leftJoinAndSelect('depot.depotInvoice', 'invoice')
       .leftJoinAndSelect('invoice.customer', 'invoiceCustomer')
       .leftJoinAndSelect('depot.depotGoods', 'depotGoods')
@@ -259,10 +233,10 @@ export class DepotService {
       .leftJoinAndSelect('depot.createdBy', 'user')
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
       .where('depot.depotType= :type', { type: DepotTypes.in })
-      .andWhere('depot.isSent=true')
-      .andWhere('depot.driver IS NOT NULL')
-      .andWhere("depot.driver<>''")
+      .andWhere('depot.isAccepted=true')
       .andWhere('depot.warehouseAcceptedById IS NULL');
+    // .andWhere('depot.driver IS NOT NULL')
+    // .andWhere("depot.driver<>''")
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -296,11 +270,11 @@ export class DepotService {
       .leftJoinAndSelect('depot.createdBy', 'user')
       .leftJoinAndSelect('depot.acceptedBy', 'accepted_user')
       .where('depot.depotType= :type', { type: DepotTypes.out })
-      .andWhere('depot.isSent=true')
-      .andWhere('depot.driver IS NOT NULL')
-      .andWhere("depot.driver<>''")
       .andWhere('depot.isAccepted=true')
-      .andWhere('depot.warehouseAcceptedById IS NULL');
+      .andWhere('depot.warehouseAcceptedById IS NULL')
+      //.andWhere('depot.isSent=true')
+      .andWhere('depot.driver IS NOT NULL')
+      .andWhere("depot.driver<>''");
 
     if (search) {
       query.andWhere(`depot.id=${search}`);
@@ -409,27 +383,11 @@ export class DepotService {
     inputDepot: Depot,
     user: User,
   ): Promise<Depot | any> {
-    const depot = await this.dataSource.transaction(async (manager) => {
-      for (const depotGood of inputDepot.depotGoods) {
-        const good = depotGood.good as Good;
-        const qty = depotGood.quantity;
-
-        if (!good) {
-          throw new NotFoundException(
-            `کالای مربوط به رکورد ${depotGood.id} یافت نشد`,
-          );
-        }
-        good.goodCount += qty;
-        await manager.save(Good, good);
-      }
-      inputDepot.isAccepted = true;
-      console.log('depot will accept by:', user);
-      inputDepot.acceptedBy = user;
-      inputDepot.finished = true;
-      return await manager.save(Depot, inputDepot);
-    });
-
-    return depot;
+    inputDepot.isAccepted = true;
+    inputDepot.acceptedBy = user;
+    const saved = await this.depotRepository.save(inputDepot);
+    await this.sendNotifToWarehouseMen(saved.depotType, user, saved.id);
+    return saved;
   }
 
   async setOutputtDepotIsAccepted(
@@ -438,10 +396,92 @@ export class DepotService {
   ): Promise<Depot | any> {
     outputDepot.isAccepted = true;
     outputDepot.acceptedBy = user;
-    return await this.depotRepository.save(outputDepot);
+    const saved = await this.depotRepository.save(outputDepot);
+    await this.sendNotifToWarehouseMen(saved.depotType, user, saved.id);
+    return saved;
   }
 
-  async setDepotIsAcceptedByWarehouse(
+  async sendNotifToWarehouseMen(
+    docType: DepotTypes,
+    sender: User,
+    docId: Number,
+  ) {
+    const warehouseMen: User[] = await this.usersService.getAdminUsers();
+    if (!warehouseMen || warehouseMen?.length == 0) return;
+    warehouseMen.forEach(async (user) => {
+      const notif = new Notification();
+      notif.fromUser = sender;
+      notif.toUser = user;
+      let msg = 'همکار گرامی لطفا جهت تایید سند ';
+      let msgSubject = 'تایید سند';
+      if (docType == DepotTypes.in) {
+        msg += ' ' + 'ورودی';
+        msgSubject += ' ' + 'ورودی';
+      } else {
+        msg += ' ' + 'خروجی';
+        msgSubject += ' ' + 'خروجی';
+      }
+      msg += ' انبار به شماره ' + docId + ' اقدام فرمایید ';
+      msgSubject += ' انبار به شماره ' + docId;
+      notif.message = msg;
+      notif.title = msgSubject;
+      await this.notificationService.createNotification(notif, sender);
+    });
+  }
+
+  async sendNotifToAdmins(docType: DepotTypes, sender: User, docId: Number) {
+    const admins: User[] = await this.usersService.getAdminUsers();
+    if (!admins || admins?.length == 0) return;
+    admins.forEach(async (user) => {
+      const notif = new Notification();
+      notif.fromUser = user;
+      notif.toUser = user;
+      let msg = 'همکار گرامی لطفا جهت تایید سند ';
+      let msgSubject = 'تایید سند';
+      if (docType == DepotTypes.in) {
+        msg += ' ' + 'ورودی';
+        msgSubject += ' ' + 'ورودی';
+      } else {
+        msg += ' ' + 'خروجی';
+        msgSubject += ' ' + 'خروجی';
+      }
+      msg += ' شماره ' + docId + ' اقدام فرمایید ';
+      msgSubject += ' شماره ' + docId;
+      notif.message = msg;
+
+      notif.title = msgSubject;
+      await this.notificationService.createNotification(notif, user);
+    });
+  }
+
+  async setInputDepotIsAcceptedByWarehouse(
+    inputDepot: Depot,
+    user: User,
+  ): Promise<Depot | any> {
+    const depot = await this.dataSource.transaction(async (manager) => {
+      for (const depotGood of inputDepot.depotGoods) {
+        const good = depotGood.good as Good;
+        const qty = depotGood.quantity;
+        if (!good) {
+          throw new NotFoundException(
+            `کالای مربوط به رکورد ${depotGood.id} یافت نشد`,
+          );
+        }
+        good.goodCount += qty;
+        await manager.save(Good, good);
+      }
+      console.log('depot will accept by:', user);
+      inputDepot.warehouseAcceptedBy = user;
+      inputDepot.warehouseAcceptedAt = new Date();
+      inputDepot.finished = true;
+      const saved = await manager.save(Depot, inputDepot);
+      return saved;
+    });
+
+    return depot;
+  }
+
+  async setDepotExitIsAcceptedByWarehouse(
     outputDepot: Depot,
     user: User,
   ): Promise<Depot | any> {
@@ -462,29 +502,29 @@ export class DepotService {
         good.goodCount -= qty;
         await manager.save(Good, good);
       }
-      outputDepot.warehouseAcceptedBy = user;
-      outputDepot.warehouseAcceptedAt = new Date();
+
       console.log('depot will accept by warehouse user:', user);
       const invoice = depot?.depotInvoice!;
       invoice.finished = true;
       await manager.save(Invoice, invoice);
-
+      outputDepot.warehouseAcceptedBy = user;
+      outputDepot.warehouseAcceptedAt = new Date();
       outputDepot.finished = true;
       return await manager.save(Depot, outputDepot);
     });
-    if (depot && depot?.depotType == DepotTypes.out) {
-      const mobile = depot?.depotInvoice.customer?.customerMobile;
-      const token = await this.generateNewToken(depot?.id);
-      if (mobile) {
-        const sms = await this.sendSmsForDepotExit(
-          mobile,
-          depot?.depotInvoice?.id,
-          depot?.driver,
-          token,
-        );
-        console.log('SMS status:', sms);
-      }
+
+    const mobile = depot?.depotInvoice.customer?.customerMobile;
+    const token = await this.generateNewToken(depot?.id);
+    if (mobile) {
+      const sms = await this.sendSmsForDepotExit(
+        mobile,
+        depot?.depotInvoice?.id,
+        depot?.driver,
+        token,
+      );
+      console.log('SMS status:', sms);
     }
+
     return depot;
   }
 

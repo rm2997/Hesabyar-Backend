@@ -337,8 +337,15 @@ export class DepotController {
     if (depot.warehouseAcceptedBy)
       throw new BadRequestException('این سند قبلا توسط انبادار تایید شده است');
     if (depot.depotType == DepotTypes.in)
-      throw new BadRequestException('انباردار اجازه تایید این سند را ندارد');
-    return await this.depotService.setDepotIsAcceptedByWarehouse(depot, user);
+      return await this.depotService.setInputDepotIsAcceptedByWarehouse(
+        depot,
+        user,
+      );
+    else
+      return await this.depotService.setDepotExitIsAcceptedByWarehouse(
+        depot,
+        user,
+      );
 
     return depot;
   }
