@@ -216,6 +216,7 @@ export class DepotController {
     else return await this.depotService.getAllOutputDepots(page, limit, search);
   }
 
+  @UserRoles(Roles.Admin || Roles.Accountant)
   @Get('acceptList')
   async getDepotsForAccept(
     @Query('page') page: number = 1,

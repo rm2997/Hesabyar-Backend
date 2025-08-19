@@ -33,7 +33,7 @@ export class AuthService {
     const user = await this.usersService.findByUsername(username);
     console.log('User is:', user);
 
-    if (!user) {
+    if (!user || !user.isUserActive) {
       console.log('User not found', user);
       throw new NotFoundException('نام کاربری یا رمز اشتباه است');
     }

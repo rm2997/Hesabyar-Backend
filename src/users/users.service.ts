@@ -246,7 +246,7 @@ export class UsersService {
       newPass = await bcrypt.hash(passwordData.new, salt);
     }
     user.password = newPass;
-
+    user.mustChangePassword = false;
     console.log(user);
 
     return this.usersRepository.save(user);
