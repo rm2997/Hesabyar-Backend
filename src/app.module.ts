@@ -10,30 +10,24 @@ import { AuthModule } from './auth/auth.module';
 
 // گاردها برای امنیت سیستم
 import { NotificationModule } from './notification/notification.module';
-import { CustomerService } from './customer/customer.service';
 import { CustomerModule } from './customer/customer.module';
-import { GoodsService } from './goods/goods.service';
-import { GoodsController } from './goods/goods.controller';
 import { GoodsModule } from './goods/goods.module';
-import { AppService } from './app.service';
-import { SalesService } from './sales/sales.service';
-import { SalesController } from './sales/sales.controller';
 import { SalesModule } from './sales/sales.module';
 import { DepotModule } from './depot/depot.module';
 import { UnitsModule } from './units/units.module';
 import { SmsModule } from './sms/sms.module';
-import { OtpService } from './otp/otp.service';
 import { OtpModule } from './otp/otp.module';
+import { MssqlModule } from './mssql/mssql.module';
 
 @Module({
   imports: [
-    // بارگذاری تنظیمات از .env
+    // .env file loading
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
 
-    // اتصال به دیتابیس MySQL با تنظیمات از .env
+    // connect to local mysql db
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -45,7 +39,6 @@ import { OtpModule } from './otp/otp.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         autoLoadEntities: true,
-        //synchronize: false,
         synchronize: configService.get('NODE_ENV') !== 'production',
         logging: true,
         logger: 'advanced-console',
@@ -64,6 +57,7 @@ import { OtpModule } from './otp/otp.module';
     UnitsModule,
     SmsModule,
     OtpModule,
+    MssqlModule,
   ],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه
