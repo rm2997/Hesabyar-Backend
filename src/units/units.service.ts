@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Not, Repository } from 'typeorm';
 import { Unit } from './unit.entity';
+import { MssqlService } from 'src/mssql/mssql.service';
 
 @Injectable()
 export class UnitsService {
@@ -13,6 +14,7 @@ export class UnitsService {
     @InjectRepository(Unit)
     private readonly unitRepository: Repository<Unit>,
     private readonly dataSource: DataSource,
+    private readonly mssqlService: MssqlService,
   ) {}
 
   async createUnit(data: Partial<Unit>, user: number): Promise<Unit> {
@@ -30,8 +32,15 @@ export class UnitsService {
       createdAt: new Date(),
       createdBy: { id: user },
     });
-    const saved = await this.unitRepository.save(Unit);
-    return saved;
+    try {
+      const result = await this.mssqlService.addNewUnit(data?.unitName!);
+      if (result.result == 'ok') {
+        const saved = await this.unitRepository.save(Unit);
+        return saved;
+      } else throw new BadRequestException('مشکلی در درج اطلاعات رخ داد');
+    } catch (errno) {
+      throw new BadRequestException('مشکلی در درج اطلاعات رخ داد');
+    }
   }
 
   async getAllUnits(

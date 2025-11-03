@@ -25,5 +25,6 @@ import { MssqlController } from './mssql.controller';
   ],
   providers: [MssqlService],
   controllers: [MssqlController],
+  exports: [MssqlService],
 })
 export class MssqlModule {}

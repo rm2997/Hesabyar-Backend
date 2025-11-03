@@ -24,4 +24,9 @@ export class MssqlController {
   async syncUnits() {
     return await this.mssqlService.syncUnits();
   }
+
+  @Post('syncCustomers')
+  async syncCustomers() {
+    return await this.mssqlService.syncCustomers();
+  }
 }
