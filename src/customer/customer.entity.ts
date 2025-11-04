@@ -9,8 +9,11 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { CustomerAddress } from './customer-address.entity';
+import { CustomerPhone } from './customer-phone.entity';
 
 @Entity()
 export class Customer {
@@ -30,10 +33,10 @@ export class Customer {
   @Column({ type: 'enum', enum: Genders, default: Genders.mr })
   customerGender: Genders;
 
-  @Column()
+  @Column({ nullable: true, type: 'nvarchar', length: 30 })
   customerFName: string;
 
-  @Column()
+  @Column({ nullable: true, type: 'nvarchar', length: 70 })
   customerLName: string;
 
   @Column({ nullable: true })
@@ -54,41 +57,47 @@ export class Customer {
   @Column({ type: 'boolean', default: false })
   isBuyerAgent: Boolean;
 
-  @Column({
-    type: 'enum',
-    enum: AddressTypes,
-    default: AddressTypes.wrokPlace,
-  })
-  customerAddressType: AddressTypes;
+  // @Column({
+  //   type: 'enum',
+  //   enum: AddressTypes,
+  //   default: AddressTypes.wrokPlace,
+  // })
+  // customerAddressType: AddressTypes;
 
-  @Column({ nullable: true })
-  customerAddress: string;
+  // @Column({ nullable: true })
+  // customerAddress: string;
 
-  @Column({
-    type: 'enum',
-    enum: PhoneTypes,
-    default: PhoneTypes.mobile,
-  })
-  customerPhoneType: PhoneTypes;
+  // @Column({
+  //   type: 'enum',
+  //   enum: PhoneTypes,
+  //   default: PhoneTypes.mobile,
+  // })
+  // customerPhoneType: PhoneTypes;
 
-  @Column({ nullable: true })
-  customerPhone: string;
+  // @Column({ nullable: true })
+  // customerPhone: string;
 
-  @Column({ nullable: false, unique: true })
-  customerMobile: string;
+  // @Column({ nullable: false, unique: true })
+  // customerMobile: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'nvarchar', length: 15 })
   customerNationalCode: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'nvarchar' })
   customerEconomicCode: string;
 
-  @Column({ nullable: true, length: 10 })
-  customerPostalCode: string;
+  // @Column({ nullable: true, length: 10 })
+  // customerPostalCode: string;
 
   @CreateDateColumn()
   createdAt: Date;
 
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
   createdBy: User;
+
+  @OneToMany(() => CustomerAddress, (location) => location.customer)
+  locations: CustomerAddress[];
+
+  @OneToMany(() => CustomerPhone, (phone) => phone.customer)
+  phoneNumbers: CustomerPhone[];
 }

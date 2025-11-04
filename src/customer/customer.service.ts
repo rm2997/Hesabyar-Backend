@@ -6,12 +6,19 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Customer } from './customer.entity';
 import { DataSource, Not, Repository, TypeORMError } from 'typeorm';
+import { CustomerAddress } from './customer-address.entity';
+import { CustomerPhone } from './customer-phone.entity';
+import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
 
 @Injectable()
 export class CustomerService {
   constructor(
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
+    @InjectRepository(CustomerAddress)
+    private readonly customerAddressRepository: Repository<CustomerAddress>,
+    @InjectRepository(CustomerPhone)
+    private readonly customerPhoneRepository: Repository<CustomerPhone>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -28,15 +35,6 @@ export class CustomerService {
     if (nameExist != null) {
       throw new BadRequestException('این مشتری قبلا ثبت شده است');
     }
-
-    const mobileExist = await this.customerRepository.findOne({
-      where: { customerMobile: data.customerMobile },
-    });
-
-    if (mobileExist != null) {
-      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
-    }
-
     if (data.customerNationalCode) {
       const natcodeExist = await this.customerRepository.findOne({
         where: { customerNationalCode: data.customerNationalCode },
@@ -45,14 +43,47 @@ export class CustomerService {
         throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
       }
     }
+    const queryRunner = this.dataSource.createQueryRunner();
+    queryRunner.connect();
+    queryRunner.startTransaction();
+    try {
+      const newCustomer = queryRunner.manager.create(Customer, {
+        ...data,
+        createdAt: new Date(),
+        createdBy: { id: user },
+      });
 
-    const customer = this.customerRepository.create({
-      ...data,
-      createdAt: new Date(),
-      createdBy: { id: user },
-    });
-    const saved = await this.customerRepository.save(customer);
-    return saved;
+      const phoneNumbers = data.phoneNumbers?.map(async (newNumber) => {
+        const existPhone = await queryRunner.manager.findOne(CustomerPhone, {
+          where: { phoneNumber: newNumber.phoneNumber },
+        });
+        if (!existPhone)
+          queryRunner.manager.create(CustomerPhone, {
+            ...newNumber,
+            customer: newCustomer,
+            createdAt: new Date(),
+            createdBy: { id: user },
+          });
+      });
+
+      const locations = data.locations?.map((newLocation) => {
+        queryRunner.manager.create(CustomerAddress, {
+          ...newLocation,
+          customer: newCustomer,
+          createdAt: new Date(),
+          createdBy: { id: user },
+        });
+      });
+
+      await queryRunner.manager.save(newCustomer);
+      await queryRunner.manager.save(phoneNumbers);
+      await queryRunner.manager.save(locations);
+
+      return newCustomer;
+    } catch (error) {
+      queryRunner.rollbackTransaction();
+      throw new BadRequestException('بروز رسانی اطلاعات با مشکل مواجه شد');
+    }
   }
 
   async getAllCustomers(
@@ -109,8 +140,11 @@ export class CustomerService {
       );
     }
 
-    const mobileExist = await this.customerRepository.findOne({
-      where: { customerMobile: data.customerMobile, id: Not(id) },
+    const mobileExist = await this.customerPhoneRepository.findOne({
+      where: {
+        phoneType: PhoneTypes.mobile,
+        customer: { id: Not(id) },
+      },
     });
 
     if (mobileExist != null) {

@@ -8,10 +8,11 @@ import { InvoiceGoods } from './invoice-good.entity';
 import { SmsModule } from 'src/sms/sms.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { UsersModule } from 'src/users/users.module';
+import { CustomerPhone } from 'src/customer/customer-phone.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Invoice, InvoiceGoods]),
+    TypeOrmModule.forFeature([Invoice, InvoiceGoods, CustomerPhone]),
     ProformaModule,
     SmsModule,
     NotificationModule,

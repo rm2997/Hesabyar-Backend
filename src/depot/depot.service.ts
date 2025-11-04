@@ -17,6 +17,8 @@ import { ConfigService } from '@nestjs/config';
 import { NotificationService } from 'src/notification/notification.service';
 import { UsersService } from 'src/users/users.service';
 import { Notification } from 'src/notification/notification.entity';
+import { CustomerPhone } from 'src/customer/customer-phone.entity';
+import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
 
 @Injectable()
 export class DepotService {
@@ -27,6 +29,8 @@ export class DepotService {
     private readonly depotGoodsRepository: Repository<DepotGoods>,
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
+    @InjectRepository(CustomerPhone)
+    private readonly customerPhoneRepository: Repository<CustomerPhone>,
     private readonly dataSource: DataSource,
     private readonly smsService: SmsService,
     private readonly configService: ConfigService,
@@ -513,11 +517,17 @@ export class DepotService {
       return await manager.save(Depot, outputDepot);
     });
 
-    const mobile = depot?.depotInvoice.customer?.customerMobile;
+    const mobileNumber = await this.customerPhoneRepository.findOne({
+      where: {
+        phoneType: PhoneTypes.mobile,
+        isPrimary: true,
+        customer: { id: depot?.depotInvoice.customer.id },
+      },
+    });
     const token = await this.generateNewToken(depot?.id);
-    if (mobile) {
+    if (mobileNumber) {
       const sms = await this.sendSmsForDepotExit(
-        mobile,
+        mobileNumber?.phoneNumber!,
         depot?.depotInvoice?.id,
         depot?.driver,
         token,
@@ -536,8 +546,16 @@ export class DepotService {
     if (depot) {
       if (!depot.customerToken)
         depot.customerToken = await this.generateNewToken(depot.id);
+      const mobileNumber = await this.customerPhoneRepository.findOne({
+        where: {
+          phoneType: PhoneTypes.mobile,
+          isPrimary: true,
+          customer: { id: depot.depotInvoice.customer.id },
+        },
+      });
       const smsResult = await this.smsService.sendUpdateDepotSms(
         depot.depotInvoice.customer,
+        mobileNumber?.phoneNumber!,
         depot.customerToken,
         depot.depotInvoice.id,
       );

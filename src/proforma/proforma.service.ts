@@ -14,6 +14,8 @@ import { SmsService } from 'src/sms/sms.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { UsersService } from 'src/users/users.service';
 import { Notification } from 'src/notification/notification.entity';
+import { CustomerPhone } from 'src/customer/customer-phone.entity';
+import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
 
 @Injectable()
 export class ProformaService {
@@ -22,6 +24,8 @@ export class ProformaService {
     private proformaRepository: Repository<Proforma>,
     @InjectRepository(ProformaGoods)
     private proformaGoodsRepository: Repository<ProformaGoods>,
+    @InjectRepository(CustomerPhone)
+    private readonly customerPhoneRepository: Repository<CustomerPhone>,
     private readonly dataSource: DataSource,
     private configService: ConfigService,
     private readonly smsService: SmsService,
@@ -233,9 +237,16 @@ export class ProformaService {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
     const token = await this.generateShareableLink(proforma.id);
-
+    const mobileNumber = await this.customerPhoneRepository.findOne({
+      where: {
+        phoneType: PhoneTypes.mobile,
+        isPrimary: true,
+        customer: { id: proforma.customer.id },
+      },
+    });
     const smsResult = await this.smsService.sendUpdateProformaSms(
       proforma.customer,
+      mobileNumber?.phoneNumber!,
       token,
     );
     if (smsResult.status !== 1)

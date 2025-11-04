@@ -18,6 +18,8 @@ import { SmsService } from 'src/sms/sms.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { UsersService } from 'src/users/users.service';
 import { Notification } from 'src/notification/notification.entity';
+import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
+import { CustomerPhone } from 'src/customer/customer-phone.entity';
 
 @Injectable()
 export class InvoiceService {
@@ -26,6 +28,8 @@ export class InvoiceService {
     private readonly proformaService: ProformaService,
     @InjectRepository(InvoiceGoods)
     private invoiceGoodsRepository: Repository<InvoiceGoods>,
+    @InjectRepository(CustomerPhone)
+    private customerPhoneRepository: Repository<CustomerPhone>,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly smsService: SmsService,
@@ -338,9 +342,16 @@ export class InvoiceService {
     }
 
     const token = await this.generateShareableLink(invoice.id);
-
+    const mobileNumber = await this.customerPhoneRepository.findOne({
+      where: {
+        phoneType: PhoneTypes.mobile,
+        isPrimary: true,
+        customer: { id: invoice?.customer.id },
+      },
+    });
     const smsResult = await this.smsService.sendUpdateInvoiceDriverNameSms(
       invoice.customer,
+      mobileNumber?.phoneNumber!,
       token,
       invoice.id,
     );
@@ -360,8 +371,16 @@ export class InvoiceService {
     if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
 
     const token = await this.generateShareableLink(invoice.id);
+    const mobileNumber = await this.customerPhoneRepository.findOne({
+      where: {
+        phoneType: PhoneTypes.mobile,
+        isPrimary: true,
+        customer: { id: invoice?.customer.id },
+      },
+    });
     const smsResult = await this.smsService.sendUpdateInvoiceSms(
       invoice.customer,
+      mobileNumber?.phoneNumber!,
       token,
     );
     if (smsResult.status !== 1)

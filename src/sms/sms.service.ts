@@ -50,7 +50,11 @@ export class SmsService {
     });
     return await res.json();
   }
-  async sendUpdateProformaSms(customer: Customer, token: string) {
+  async sendUpdateProformaSms(
+    customer: Customer,
+    mobileNumber: string,
+    token: string,
+  ) {
     const fetch = (await import('node-fetch')).default;
 
     const userInfo =
@@ -71,7 +75,7 @@ export class SmsService {
     else tokenBase = '';
     console.log('tokenBase:', tokenBase);
     const reqBody = {
-      mobile: customer.customerMobile,
+      mobile: mobileNumber,
       templateId: 763246,
       parameters: [
         {
@@ -103,7 +107,11 @@ export class SmsService {
 
     return result;
   }
-  async sendUpdateInvoiceSms(customer: Customer, token: string) {
+  async sendUpdateInvoiceSms(
+    customer: Customer,
+    mobileNumber: string,
+    token: string,
+  ) {
     try {
       const fetch = (await import('node-fetch')).default;
 
@@ -115,7 +123,7 @@ export class SmsService {
         customer.customerLName;
 
       const reqBody = {
-        mobile: customer.customerMobile,
+        mobile: mobileNumber,
         templateId: 174810,
         parameters: [
           {
@@ -150,6 +158,7 @@ export class SmsService {
   }
   async sendUpdateInvoiceDriverNameSms(
     customer: Customer,
+    mobileNumber: string,
     token: string,
     invoiceId: number,
   ) {
@@ -164,7 +173,7 @@ export class SmsService {
         customer.customerLName;
 
       const reqBody = {
-        mobile: customer.customerMobile,
+        mobile: mobileNumber,
         templateId: 714566,
         parameters: [
           {
@@ -203,6 +212,7 @@ export class SmsService {
 
   async sendUpdateDepotSms(
     customer: Customer,
+    mobileNumber: string,
     token: string,
     invoiceId: number,
   ) {
@@ -217,7 +227,7 @@ export class SmsService {
         customer.customerLName;
 
       const reqBody = {
-        mobile: customer.customerMobile,
+        mobile: mobileNumber,
         templateId: 714566,
         parameters: [
           {
