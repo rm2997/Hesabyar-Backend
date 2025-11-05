@@ -32,7 +32,7 @@ export class CustomerService {
         customerLName: data.customerLName?.trim(),
       },
     });
-    if (nameExist != null) {
+    if (nameExist) {
       throw new BadRequestException('این مشتری قبلا ثبت شده است');
     }
     if (data.customerNationalCode) {
@@ -44,45 +44,63 @@ export class CustomerService {
       }
     }
     const queryRunner = this.dataSource.createQueryRunner();
-    queryRunner.connect();
-    queryRunner.startTransaction();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
     try {
       const newCustomer = queryRunner.manager.create(Customer, {
         ...data,
         createdAt: new Date(),
         createdBy: { id: user },
       });
-
-      const phoneNumbers = data.phoneNumbers?.map(async (newNumber) => {
-        const existPhone = await queryRunner.manager.findOne(CustomerPhone, {
-          where: { phoneNumber: newNumber.phoneNumber },
-        });
-        if (!existPhone)
-          queryRunner.manager.create(CustomerPhone, {
-            ...newNumber,
-            customer: newCustomer,
-            createdAt: new Date(),
-            createdBy: { id: user },
+      await queryRunner.manager.save(Customer, newCustomer);
+      if (data?.phoneNumbers && data?.phoneNumbers?.length > 0) {
+        for (const phone of data?.phoneNumbers) {
+          const existPhone = await queryRunner.manager.findOne(CustomerPhone, {
+            where: { phoneNumber: phone.phoneNumber },
           });
-      });
+          if (!existPhone) {
+            const newPhone = queryRunner.manager.create(CustomerPhone, {
+              ...phone,
+              customer: newCustomer,
+              createdAt: new Date(),
+              createdBy: { id: user },
+            });
+            await queryRunner.manager.save(CustomerPhone, newPhone);
+          }
+        }
+      }
+      console.log(data?.locations);
 
-      const locations = data.locations?.map((newLocation) => {
-        queryRunner.manager.create(CustomerAddress, {
-          ...newLocation,
-          customer: newCustomer,
-          createdAt: new Date(),
-          createdBy: { id: user },
-        });
-      });
+      if (data?.locations && data?.locations?.length > 0) {
+        for (const location of data?.locations) {
+          const existLocation = await queryRunner.manager.findOne(
+            CustomerAddress,
+            {
+              where: { postalCode: location.postalCode },
+            },
+          );
+          if (!existLocation) {
+            const newL = queryRunner.manager.create(CustomerAddress, {
+              ...location,
+              customer: newCustomer,
+              createdAt: new Date(),
+              createdBy: { id: user },
+            });
+            await queryRunner.manager.save(CustomerAddress, newL);
+          }
+        }
+      }
 
-      await queryRunner.manager.save(newCustomer);
-      await queryRunner.manager.save(phoneNumbers);
-      await queryRunner.manager.save(locations);
+      await queryRunner.commitTransaction();
 
       return newCustomer;
     } catch (error) {
-      queryRunner.rollbackTransaction();
-      throw new BadRequestException('بروز رسانی اطلاعات با مشکل مواجه شد');
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        'بروز رسانی اطلاعات با مشکل مواجه شد' + ' ' + error.message,
+      );
+    } finally {
+      await queryRunner.release();
     }
   }
 

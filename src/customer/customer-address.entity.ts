@@ -27,7 +27,7 @@ export class CustomerAddress {
   location: string;
 
   @Column({ nullable: true, length: 10 })
-  customerPostalCode: string;
+  postalCode: string;
 
   @CreateDateColumn()
   createdAt: Date;
