@@ -9,6 +9,7 @@ import { DataSource, Not, Repository, TypeORMError } from 'typeorm';
 import { CustomerAddress } from './customer-address.entity';
 import { CustomerPhone } from './customer-phone.entity';
 import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
+import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class CustomerService {
@@ -69,7 +70,6 @@ export class CustomerService {
           }
         }
       }
-      console.log(data?.locations);
 
       if (data?.locations && data?.locations?.length > 0) {
         for (const location of data?.locations) {
@@ -111,7 +111,9 @@ export class CustomerService {
   ): Promise<{ total: number; items: Customer[] }> {
     const query = this.dataSource
       .getRepository(Customer)
-      .createQueryBuilder('customer');
+      .createQueryBuilder('customer')
+      .leftJoinAndSelect('customer.phoneNumbers', 'customerPhones')
+      .leftJoinAndSelect('customer.locations', 'customerLocations');
 
     if (search && search.trim().length > 0) {
       query
@@ -144,6 +146,7 @@ export class CustomerService {
   async updateCustomer(
     id: number,
     data: Partial<Customer>,
+    user: User,
   ): Promise<Customer | null> {
     const nameExist = await this.customerRepository.findOne({
       where: {
@@ -158,17 +161,6 @@ export class CustomerService {
       );
     }
 
-    const mobileExist = await this.customerPhoneRepository.findOne({
-      where: {
-        phoneType: PhoneTypes.mobile,
-        customer: { id: Not(id) },
-      },
-    });
-
-    if (mobileExist != null) {
-      throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
-    }
-
     if (data.customerNationalCode) {
       const natcodeExist = await this.customerRepository.findOne({
         where: { customerNationalCode: data.customerNationalCode, id: Not(id) },
@@ -177,14 +169,119 @@ export class CustomerService {
         throw new BadRequestException('امکان درج شماره ملی تکراری وجود ندارد');
       }
     }
-    const customer = await this.customerRepository.findOne({
-      where: { id: id },
-    });
-    if (!customer) throw new NotFoundException('مشتری مورد نظر موجود نیست');
 
-    const saved = await this.customerRepository.save({ ...customer, ...data });
-    console.log('saved:', saved);
-    return saved;
+    for (const phone of data?.phoneNumbers!) {
+      const mobileExist = await this.customerPhoneRepository.findOne({
+        where: {
+          phoneNumber: phone.phoneNumber,
+          customer: { id: Not(id) },
+        },
+      });
+      if (mobileExist != null) {
+        throw new BadRequestException('امکان درج موبایل تکراری وجود ندارد');
+      }
+    }
+
+    const existingCustomer = await this.customerRepository.findOne({
+      where: { id: id },
+      relations: ['phoneNumbers', 'locations'],
+    });
+    if (!existingCustomer)
+      throw new NotFoundException('مشتری مورد نظر موجود نیست');
+    else existingCustomer.locations = [];
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      queryRunner.manager.merge(Customer, existingCustomer, {
+        ...data,
+      });
+
+      await queryRunner.manager.save(existingCustomer);
+
+      // update phone numbers
+      if (data?.phoneNumbers && data?.phoneNumbers?.length > 0) {
+        //remove phone numbers from DB
+        const existingPhones = existingCustomer.phoneNumbers ?? [];
+        console.log(existingPhones);
+
+        const phonesToRemove = existingPhones.filter(
+          (ep) => !data?.phoneNumbers!.some((np) => np.id === ep.id),
+        );
+        if (phonesToRemove.length > 0) {
+          await queryRunner.manager.remove(CustomerPhone, phonesToRemove);
+        }
+        //update or add
+        for (const newPhone of data.phoneNumbers) {
+          if ('unique' in newPhone) delete newPhone.unique;
+          if (newPhone.id) {
+            // update existing phones
+            await queryRunner.manager.update(
+              CustomerPhone,
+              { id: newPhone.id },
+              {
+                ...newPhone,
+              },
+            );
+          } else {
+            // add new phone
+            const phoneEntity = queryRunner.manager.create(CustomerPhone, {
+              ...newPhone,
+              customer: existingCustomer,
+              createdBy: { id: user.id },
+              createdAt: new Date(),
+            });
+            await queryRunner.manager.save(phoneEntity);
+          }
+        }
+      }
+
+      // update addresses
+      if (data.locations) {
+        const existingLocations = existingCustomer.locations ?? [];
+
+        //remove existing locations
+        const locationsToRemove = existingLocations.filter(
+          (el) => !data?.locations!.some((nl) => nl.id === el.id),
+        );
+        if (locationsToRemove.length > 0) {
+          await queryRunner.manager.remove(CustomerAddress, locationsToRemove);
+        }
+        for (const newLoc of data.locations) {
+          if (newLoc.id) {
+            // update an existing location
+            await queryRunner.manager.update(
+              CustomerAddress,
+              { id: newLoc.id },
+              {
+                ...newLoc,
+              },
+            );
+          } else {
+            // add new location
+            const locEntity = queryRunner.manager.create(CustomerAddress, {
+              ...newLoc,
+              customer: existingCustomer,
+              createdBy: { id: user.id },
+              createdAt: new Date(),
+            });
+            await queryRunner.manager.save(locEntity);
+          }
+        }
+      }
+      await queryRunner.commitTransaction();
+      return await this.customerRepository.findOne({
+        where: { id },
+        relations: ['phoneNumbers', 'locations'],
+      });
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        'بروزرسانی اطلاعات با مشکل مواجه شد' + ' ' + error.message,
+      );
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async deleteCustomer(id: number): Promise<void> {
@@ -195,6 +292,46 @@ export class CustomerService {
 
     try {
       await this.customerRepository.delete(id);
+    } catch (error) {
+      console.log(error);
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451)
+        throw new BadRequestException(
+          'اطلاعات این مشتری درحال استفاده میباشد، امکان حذف وجود ندارد',
+        );
+      else
+        throw new BadRequestException('خطای داخلی سرور، امکان حذف وجود ندارد');
+    }
+  }
+
+  async deleteCustomerPhone(phoneId: number): Promise<void> {
+    const customerPhone = await this.customerPhoneRepository.findOne({
+      where: { id: phoneId },
+    });
+    if (!customerPhone)
+      throw new NotFoundException('شماره مورد نظر وجود ندارد');
+
+    try {
+      await this.customerPhoneRepository.delete(customerPhone);
+    } catch (error) {
+      console.log(error);
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451)
+        throw new BadRequestException(
+          'اطلاعات این مشتری درحال استفاده میباشد، امکان حذف وجود ندارد',
+        );
+      else
+        throw new BadRequestException('خطای داخلی سرور، امکان حذف وجود ندارد');
+    }
+  }
+
+  async deleteCustomerLocation(locationId: number): Promise<void> {
+    const customerLocation = await this.customerAddressRepository.findOne({
+      where: { id: locationId },
+    });
+    if (!customerLocation)
+      throw new NotFoundException('آدرس مورد نظر وجود ندارد');
+
+    try {
+      await this.customerAddressRepository.delete(customerLocation);
     } catch (error) {
       console.log(error);
       if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451)

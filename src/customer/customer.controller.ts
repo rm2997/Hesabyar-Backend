@@ -49,12 +49,24 @@ export class CustomerController {
   async updateCustomer(
     @Param('id') id: number,
     @Body() data: Partial<Customer>,
+    @Req() req: Request,
   ) {
-    return await this.customerService.updateCustomer(id, data);
+    const user = req.user as User;
+    return await this.customerService.updateCustomer(id, data, user);
   }
 
   @Delete(':id')
   async deleteCustomer(@Param('id') id: number) {
     return await this.customerService.deleteCustomer(id);
+  }
+
+  @Delete('customerPhone:id')
+  async deleteCustomerPhone(@Param('id') id: number) {
+    return await this.customerService.deleteCustomerPhone(id);
+  }
+
+  @Delete('customerPhone:id')
+  async deleteCustomerLocation(@Param('id') id: number) {
+    return await this.customerService.deleteCustomerLocation(id);
   }
 }

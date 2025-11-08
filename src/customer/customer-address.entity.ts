@@ -14,7 +14,9 @@ export class CustomerAddress {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Customer, (customer) => customer.locations)
+  @ManyToOne(() => Customer, (customer) => customer.locations, {
+    onDelete: 'CASCADE',
+  })
   customer: Customer;
 
   @Column({ type: 'enum', enum: AddressTypes, default: AddressTypes.home })

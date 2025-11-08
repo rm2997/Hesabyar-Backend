@@ -14,7 +14,9 @@ export class CustomerPhone {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Customer, (customer) => customer.phoneNumbers)
+  @ManyToOne(() => Customer, (customer) => customer.phoneNumbers, {
+    onDelete: 'CASCADE',
+  })
   customer: Customer;
 
   @Column({ type: 'enum', enum: PhoneTypes, default: PhoneTypes.home })

@@ -95,9 +95,17 @@ export class Customer {
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
   createdBy: User;
 
-  @OneToMany(() => CustomerAddress, (location) => location.customer)
+  @OneToMany(() => CustomerAddress, (location) => location.customer, {
+    eager: true,
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   locations: CustomerAddress[];
 
-  @OneToMany(() => CustomerPhone, (phone) => phone.customer)
+  @OneToMany(() => CustomerPhone, (phone) => phone.customer, {
+    eager: true,
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   phoneNumbers: CustomerPhone[];
 }
