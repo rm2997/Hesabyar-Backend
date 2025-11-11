@@ -29,4 +29,9 @@ export class MssqlController {
   async syncCustomers() {
     return await this.mssqlService.syncCustomers();
   }
+
+  @Get('getFiscalYear')
+  async getFiscalYear() {
+    return await this.mssqlService.getFiscalYearAndId();
+  }
 }

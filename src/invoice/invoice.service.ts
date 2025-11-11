@@ -20,10 +20,14 @@ import { UsersService } from 'src/users/users.service';
 import { Notification } from 'src/notification/notification.entity';
 import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
+import { MssqlService } from 'src/mssql/mssql.service';
+import { SepidarQuotationDTO } from 'src/mssql/sepidarQuotation-dto';
+import { SepidarInvoiceDTO } from 'src/mssql/sepidarInvoice-dto';
 
 @Injectable()
 export class InvoiceService {
   constructor(
+    private readonly mssqlService: MssqlService,
     @InjectRepository(Invoice) private invoiceRepository: Repository<Invoice>,
     private readonly proformaService: ProformaService,
     @InjectRepository(InvoiceGoods)
@@ -68,10 +72,14 @@ export class InvoiceService {
           createdBy: user,
         }),
       );
+
       savedInvoice.customerLink = customerToken;
+
       await queryRunner.manager.save(invoiceGoods);
       await queryRunner.manager.save(savedInvoice);
       await queryRunner.manager.save(proforma);
+      const sepidarInvoice = await this.initiatNewSepidarInvoice(savedInvoice);
+
       await queryRunner.commitTransaction();
 
       return savedInvoice;
@@ -101,6 +109,72 @@ export class InvoiceService {
     // });
     // //if (invoiceGoods) savedInvoice.invoiceGoods = invoiceGoods;
     // return await this.invoiceRepository.save(savedInvoice);
+  }
+
+  async initiatNewSepidarInvoice(savedInvoice: Invoice) {
+    const { FiscalYearId, FiscalYear } =
+      await this.mssqlService.getFiscalYearAndId();
+    const newsSepidarInvoice = new SepidarInvoiceDTO();
+    newsSepidarInvoice.FiscalYearRef = FiscalYearId;
+    newsSepidarInvoice.VoucherRef = undefined;
+    newsSepidarInvoice.PriceInBaseCurrency = savedInvoice.totalAmount;
+    newsSepidarInvoice.BaseOnInventoryDelivery = false;
+    newsSepidarInvoice.OrderRef = undefined;
+    newsSepidarInvoice.ShouldControlCustomerCredit = true;
+    newsSepidarInvoice.AgreementRef = undefined;
+    newsSepidarInvoice.TaxPayerBillIssueDateTime = new Date();
+    newsSepidarInvoice.SettlementType = 1;
+    newsSepidarInvoice.Description = '';
+    newsSepidarInvoice.InvoiceId = (
+      await this.mssqlService.getNextId('Invoice')
+    ).LastId;
+    newsSepidarInvoice.Number = (
+      await this.mssqlService.getNextInvoiceNumber(
+        FiscalYearId,
+        newsSepidarInvoice.InvoiceId,
+      )
+    ).Number;
+    newsSepidarInvoice.CustomerPartyRef = savedInvoice.customer.id;
+    newsSepidarInvoice.Date = new Date();
+    newsSepidarInvoice.CustomerRealName =
+      savedInvoice.customer.customerLName +
+      ' ' +
+      savedInvoice.customer.customerFName;
+    newsSepidarInvoice.SaleTypeRef = 1;
+    newsSepidarInvoice.CustomerRealName_En =
+      savedInvoice.customer.customerLName +
+      ' ' +
+      savedInvoice.customer.customerFName;
+    newsSepidarInvoice.PartyAddressRef = undefined;
+    newsSepidarInvoice.State = 1;
+    newsSepidarInvoice.CurrencyRef = 1;
+    newsSepidarInvoice.SLRef = 420;
+    newsSepidarInvoice.DiscountInBaseCurrency = 0;
+    newsSepidarInvoice.AdditionInBaseCurrency = 0;
+    newsSepidarInvoice.TaxInBaseCurrency = 0;
+    newsSepidarInvoice.DutyInBaseCurrency = 0;
+    newsSepidarInvoice.NetPriceInBaseCurrency = savedInvoice.totalAmount;
+    newsSepidarInvoice.Price = savedInvoice.totalAmount;
+    newsSepidarInvoice.Discount = 0;
+    newsSepidarInvoice.DeliveryLocationRef = 1;
+    newsSepidarInvoice.Addition = 0;
+    newsSepidarInvoice.Tax = 0;
+    newsSepidarInvoice.Duty = 0;
+    newsSepidarInvoice.Rate = 1;
+    newsSepidarInvoice.Version = 1;
+    newsSepidarInvoice.Creator = savedInvoice.createdBy.id;
+    newsSepidarInvoice.CreationDate = new Date();
+    newsSepidarInvoice.LastModifier = savedInvoice.createdBy.id;
+    newsSepidarInvoice.LastModificationDate = new Date();
+    newsSepidarInvoice.QuotationRef = savedInvoice?.proforma
+      ? savedInvoice.proforma.id + ''
+      : '';
+    newsSepidarInvoice.Guid = undefined;
+    newsSepidarInvoice.AdditionFactor_VatEffective = 0;
+    newsSepidarInvoice.AdditionFactorInBaseCurrency_VatEffective = 0;
+    newsSepidarInvoice.AdditionFactor_VatIneffective = 0;
+    newsSepidarInvoice.AdditionFactorInBaseCurrency_VatIneffective = 0;
+    return newsSepidarInvoice;
   }
 
   async getAllInvoices(
