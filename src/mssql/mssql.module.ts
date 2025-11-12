@@ -20,6 +20,8 @@ import { MssqlController } from './mssql.controller';
         password: configService.get('SEPDB_PASSWORD'),
         options: { encrypt: false, trustServerCertificate: true },
         autoLoadEntities: true,
+        logger: 'advanced-console',
+        logging: 'all',
       }),
     }),
   ],

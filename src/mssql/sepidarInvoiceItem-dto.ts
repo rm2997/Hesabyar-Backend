@@ -7,7 +7,8 @@ import {
   IsNumber,
 } from 'class-validator';
 
-export class InvoiceItemDTO {
+export class SepidarInvoiceItemDTO {
+  @IsInt() InvoiceItemId: number;
   @IsInt() InvoiceRef: number;
   @IsInt() ItemRef: number;
   @IsInt() StockRef: number;
@@ -16,6 +17,11 @@ export class InvoiceItemDTO {
   @IsOptional() @IsNumber() SecondaryQuantity?: number;
   @IsNumber() Fee: number;
   @IsNumber() Price: number;
+  @IsNumber() PriceInBaseCurrency: number;
+  @IsNumber() DiscountInBaseCurrency: number;
+  @IsNumber() AdditionInBaseCurrency: number;
+  @IsNumber() TaxInBaseCurrency: number;
+  @IsNumber() DutyInBaseCurrency: number;
   @IsNumber() NetPriceInBaseCurrency: number;
   @IsNumber() Rate: number;
   @IsNumber() Discount: number;

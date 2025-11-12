@@ -52,6 +52,8 @@ export class CustomerController {
     @Req() req: Request,
   ) {
     const user = req.user as User;
+    console.log(user);
+
     return await this.customerService.updateCustomer(id, data, user);
   }
 

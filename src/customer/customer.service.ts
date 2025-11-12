@@ -188,7 +188,16 @@ export class CustomerService {
     });
     if (!existingCustomer)
       throw new NotFoundException('مشتری مورد نظر موجود نیست');
-    else existingCustomer.locations = [];
+
+    for (const phone of data?.phoneNumbers!) {
+      phone.createdBy = user;
+      phone.createdAt = new Date();
+    }
+    for (const location of data?.locations!) {
+      location.createdBy = user;
+      location.createdAt = new Date();
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -196,79 +205,7 @@ export class CustomerService {
       queryRunner.manager.merge(Customer, existingCustomer, {
         ...data,
       });
-
       await queryRunner.manager.save(existingCustomer);
-
-      // update phone numbers
-      if (data?.phoneNumbers && data?.phoneNumbers?.length > 0) {
-        //remove phone numbers from DB
-        const existingPhones = existingCustomer.phoneNumbers ?? [];
-        console.log(existingPhones);
-
-        const phonesToRemove = existingPhones.filter(
-          (ep) => !data?.phoneNumbers!.some((np) => np.id === ep.id),
-        );
-        if (phonesToRemove.length > 0) {
-          await queryRunner.manager.remove(CustomerPhone, phonesToRemove);
-        }
-        //update or add
-        for (const newPhone of data.phoneNumbers) {
-          if ('unique' in newPhone) delete newPhone.unique;
-          if (newPhone.id) {
-            // update existing phones
-            await queryRunner.manager.update(
-              CustomerPhone,
-              { id: newPhone.id },
-              {
-                ...newPhone,
-              },
-            );
-          } else {
-            // add new phone
-            const phoneEntity = queryRunner.manager.create(CustomerPhone, {
-              ...newPhone,
-              customer: existingCustomer,
-              createdBy: { id: user.id },
-              createdAt: new Date(),
-            });
-            await queryRunner.manager.save(phoneEntity);
-          }
-        }
-      }
-
-      // update addresses
-      if (data.locations) {
-        const existingLocations = existingCustomer.locations ?? [];
-
-        //remove existing locations
-        const locationsToRemove = existingLocations.filter(
-          (el) => !data?.locations!.some((nl) => nl.id === el.id),
-        );
-        if (locationsToRemove.length > 0) {
-          await queryRunner.manager.remove(CustomerAddress, locationsToRemove);
-        }
-        for (const newLoc of data.locations) {
-          if (newLoc.id) {
-            // update an existing location
-            await queryRunner.manager.update(
-              CustomerAddress,
-              { id: newLoc.id },
-              {
-                ...newLoc,
-              },
-            );
-          } else {
-            // add new location
-            const locEntity = queryRunner.manager.create(CustomerAddress, {
-              ...newLoc,
-              customer: existingCustomer,
-              createdBy: { id: user.id },
-              createdAt: new Date(),
-            });
-            await queryRunner.manager.save(locEntity);
-          }
-        }
-      }
       await queryRunner.commitTransaction();
       return await this.customerRepository.findOne({
         where: { id },

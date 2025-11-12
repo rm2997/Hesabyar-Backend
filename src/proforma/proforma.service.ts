@@ -34,11 +34,20 @@ export class ProformaService {
   ) {}
 
   async createProforma(data: Partial<Proforma>, user: User): Promise<Proforma> {
+    const customerPrimaryMobile = data.customer?.phoneNumbers.find(
+      (phone) =>
+        phone.isPrimary == true && phone.phoneType == PhoneTypes.mobile,
+    );
+    if (!customerPrimaryMobile || !customerPrimaryMobile?.phoneNumber)
+      throw new BadRequestException(
+        'مشتری انتخاب شده شماره موبایل پیش فرض ندارد',
+      );
     const proformaGoods = [...data?.proformaGoods!];
 
     proformaGoods.map((item) => {
       item.createdBy = user;
     });
+
     const proforma = this.proformaRepository.create({
       ...data,
       proformaGoods: [...proformaGoods],

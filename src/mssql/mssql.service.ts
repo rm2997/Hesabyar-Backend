@@ -5,7 +5,11 @@ import { DataSource } from 'typeorm';
 import { SepidarQuotationDTO } from './sepidarQuotation-dto';
 import { SepidarQuotationItemDTO } from './sepidarQuotaionItem-dto';
 import { SepidarInvoiceDTO } from './sepidarInvoice-dto';
-import { InvoiceItemDTO } from './sepidarInvoiceItem-dto';
+import { SepidarInvoiceItemDTO } from './sepidarInvoiceItem-dto';
+import { SepidarVoucherDTO } from './sepidarVoucher-dto';
+import { SepidarVoucherItemDTO } from './sepidarVoucherItem-dto';
+import { Invoice } from 'src/invoice/invoice.entity';
+import { InvoiceGoods } from 'src/invoice/invoice-good.entity';
 
 @Injectable()
 export class MssqlService {
@@ -115,7 +119,7 @@ export class MssqlService {
       await mysqlQueryRunner.query('ALTER TABLE customer AUTO_INCREMENT = 1');
       for (const g of data) {
         await mysqlQueryRunner.query(
-          'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt) VALUES(?,?,?,?,?,?,?)',
+          'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt,sepidarId) VALUES(?,?,?,?,?,?,?,?)',
           [
             g.customerFName,
             g.customerLName,
@@ -124,6 +128,7 @@ export class MssqlService {
             g.IsBroker,
             g.isBuyerAgent,
             new Date(),
+            g.partyid,
           ],
         );
       }
@@ -254,6 +259,7 @@ export class MssqlService {
     const data = await this.mssqlDataSource.query(
       'SELECT TOP 1 title as FiscalYear,FiscalYearId from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  WHERE  miladi= LEFT(CAST(GETDATE() as date),10)',
     );
+    console.log(data);
 
     return data[0];
   }
@@ -262,22 +268,22 @@ export class MssqlService {
     const data = await this.mssqlDataSource.query(
       `DECLARE @id int EXEC [FMK].[spGetNextId] '${resourceName}', @id output, 1 SELECT @Id as LastId`,
     );
+    console.log(resourceName, data);
 
     return data[0];
   }
 
   async getNextInvoiceNumber(
-    fiscalYear: number,
+    fiscalYearId: number,
     invoiceId: number,
   ): Promise<{ Number: number }> {
     await this.mssqlDataSource.query("Exec FMK.spGetLock 'InvoiceRow' ");
     const data = await this.mssqlDataSource.query(
-      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwInvoice]  WHERE 1=1  And FiscalYearRef = (@FiscalYear0)',N'@FiscalYear0 as int,FiscalYear0=${fiscalYear}'`,
+      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwInvoice]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}'`,
     );
     console.log(data);
-
     const checkExist = await this.mssqlDataSource.query(
-      `Select Count(1) as exist from SLS.[vwInvoice] where [InvoiceId] <> ${invoiceId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYear} `,
+      `Select Count(1) as exist from SLS.[vwInvoice] where [InvoiceId] <> ${invoiceId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
     );
     if (checkExist[0].exist > 0)
       throw new BadRequestException(
@@ -301,68 +307,259 @@ export class MssqlService {
     return data;
   }
 
-  async createInvoice(
+  async createInvoice(invoice: Invoice, invoiceGoods: InvoiceGoods[]) {
+    const { FiscalYearId, FiscalYear } = await this.getFiscalYearAndId();
+
+    const sepidarInvoice = await this.initiatNewSepidarInvoice(
+      invoice,
+      FiscalYearId,
+      FiscalYear,
+    );
+
+    const sepidarInvoiceItems: SepidarInvoiceItemDTO[] = [];
+    for (const invoiceItem of invoiceGoods) {
+      let i = 1;
+      const sepidarNewItem = await this.initiatNewSepidarInvoiceItems(
+        i,
+        invoiceItem.quantity,
+        invoiceItem.price,
+        invoiceItem.id,
+        sepidarInvoice.InvoiceId,
+      );
+      sepidarInvoiceItems.push(sepidarNewItem);
+      i++;
+    }
+    console.log(sepidarInvoice, sepidarInvoiceItems);
+    console.log('Start inserting Invoice to Sql Server...');
+
+    const queryRunner = this.mssqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const fiscalYear = await queryRunner.manager.query(
+        `SELECT FiscalYearID FROM FMK.FiscalYear WHERE FiscalYearID=${FiscalYearId}`,
+      );
+      console.log(fiscalYear);
+
+      if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
+
+      // for (const item of sepidarInvoiceItems) {
+      //   await queryRunner.manager.query(
+      //     `DECLARE @SummaryTable INV.SummaryRecordTable;
+      //      INSERT INTO @SummaryTable VALUES(@0, @1, NULL, @2, 0);
+      //      EXEC INV.spLockItemStockSummary @SummaryTable;`,
+      //     [item.StockRef, item.ItemRef, FiscalYearId],
+      //   );
+      // }
+
+      console.log('Start Inserting invoice...');
+
+      await queryRunner.manager.insert('SLS.Invoice', sepidarInvoice);
+      console.log('Start Inserting invoiceItems...');
+      for (const item of sepidarInvoiceItems) {
+        await queryRunner.manager.insert('SLS.InvoiceItem', item);
+      }
+
+      // for (const item of sepidarInvoiceItems) {
+      //   await queryRunner.manager.query(
+      //     `DECLARE @SummaryTable INV.SummaryRecordTable;
+      //      INSERT INTO @SummaryTable VALUES(@0, @1, NULL, @2, 0);
+      //      EXEC INV.spUpdateItemStockSummary @SummaryTable, 0;`,
+      //     [item.StockRef, item.ItemRef, FiscalYearId],
+      //   );
+      // }
+      await queryRunner.commitTransaction();
+
+      return { invoiceNumber: sepidarInvoice.Number };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error.message);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async createQuotation(
     quotation: SepidarQuotationDTO,
     quotationItems: SepidarQuotationItemDTO[],
-    invoice: SepidarInvoiceDTO,
-    invoiceItems: InvoiceItemDTO[],
   ) {
     const queryRunner = this.mssqlDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      // 1️⃣ بررسی سال مالی معتبر
       const fiscalYear = await queryRunner.manager.query(
         `SELECT FiscalYearID FROM FIN.FiscalYear WHERE FiscalYearID=@0`,
         [quotation.FiscalYearRef],
       );
       if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
-
-      // 2️⃣ فچ آخرین شماره فاکتور
-      const lastInvoiceNumber = await queryRunner.manager.query(
-        `SELECT MAX(Number) AS LastNumber FROM SLS.Invoice`,
-      );
-      invoice.Number = (lastInvoiceNumber[0].LastNumber || 0) + 1;
-
-      // 3️⃣ بررسی موجودی و قفل کردن StockSummary
-      for (const item of invoiceItems) {
-        await queryRunner.manager.query(
-          `DECLARE @SummaryTable INV.SummaryRecordTable;
-           INSERT INTO @SummaryTable VALUES(@0, @1, NULL, @2, 0);
-           EXEC INV.spLockItemStockSummary @SummaryTable;`,
-          [item.StockRef, item.ItemRef, invoice.FiscalYearRef],
-        );
-      }
-
-      // 4️⃣ درج Quotation و QuotationItem
       await queryRunner.manager.insert('SLS.Quotation', quotation);
       for (const qItem of quotationItems) {
         await queryRunner.manager.insert('SLS.QuotationItem', qItem);
       }
-
-      // 5️⃣ درج Invoice و InvoiceItem
-      await queryRunner.manager.insert('SLS.Invoice', invoice);
-      for (const iItem of invoiceItems) {
-        await queryRunner.manager.insert('SLS.InvoiceItem', iItem);
-      }
-
-      // 6️⃣ آپدیت Stock Summary
-      for (const item of invoiceItems) {
-        await queryRunner.manager.query(
-          `DECLARE @SummaryTable INV.SummaryRecordTable;
-           INSERT INTO @SummaryTable VALUES(@0, @1, NULL, @2, 0);
-           EXEC INV.spUpdateItemStockSummary @SummaryTable, 0;`,
-          [item.StockRef, item.ItemRef, invoice.FiscalYearRef],
-        );
-      }
       await queryRunner.commitTransaction();
-
-      return { invoiceNumber: invoice.Number };
+      return { quotationNumber: quotation.Number };
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw new BadRequestException();
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async createVoucher(
+    voucher: SepidarVoucherDTO,
+    voucherItems: SepidarVoucherItemDTO[],
+  ) {
+    const queryRunner = this.mssqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const fiscalYear = await queryRunner.manager.query(
+        `SELECT FiscalYearID FROM FIN.FiscalYear WHERE FiscalYearID=@0`,
+        [voucher.FiscalYearRef],
+      );
+      if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
+      await queryRunner.manager.insert('ACC.Voucher', voucher);
+      for (const vItem of voucherItems) {
+        await queryRunner.manager.insert('ACC.VoucherItem', vItem);
+      }
+      await queryRunner.commitTransaction();
+      return { voucherNumber: voucher.Number };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async updateInvoice(id: number, invoice: SepidarInvoiceDTO) {}
+
+  async updateQuotation(id: number, quotation: SepidarQuotationDTO) {}
+
+  async updateVoucher(id: number, voucher: SepidarVoucherDTO) {}
+
+  async initiatNewSepidarInvoice(
+    savedInvoice: Invoice,
+    fiscalYearId: number,
+    fiscalYear: string,
+  ) {
+    const newsSepidarInvoice = new SepidarInvoiceDTO();
+    newsSepidarInvoice.FiscalYearRef = fiscalYearId;
+    newsSepidarInvoice.VoucherRef = undefined;
+    newsSepidarInvoice.PriceInBaseCurrency = savedInvoice.totalAmount;
+    newsSepidarInvoice.BaseOnInventoryDelivery = false;
+    newsSepidarInvoice.OrderRef = undefined;
+    newsSepidarInvoice.ShouldControlCustomerCredit = true;
+    newsSepidarInvoice.AgreementRef = undefined;
+    newsSepidarInvoice.TaxPayerBillIssueDateTime = new Date();
+    newsSepidarInvoice.SettlementType = 1;
+    newsSepidarInvoice.Description = '';
+    newsSepidarInvoice.InvoiceId = (await this.getNextId('SLS.Invoice')).LastId;
+    newsSepidarInvoice.Number = (
+      await this.getNextInvoiceNumber(
+        fiscalYearId,
+        newsSepidarInvoice.InvoiceId,
+      )
+    ).Number;
+    newsSepidarInvoice.CustomerPartyRef = savedInvoice.customer.sepidarId;
+    newsSepidarInvoice.Date = new Date();
+    newsSepidarInvoice.CustomerRealName =
+      savedInvoice.customer.customerLName +
+      ' ' +
+      savedInvoice.customer.customerFName;
+    newsSepidarInvoice.SaleTypeRef = 1;
+    newsSepidarInvoice.CustomerRealName_En =
+      savedInvoice.customer.customerLName +
+      ' ' +
+      savedInvoice.customer.customerFName;
+    newsSepidarInvoice.PartyAddressRef = undefined;
+    newsSepidarInvoice.State = 1;
+    newsSepidarInvoice.CurrencyRef = 1;
+    newsSepidarInvoice.SLRef = 420;
+    newsSepidarInvoice.DiscountInBaseCurrency = 0;
+    newsSepidarInvoice.AdditionInBaseCurrency = 0;
+    newsSepidarInvoice.TaxInBaseCurrency = 0;
+    newsSepidarInvoice.DutyInBaseCurrency = 0;
+    newsSepidarInvoice.NetPriceInBaseCurrency = savedInvoice.totalAmount;
+    newsSepidarInvoice.Price = savedInvoice.totalAmount;
+    newsSepidarInvoice.Discount = 0;
+    newsSepidarInvoice.DeliveryLocationRef = 1;
+    newsSepidarInvoice.Addition = 0;
+    newsSepidarInvoice.Tax = 0;
+    newsSepidarInvoice.Duty = 0;
+    newsSepidarInvoice.Rate = 1;
+    newsSepidarInvoice.Version = 1;
+    newsSepidarInvoice.Creator = savedInvoice.createdBy.id;
+    newsSepidarInvoice.CreationDate = new Date();
+    newsSepidarInvoice.LastModifier = savedInvoice.createdBy.id;
+    newsSepidarInvoice.LastModificationDate = new Date();
+    newsSepidarInvoice.QuotationRef = savedInvoice?.proforma
+      ? savedInvoice.proforma.id + ''
+      : '';
+    newsSepidarInvoice.Guid = undefined;
+    newsSepidarInvoice.AdditionFactor_VatEffective = 0;
+    newsSepidarInvoice.AdditionFactorInBaseCurrency_VatEffective = 0;
+    newsSepidarInvoice.AdditionFactor_VatIneffective = 0;
+    newsSepidarInvoice.AdditionFactorInBaseCurrency_VatIneffective = 0;
+    console.log(newsSepidarInvoice);
+
+    return newsSepidarInvoice;
+  }
+
+  async initiatNewSepidarInvoiceItems(
+    itemNumber: number,
+    quantity: number,
+    price: number,
+    itemId: number,
+    invoiceId: number,
+  ) {
+    const item = new SepidarInvoiceItemDTO();
+    item.AdditionFactor_VatEffective = 0;
+    item.AdditionFactor_VatIneffective = 0;
+    item.QuotationItemRef = 8461;
+    item.CustomerDiscountRate = 0;
+    item.PriceInfoDiscountRate = 0;
+    item.Description = undefined;
+    item.Description_En = undefined;
+    item.DiscountInvoiceItemRef = undefined;
+    item.PriceInfoPriceDiscount = 0;
+    item.PriceInfoPercentDiscount = 0;
+    item.CustomerDiscount = 0;
+    item.OrderItemRef = undefined;
+    item.ProductPackRef = undefined;
+    item.ProductPackQuantity = undefined;
+    item.AggregateAmountPercentDiscount = 0;
+    item.AdditionFactorInBaseCurrency_VatEffective = 0;
+    item.AdditionFactorInBaseCurrency_VatIneffective = 0;
+    item.DiscountItemGroupRef = undefined;
+    item.BankFeeForCurrencySale = 0;
+    item.BankFeeForCurrencySaleInBaseCurrency = 0;
+    item.IsAggregateDiscountInvoiceItem = false;
+    item.TaxPayerCurrencyPurchaseRate = 0;
+    item.InvoiceItemId = (await this.getNextId('InvoiceItem')).LastId;
+    item.InvoiceRef = invoiceId;
+    item.RowID = itemNumber;
+    item.ItemRef = itemId;
+    item.StockRef = 5;
+    item.TracingRef = undefined;
+    item.Quantity = quantity;
+    item.SecondaryQuantity = undefined;
+    item.Fee = price;
+    item.Price = price;
+    item.Discount = 0;
+    item.Addition = 0;
+    item.Tax = 0;
+    item.PriceInBaseCurrency = price;
+    item.DiscountInBaseCurrency = 0;
+    item.AdditionInBaseCurrency = 0;
+    item.TaxInBaseCurrency = 0;
+    item.DutyInBaseCurrency = 0;
+    item.NetPriceInBaseCurrency = price;
+    item.Duty = 0;
+    item.Rate = 1;
+    item.AggregateAmountPriceDiscount = 0;
+    item.AggregateAmountDiscountRate = 0;
+    return item;
   }
 }

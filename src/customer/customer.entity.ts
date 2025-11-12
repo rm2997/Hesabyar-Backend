@@ -108,4 +108,7 @@ export class Customer {
     onDelete: 'CASCADE',
   })
   phoneNumbers: CustomerPhone[];
+
+  @Column()
+  sepidarId: number;
 }
