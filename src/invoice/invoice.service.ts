@@ -81,12 +81,14 @@ export class InvoiceService {
       await queryRunner.manager.save(savedInvoice);
       await queryRunner.manager.save(proforma);
 
-      const { invoiceNumber } = await this.mssqlService.createInvoice(
-        savedInvoice,
-        invoiceGoods!,
-      );
+      const { invoiceNumber, invoiceId } =
+        await this.mssqlService.createInvoice(savedInvoice, invoiceGoods!);
       if (!invoiceNumber)
         throw new BadRequestException('درج در سپیدار انجام نشد');
+
+      savedInvoice.invoiceNumber = invoiceNumber;
+      savedInvoice.sepidarId = invoiceId + '';
+      await queryRunner.manager.save(savedInvoice);
 
       await queryRunner.commitTransaction();
 

@@ -18,6 +18,9 @@ export class SepidarQuotationItemDTO {
   @IsNumber() Fee: number;
   @IsNumber() Price: number;
   @IsNumber() PriceInBaseCurrency: number;
+  @IsNumber() DiscountInBaseCurrency: number;
+  @IsNumber() TaxInBaseCurrency: number;
+  @IsNumber() DutyInBaseCurrency: number;
   @IsNumber() NetPriceInBaseCurrency: number;
   @IsNumber() Rate: number;
   @IsNumber() Discount: number;

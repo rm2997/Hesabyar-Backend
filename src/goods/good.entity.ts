@@ -40,8 +40,11 @@ export class Good {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ type: 'int', nullable: true })
+  sepidarId: number;
+
   @Column({ type: 'nvarchar', nullable: true })
-  sepidarId: string;
+  sepidarCode: string;
 
   @OneToMany(() => InvoiceGoods, (item) => item.good, {
     cascade: true,

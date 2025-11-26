@@ -10,6 +10,8 @@ import { SepidarVoucherDTO } from './sepidarVoucher-dto';
 import { SepidarVoucherItemDTO } from './sepidarVoucherItem-dto';
 import { Invoice } from 'src/invoice/invoice.entity';
 import { InvoiceGoods } from 'src/invoice/invoice-good.entity';
+import { Proforma } from 'src/proforma/proforma.entity';
+import { ProformaGoods } from 'src/proforma/proforma-goods.entity';
 
 @Injectable()
 export class MssqlService {
@@ -45,7 +47,7 @@ export class MssqlService {
 
   async syncGoods() {
     const data = await this.mssqlDataSource.query(
-      'SELECT Title as goodName,UnitRef ,0 as goodPrice,INV.item.Version as goodCount,Title_En as goodInfo,Code as sepidarID  from INV.Item',
+      'SELECT ItemID as sepidarId, Title as goodName,UnitRef ,0 as goodPrice,INV.item.Version as goodCount,Title_En as goodInfo,Code as sepidarCode  from INV.Item',
     );
     const mysqlQueryRunner = this.mysqlDataSource.createQueryRunner();
     mysqlQueryRunner.startTransaction();
@@ -55,14 +57,15 @@ export class MssqlService {
       await mysqlQueryRunner.query('ALTER TABLE good AUTO_INCREMENT = 1');
       for (const g of data) {
         await mysqlQueryRunner.query(
-          'INSERT INTO good (goodName,goodPrice,goodCount,goodInfo,createdAt,sepidarId,goodUnitId) VALUES(?,?,?,?,?,?,?)',
+          'INSERT INTO good (goodName,goodPrice,goodCount,goodInfo,createdAt,sepidarId,sepidarCode,goodUnitId) VALUES(?,?,?,?,?,?,?,?)',
           [
             g.goodName,
             g.goodPrice,
             g.goodCount,
             g.goodInfo,
             new Date(),
-            g.sepidarID,
+            g.sepidarId,
+            g.sepidarCode,
             g.UnitRef,
           ],
         );
@@ -293,6 +296,26 @@ export class MssqlService {
     return data[0];
   }
 
+  async getNextQuotationNumber(
+    fiscalYearId: number,
+    quotationId: number,
+  ): Promise<{ Number: number }> {
+    await this.mssqlDataSource.query("Exec FMK.spGetLock 'QuotationRow' ");
+    const data = await this.mssqlDataSource.query(
+      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwQuotation]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}'`,
+    );
+    console.log(data);
+    const checkExist = await this.mssqlDataSource.query(
+      `Select Count(1) as exist from SLS.[vwQuotation] where [QuotationId] <> ${quotationId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
+    );
+    if (checkExist[0].exist > 0)
+      throw new BadRequestException(
+        'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+      );
+
+    return data[0];
+  }
+
   async getItemByProformaId(proformaID: number): Promise<any> {
     const data = await this.mssqlDataSource.query(
       `exec sp_executesql N'SELECT  [ItemSecondaryUnitRef], [ItemType], [CustomerDiscountRate], [PriceInfoDiscountRate], [TracingRef], [TaxExempt], [Description], [Description_En], [UnitTitle], [ItemBarCode], [ItemIranCode], [UnitTitle_En], [DiscountQuotationItemRef], [PriceInfoPriceDiscount], [PriceInfoPercentDiscount], [SerialTracking], [ProductPackRef], [ProductPackTitle], [ProductPackQuantity], [ItemSaleGroupRef], [ItemPurchaseGroupRef], [IsAggregateDiscountInvoiceItem], [QuotationItemID], [QuotationRef], [RowID], [ItemRef], [ItemCode], [ItemTitle], [ItemTitle_En], [ItemIsUnitRatioConstant], [ItemUnitsRatio], [ItemTracingCategoryRef], [StockRef], [TracingTitle], [StockCode], [StockTitle], [StockTitle_En], [Quantity], [SecondaryQuantity], [Fee], [Discount], [PriceInBaseCurrency], [DiscountInBaseCurrency], [AdditionInBaseCurrency], [TaxInBaseCurrency], [DutyInBaseCurrency], [NetPriceInBaseCurrency], [Addition], [Tax], [Duty], [Rate], [Price], [UsedQuantity], [AggregateAmountDiscountRate], [CalculationFormulaRef], [DeliveredQuantity], [CustomerDiscount], [PropertyAmounts], [AggregateAmountPriceDiscount], [AggregateAmountPercentDiscount], [AdditionFactor_VatEffective], [AdditionFactor_VatIneffective], [AdditionFactorInBaseCurrency_VatEffective], [AdditionFactorInBaseCurrency_VatIneffective] FROM SLS.[vwQuotationItem]   WHERE ([QuotationRef] = @QuotationRef0 ) ',N'@QuotationRef0 int',@QuotationRef0=${proformaID}`,
@@ -323,7 +346,7 @@ export class MssqlService {
         i,
         invoiceItem.quantity,
         invoiceItem.price,
-        invoiceItem.id,
+        invoiceItem?.good?.sepidarId!,
         sepidarInvoice.InvoiceId,
       );
       sepidarInvoiceItems.push(sepidarNewItem);
@@ -370,7 +393,10 @@ export class MssqlService {
       // }
       await queryRunner.commitTransaction();
 
-      return { invoiceNumber: sepidarInvoice.Number };
+      return {
+        invoiceNumber: sepidarInvoice.Number,
+        invoiceId: sepidarInvoice.InvoiceId,
+      };
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(error.message);
@@ -379,28 +405,87 @@ export class MssqlService {
     }
   }
 
-  async createQuotation(
-    quotation: SepidarQuotationDTO,
-    quotationItems: SepidarQuotationItemDTO[],
-  ) {
+  // async createQuotation(
+  //   quotation: SepidarQuotationDTO,
+  //   quotationItems: SepidarQuotationItemDTO[],
+  // ) {
+  //   const queryRunner = this.mssqlDataSource.createQueryRunner();
+  //   await queryRunner.connect();
+  //   await queryRunner.startTransaction();
+  //   try {
+  //     const fiscalYear = await queryRunner.manager.query(
+  //       `SELECT FiscalYearID FROM FIN.FiscalYear WHERE FiscalYearID=@0`,
+  //       [quotation.FiscalYearRef],
+  //     );
+  //     if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
+  //     await queryRunner.manager.insert('SLS.Quotation', quotation);
+  //     for (const qItem of quotationItems) {
+  //       await queryRunner.manager.insert('SLS.QuotationItem', qItem);
+  //     }
+  //     await queryRunner.commitTransaction();
+  //     return { quotationNumber: quotation.Number };
+  //   } catch (error) {
+  //     await queryRunner.rollbackTransaction();
+  //     throw new BadRequestException();
+  //   } finally {
+  //     await queryRunner.release();
+  //   }
+  // }
+
+  async createQuotation(proforma: Proforma, proformaGoods: ProformaGoods[]) {
+    const { FiscalYearId, FiscalYear } = await this.getFiscalYearAndId();
+
+    const sepidarQuotation = await this.initiatNewSepidarQuotation(
+      proforma,
+      FiscalYearId,
+      FiscalYear,
+    );
+
+    const sepidarQuotationItems: SepidarQuotationItemDTO[] = [];
+    let i = 1;
+    for (const proformaItem of proformaGoods) {
+      const sepidarNewItem = await this.initiatNewSepidarQuotationItems(
+        i,
+        proformaItem.quantity,
+        proformaItem.total,
+        proformaItem?.good?.sepidarId,
+        proformaItem?.price,
+        sepidarQuotation.QuotationId,
+      );
+      sepidarQuotationItems.push(sepidarNewItem);
+      i++;
+    }
+    console.log(sepidarQuotation, sepidarQuotationItems);
+    console.log('Start inserting Quotation to Sql Server...');
+
     const queryRunner = this.mssqlDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
       const fiscalYear = await queryRunner.manager.query(
-        `SELECT FiscalYearID FROM FIN.FiscalYear WHERE FiscalYearID=@0`,
-        [quotation.FiscalYearRef],
+        `SELECT FiscalYearID FROM FMK.FiscalYear WHERE FiscalYearID=${FiscalYearId}`,
       );
+      console.log(fiscalYear);
+
       if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
-      await queryRunner.manager.insert('SLS.Quotation', quotation);
-      for (const qItem of quotationItems) {
-        await queryRunner.manager.insert('SLS.QuotationItem', qItem);
+
+      console.log('Start Inserting Quotation...');
+
+      await queryRunner.manager.insert('SLS.Quotation', sepidarQuotation);
+      console.log('Start Inserting QuotationItems...');
+      for (const item of sepidarQuotationItems) {
+        await queryRunner.manager.insert('SLS.QuotationItem', item);
       }
+
       await queryRunner.commitTransaction();
-      return { quotationNumber: quotation.Number };
+
+      return {
+        quotationNumber: sepidarQuotation.Number,
+        quotationId: sepidarQuotation.QuotationId,
+      };
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException();
+      throw new BadRequestException(error.message);
     } finally {
       await queryRunner.release();
     }
@@ -514,6 +599,8 @@ export class MssqlService {
     itemId: number,
     invoiceId: number,
   ) {
+    console.log(itemId);
+
     const item = new SepidarInvoiceItemDTO();
     item.AdditionFactor_VatEffective = 0;
     item.AdditionFactor_VatIneffective = 0;
@@ -537,7 +624,7 @@ export class MssqlService {
     item.BankFeeForCurrencySaleInBaseCurrency = 0;
     item.IsAggregateDiscountInvoiceItem = false;
     item.TaxPayerCurrencyPurchaseRate = 0;
-    item.InvoiceItemId = (await this.getNextId('InvoiceItem')).LastId;
+    item.InvoiceItemId = (await this.getNextId('SLS.InvoiceItem')).LastId;
     item.InvoiceRef = invoiceId;
     item.RowID = itemNumber;
     item.ItemRef = itemId;
@@ -553,6 +640,133 @@ export class MssqlService {
     item.PriceInBaseCurrency = price;
     item.DiscountInBaseCurrency = 0;
     item.AdditionInBaseCurrency = 0;
+    item.TaxInBaseCurrency = 0;
+    item.DutyInBaseCurrency = 0;
+    item.NetPriceInBaseCurrency = price;
+    item.Duty = 0;
+    item.Rate = 1;
+    item.AggregateAmountPriceDiscount = 0;
+    item.AggregateAmountDiscountRate = 0;
+    return item;
+  }
+
+  async initiatNewSepidarQuotation(
+    savedQuotation: Proforma,
+    fiscalYearId: number,
+    fiscalYear: string,
+  ) {
+    const newsSepidarQuotation = new SepidarQuotationDTO();
+    newsSepidarQuotation.FiscalYearRef = fiscalYearId;
+    // newsSepidarQuotation.VoucherRef = undefined;
+    newsSepidarQuotation.PriceInBaseCurrency = savedQuotation.totalAmount;
+    // newsSepidarQuotation.BaseOnInventoryDelivery = false;
+    // newsSepidarQuotation.OrderRef = undefined;
+    // newsSepidarQuotation.ShouldControlCustomerCredit = true;
+    // newsSepidarQuotation.AgreementRef = undefined;
+    // newsSepidarQuotation.TaxPayerBillIssueDateTime = new Date();
+    // newsSepidarQuotation.SettlementType = 1;
+    // newsSepidarQuotation.Description = '';
+    newsSepidarQuotation.QuotationId = (
+      await this.getNextId('SLS.Quotation')
+    ).LastId;
+    newsSepidarQuotation.Number = (
+      await this.getNextQuotationNumber(
+        fiscalYearId,
+        newsSepidarQuotation.QuotationId,
+      )
+    ).Number;
+    newsSepidarQuotation.CustomerPartyRef = savedQuotation.customer.sepidarId;
+    newsSepidarQuotation.Date = new Date();
+    newsSepidarQuotation.ExpirationDate = new Date();
+    newsSepidarQuotation.CustomerRealName =
+      savedQuotation.customer.customerLName +
+      ' ' +
+      savedQuotation.customer.customerFName;
+    newsSepidarQuotation.SaleTypeRef = 1;
+    newsSepidarQuotation.CustomerRealName_En =
+      savedQuotation.customer.customerLName +
+      ' ' +
+      savedQuotation.customer.customerFName;
+    newsSepidarQuotation.PartyAddressRef = undefined;
+    newsSepidarQuotation.Closed = false;
+    newsSepidarQuotation.CurrencyRef = 1;
+    // newsSepidarQuotation.SLRef = 420;
+    newsSepidarQuotation.DiscountInBaseCurrency = 0;
+    newsSepidarQuotation.AdditionInBaseCurrency = 0;
+    newsSepidarQuotation.TaxInBaseCurrency = 0;
+    newsSepidarQuotation.DutyInBaseCurrency = 0;
+    newsSepidarQuotation.NetPriceInBaseCurrency = savedQuotation.totalAmount;
+    newsSepidarQuotation.Price = savedQuotation.totalAmount;
+    newsSepidarQuotation.Discount = 0;
+    newsSepidarQuotation.DeliveryLocationRef = 1;
+    newsSepidarQuotation.Addition = 0;
+    newsSepidarQuotation.Tax = 0;
+    newsSepidarQuotation.Duty = 0;
+    newsSepidarQuotation.Rate = 1;
+    newsSepidarQuotation.Version = 1;
+    newsSepidarQuotation.Creator = savedQuotation.createdBy.id;
+    newsSepidarQuotation.CreationDate = new Date();
+    newsSepidarQuotation.LastModifier = savedQuotation.createdBy.id;
+    newsSepidarQuotation.LastModificationDate = new Date();
+    newsSepidarQuotation.Guid = undefined;
+    newsSepidarQuotation.AdditionFactor_VatEffective = 0;
+    newsSepidarQuotation.AdditionFactorInBaseCurrency_VatEffective = 0;
+    newsSepidarQuotation.AdditionFactor_VatIneffective = 0;
+    newsSepidarQuotation.AdditionFactorInBaseCurrency_VatIneffective = 0;
+    console.log(newsSepidarQuotation);
+
+    return newsSepidarQuotation;
+  }
+
+  async initiatNewSepidarQuotationItems(
+    itemNumber: number,
+    quantity: number,
+    price: number,
+    itemId: number,
+    itemFee: number,
+    quotationId: number,
+  ) {
+    console.log(itemId);
+
+    const item = new SepidarQuotationItemDTO();
+    item.AdditionFactor_VatEffective = 0;
+    item.AdditionFactor_VatIneffective = 0;
+    item.CustomerDiscountRate = 0;
+    item.PriceInfoDiscountRate = 0;
+    item.Description = undefined;
+    item.Description_En = undefined;
+    item.DiscountQuotationItemRef = undefined;
+    item.PriceInfoPriceDiscount = 0;
+    item.PriceInfoPercentDiscount = 0;
+    item.CustomerDiscount = 0;
+    //item.OrderItemRef = undefined;
+    item.ProductPackRef = undefined;
+    item.ProductPackQuantity = undefined;
+    item.AggregateAmountPercentDiscount = 0;
+    item.AdditionFactorInBaseCurrency_VatEffective = 0;
+    item.AdditionFactorInBaseCurrency_VatIneffective = 0;
+    // item.DiscountItemGroupRef = undefined;
+    // item.BankFeeForCurrencySale = 0;
+    // item.BankFeeForCurrencySaleInBaseCurrency = 0;
+    // item.IsAggregateDiscountInvoiceItem = false;
+    // item.TaxPayerCurrencyPurchaseRate = 0;
+    item.QuotationItemID = (await this.getNextId('SLS.QuotationItem')).LastId;
+    item.QuotationRef = quotationId;
+    item.RowID = itemNumber;
+    item.ItemRef = itemId;
+    item.StockRef = 5;
+    item.TracingRef = undefined;
+    item.Quantity = quantity;
+    item.UsedQuantity = quantity;
+    item.SecondaryQuantity = undefined;
+    item.Fee = itemFee;
+    item.Price = price;
+    item.Discount = 0;
+    item.Addition = 0;
+    item.Tax = 0;
+    item.PriceInBaseCurrency = price;
+    item.DiscountInBaseCurrency = 0;
+    // item.AdditionInBaseCurrency = 0;
     item.TaxInBaseCurrency = 0;
     item.DutyInBaseCurrency = 0;
     item.NetPriceInBaseCurrency = price;

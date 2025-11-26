@@ -16,10 +16,12 @@ import { UsersService } from 'src/users/users.service';
 import { Notification } from 'src/notification/notification.entity';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
 import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
+import { MssqlService } from 'src/mssql/mssql.service';
 
 @Injectable()
 export class ProformaService {
   constructor(
+    private readonly mssqlService: MssqlService,
     @InjectRepository(Proforma)
     private proformaRepository: Repository<Proforma>,
     @InjectRepository(ProformaGoods)
@@ -42,26 +44,65 @@ export class ProformaService {
       throw new BadRequestException(
         'مشتری انتخاب شده شماره موبایل پیش فرض ندارد',
       );
-    const proformaGoods = [...data?.proformaGoods!];
 
-    proformaGoods.map((item) => {
-      item.createdBy = user;
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const proforma = this.proformaRepository.create({
-      ...data,
-      proformaGoods: [...proformaGoods],
-      createdAt: new Date(),
-      createdBy: { id: user.id },
-    });
+    try {
+      // const proformaGoods = [...data?.proformaGoods!];
 
-    console.log('input Data is:', data);
+      // proformaGoods.map((item) => {
+      //   item.createdBy = user;
+      // });
 
-    const savedProforma = await this.proformaRepository.save(proforma);
-    console.log('After save:', savedProforma);
-    const shareableLink = await this.generateShareableLink(savedProforma.id);
-    savedProforma.customerLink = shareableLink;
-    return await this.proformaRepository.save(savedProforma);
+      const proforma = queryRunner.manager.create(Proforma, {
+        title: data?.title,
+        customer: data.customer,
+        totalAmount: data.totalAmount,
+        createdBy: user,
+      });
+
+      console.log('input Data is:', data);
+      console.log('Proforma Data is:', proforma);
+      const savedProforma = await queryRunner.manager.save(proforma);
+      console.log('After save:', savedProforma);
+
+      const shareableLink = await this.generateShareableLink(savedProforma.id);
+      savedProforma.customerLink = shareableLink;
+
+      const proformaGoods = data?.proformaGoods?.map((item) =>
+        queryRunner.manager.create(ProformaGoods, {
+          quantity: item.quantity,
+          price: item.price,
+          total: item.total,
+          good: item.good,
+          proforma: savedProforma,
+          createdBy: user,
+        }),
+      );
+
+      await queryRunner.manager.save(savedProforma);
+      await queryRunner.manager.save(proformaGoods);
+
+      const { quotationNumber, quotationId } =
+        await this.mssqlService.createQuotation(savedProforma, proformaGoods!);
+      if (!quotationNumber)
+        throw new BadRequestException('درج در سپیدار انجام نشد');
+
+      savedProforma.proformaNumber = quotationNumber;
+      savedProforma.sepidarId = quotationId + '';
+      await queryRunner.manager.save(savedProforma);
+
+      await queryRunner.commitTransaction();
+
+      return savedProforma;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error.message);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async getAll(

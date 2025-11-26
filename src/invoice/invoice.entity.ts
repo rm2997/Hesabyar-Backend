@@ -20,6 +20,12 @@ export class Invoice {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ nullable: false })
+  invoiceNumber: number;
+
+  @Column({ nullable: false })
+  fiscalYear: number;
+
   @Column({ nullable: true })
   title: string;
 

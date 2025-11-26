@@ -9,6 +9,7 @@ import { SmsModule } from 'src/sms/sms.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { UsersModule } from 'src/users/users.module';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
+import { MssqlModule } from 'src/mssql/mssql.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CustomerPhone } from 'src/customer/customer-phone.entity';
     SmsModule,
     NotificationModule,
     UsersModule,
+    MssqlModule,
   ],
   controllers: [ProformaController],
   providers: [ProformaService],

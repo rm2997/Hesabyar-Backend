@@ -6,6 +6,7 @@ import {
   OneToMany,
   JoinColumn,
   UpdateDateColumn,
+  Unique,
 } from 'typeorm';
 import { User } from '../users/users.entity';
 import { Customer } from 'src/customer/customer.entity';
@@ -17,6 +18,12 @@ import { Banks } from 'src/common/decorators/banks.enum';
 export class Proforma {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ nullable: false })
+  proformaNumber: number;
+
+  @Column({ nullable: false })
+  fiscalYear: number;
 
   @Column({ nullable: true })
   title: string;
@@ -111,10 +118,6 @@ export class Proforma {
   @JoinColumn()
   proformaGoods: ProformaGoods[];
 
-  @ManyToOne(() => User, (user) => user.id, {
-    nullable: false,
-    eager: true,
-    onDelete: 'RESTRICT',
-  })
+  @ManyToOne(() => User, (user) => user.id)
   createdBy: User;
 }

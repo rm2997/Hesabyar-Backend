@@ -35,7 +35,7 @@ export class ProformaGoods {
     nullable: false,
   })
   @JoinColumn()
-  good: Good[];
+  good: Good;
 
   @Column({ nullable: true })
   description: string;
