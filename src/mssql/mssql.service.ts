@@ -267,6 +267,15 @@ export class MssqlService {
     return data[0];
   }
 
+  async getAllStock() {
+    const data = await this.mssqlDataSource.query(
+      'SELECT * FROM [INV].[Stock]',
+    );
+    console.log(data);
+
+    return data;
+  }
+
   async getNextId(resourceName: string): Promise<{ LastId: number }> {
     const data = await this.mssqlDataSource.query(
       `DECLARE @id int EXEC [FMK].[spGetNextId] '${resourceName}', @id output, 1 SELECT @Id as LastId`,
@@ -348,6 +357,7 @@ export class MssqlService {
         invoiceItem.price,
         invoiceItem?.good?.sepidarId!,
         sepidarInvoice.InvoiceId,
+        invoice.stockRef,
       );
       sepidarInvoiceItems.push(sepidarNewItem);
       i++;
@@ -451,6 +461,7 @@ export class MssqlService {
         proformaItem?.good?.sepidarId,
         proformaItem?.price,
         sepidarQuotation.QuotationId,
+        proforma.stockRef,
       );
       sepidarQuotationItems.push(sepidarNewItem);
       i++;
@@ -476,6 +487,17 @@ export class MssqlService {
       for (const item of sepidarQuotationItems) {
         await queryRunner.manager.insert('SLS.QuotationItem', item);
       }
+
+      console.log('Start inserting SummaryTable...');
+      await queryRunner.manager.query(
+        'DECLARE @SummaryTable INV.SummaryRecordTable  INSERT INTO @SummaryTable VALUES(5, 1050, NULL, 11, 0 )  Exec [INV].[spLockItemStockSummary] @SummaryTable',
+      );
+      await queryRunner.manager.query(
+        'DECLARE @SummaryTable INV.SummaryRecordTable  INSERT INTO @SummaryTable VALUES(5, 1050, NULL, 11, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0',
+      );
+      await queryRunner.manager.query(
+        'DECLARE @SummaryTable INV.SummaryRecordTable  INSERT INTO @SummaryTable VALUES(5, 1050, NULL, 11, 0)   Select fn.*  FROM @SummaryTable T   CROSS APPLY  ( Select ItemStockSummaryType,T.ItemID ItemRef, UnitRef, UnitTitle, UnitTitle_En, TotalQuantity,StockQuantity,TracingQuantity,StockTracingQuantity,[Order]  FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn',
+      );
 
       await queryRunner.commitTransaction();
 
@@ -598,6 +620,7 @@ export class MssqlService {
     price: number,
     itemId: number,
     invoiceId: number,
+    stockRef: number,
   ) {
     console.log(itemId);
 
@@ -628,7 +651,7 @@ export class MssqlService {
     item.InvoiceRef = invoiceId;
     item.RowID = itemNumber;
     item.ItemRef = itemId;
-    item.StockRef = 5;
+    item.StockRef = stockRef;
     item.TracingRef = undefined;
     item.Quantity = quantity;
     item.SecondaryQuantity = undefined;
@@ -725,6 +748,7 @@ export class MssqlService {
     itemId: number,
     itemFee: number,
     quotationId: number,
+    stockRef: number,
   ) {
     console.log(itemId);
 
@@ -754,7 +778,7 @@ export class MssqlService {
     item.QuotationRef = quotationId;
     item.RowID = itemNumber;
     item.ItemRef = itemId;
-    item.StockRef = 5;
+    item.StockRef = stockRef;
     item.TracingRef = undefined;
     item.Quantity = quantity;
     item.UsedQuantity = quantity;

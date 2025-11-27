@@ -60,11 +60,14 @@ export class ProformaService {
         title: data?.title,
         customer: data.customer,
         totalAmount: data.totalAmount,
+        stockRef: data.stockRef,
+        fiscalYear: data.fiscalYear,
         createdBy: user,
       });
 
       console.log('input Data is:', data);
       console.log('Proforma Data is:', proforma);
+
       const savedProforma = await queryRunner.manager.save(proforma);
       console.log('After save:', savedProforma);
 

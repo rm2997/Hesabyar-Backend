@@ -34,4 +34,9 @@ export class MssqlController {
   async getFiscalYear() {
     return await this.mssqlService.getFiscalYearAndId();
   }
+
+  @Get('getAllStocks')
+  async getAllStocks() {
+    return await this.mssqlService.getAllStock();
+  }
 }

@@ -22,7 +22,7 @@ export class Proforma {
   @Column({ nullable: false })
   proformaNumber: number;
 
-  @Column({ nullable: false })
+  @Column('decimal', { nullable: false })
   fiscalYear: number;
 
   @Column({ nullable: true })
@@ -106,6 +106,9 @@ export class Proforma {
 
   @Column({ type: 'nvarchar', nullable: true })
   sepidarId: string;
+
+  @Column('decimal')
+  stockRef: number;
 
   @Column({ type: Boolean, default: false })
   isSent: boolean;

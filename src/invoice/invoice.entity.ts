@@ -46,6 +46,9 @@ export class Invoice {
   @Column({ type: 'nvarchar', nullable: true })
   sepidarId: string;
 
+  @Column()
+  stockRef: number;
+
   @ManyToOne(() => Proforma, { eager: true })
   @JoinColumn({ name: 'proforma_id' })
   proforma: Proforma;
