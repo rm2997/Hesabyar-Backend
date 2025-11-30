@@ -21,9 +21,6 @@ import { Notification } from 'src/notification/notification.entity';
 import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
 import { MssqlService } from 'src/mssql/mssql.service';
-import { SepidarQuotationDTO } from 'src/mssql/sepidarQuotation-dto';
-import { SepidarInvoiceDTO } from 'src/mssql/sepidarInvoice-dto';
-import { SepidarInvoiceItemDTO } from 'src/mssql/sepidarInvoiceItem-dto';
 
 @Injectable()
 export class InvoiceService {

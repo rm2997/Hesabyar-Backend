@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
 import { MssqlService } from './mssql.service';
 
 @Controller('sepidar')
@@ -30,9 +30,9 @@ export class MssqlController {
     return await this.mssqlService.syncCustomers();
   }
 
-  @Get('getFiscalYear')
-  async getFiscalYear() {
-    return await this.mssqlService.getFiscalYearAndId();
+  @Get('getFiscalYear/:fiscalYearId')
+  async getFiscalYear(@Param('fiscalYearId') fiscalYearId: number) {
+    return await this.mssqlService.getFiscalYearAndId(fiscalYearId);
   }
 
   @Get('getAllStocks')

@@ -6,13 +6,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Not, Repository } from 'typeorm';
 import { Good } from './good.entity';
-import { Unit } from 'src/units/unit.entity';
 import { UnitsService } from 'src/units/units.service';
 import { User } from 'src/users/users.entity';
+import { MssqlService } from 'src/mssql/mssql.service';
 
 @Injectable()
 export class GoodsService {
   constructor(
+    private readonly mssqlService: MssqlService,
     @InjectRepository(Good)
     private readonly goodRepository: Repository<Good>,
     private readonly unitService: UnitsService,
@@ -65,6 +66,11 @@ export class GoodsService {
     limit: number,
     search: string,
   ): Promise<{ total: number; items: Good[] }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+    } catch (error) {}
     const query = this.dataSource
       .getRepository(Good)
       .createQueryBuilder('good')
@@ -81,7 +87,12 @@ export class GoodsService {
       .take(limit == -1 ? undefined : limit)
       .orderBy('good.id', 'DESC')
       .getMany();
-
+    const sepidarItems = await this.mssqlService.getAllExistItems();
+    for (const g of items) {
+      for (const i of sepidarItems) {
+        if (i.ItemRef == g.sepidarId) g.goodCount = i.Quantity;
+      }
+    }
     return { items, total };
   }
 
@@ -92,7 +103,8 @@ export class GoodsService {
   async getGoodById(id: number): Promise<Good | null> {
     const Good = await this.goodRepository.findOne({ where: { id } });
     if (!Good) throw new NotFoundException();
-
+    const sepidarItem = await this.mssqlService.getItemById(Good.sepidarId);
+    Good.goodCount = sepidarItem.Quantity;
     return Good;
   }
 
