@@ -32,7 +32,7 @@ export class SepidarInvoiceItemDTO {
   @IsNumber() AdditionFactor_VatIneffective: number;
   @IsNumber() AdditionFactorInBaseCurrency_VatEffective: number;
   @IsNumber() AdditionFactorInBaseCurrency_VatIneffective: number;
-  @IsInt() QuotationItemRef: number;
+  @IsInt() QuotationItemRef?: number;
   @IsNumber() CustomerDiscountRate: number;
   @IsNumber() PriceInfoDiscountRate: number;
   @IsOptional() @IsString() Description?: string;
@@ -53,5 +53,4 @@ export class SepidarInvoiceItemDTO {
   @IsInt() RowID: number;
   @IsNumber() AggregateAmountPriceDiscount: number;
   @IsNumber() AggregateAmountDiscountRate: number;
-  @IsNumber() UsedQuantity: number;
 }

@@ -77,6 +77,7 @@ export class InvoiceService {
       await queryRunner.manager.save(invoiceGoods);
       await queryRunner.manager.save(savedInvoice);
       await queryRunner.manager.save(proforma);
+      console.log(savedInvoice);
 
       const { invoiceNumber, invoiceId } =
         await this.mssqlService.createInvoice(savedInvoice, invoiceGoods!);

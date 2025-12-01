@@ -147,6 +147,14 @@ export class MssqlService {
     }
   }
 
+  async getCustomerById(customerId: number) {
+    const data = await this.mssqlDataSource.query(
+      'SELECT * FROM GNR.vwParty WHERE PartyId=@0',
+      [customerId],
+    );
+    return data[0];
+  }
+
   async addNewUnit(unitName: string) {
     const queryRunner = this.mssqlDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -351,6 +359,47 @@ export class MssqlService {
     return data[0];
   }
 
+  async getNextVoucherNumber(
+    fiscalYearId: number,
+    voucherId: number,
+  ): Promise<{ Number: number }> {
+    await this.mssqlDataSource.query("Exec FMK.spGetLock 'VoucherRow'");
+    const data = await this.mssqlDataSource.query(
+      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM ACC.[vwVoucher]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}'`,
+    );
+
+    console.log(data);
+    const checkExist = await this.mssqlDataSource.query(
+      `Select Count(1) as exist from ACC.[vwVoucher] where [QuotationId] <> ${voucherId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
+    );
+    if (checkExist[0].exist > 0)
+      throw new BadRequestException(
+        'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+      );
+
+    return data[0];
+  }
+
+  async getNextVoucherDailyNumber() {
+    const queryRunner = this.mssqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.query(
+        `Exec FMK.spGetLock 'SG.Accounting.VoucherManagement.Common.VoucherRow' `,
+      );
+      const data = await queryRunner.query(
+        `SELECT ISNULL(MAX(DailyNumber), 0) + 1 NextDailyNumber FROM ACC.Voucher  WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
+      );
+      return data[0];
+    } catch (erroe) {
+      queryRunner.rollbackTransaction();
+      throw new BadRequestException();
+    } finally {
+      queryRunner.release();
+    }
+  }
+
   async getItemByProformaId(proformaID: number): Promise<any> {
     const data = await this.mssqlDataSource.query(
       `exec sp_executesql N'SELECT  [ItemSecondaryUnitRef], [ItemType], [CustomerDiscountRate], [PriceInfoDiscountRate], [TracingRef], [TaxExempt], [Description], 
@@ -499,12 +548,11 @@ export class MssqlService {
   }
 
   async createInvoice(invoice: Invoice, invoiceGoods: InvoiceGoods[]) {
-    const { FiscalYearId, FiscalYear } = await this.getFiscalYearAndId();
+    const { FiscalYearId } = await this.getFiscalYearAndId();
 
     const sepidarInvoice = await this.initiatNewSepidarInvoice(
       invoice,
       FiscalYearId,
-      FiscalYear,
     );
 
     const sepidarInvoiceItems: SepidarInvoiceItemDTO[] = [];
@@ -529,14 +577,10 @@ export class MssqlService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const fiscalYear = await queryRunner.manager.query(
-        `SELECT FiscalYearID FROM FMK.FiscalYear WHERE FiscalYearID=${FiscalYearId}`,
-      );
-      console.log(fiscalYear);
+      const { FiscalYearId } = await this.getFiscalYearAndId();
 
-      if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
+      if (!FiscalYearId) throw new Error('سال مالی معتبر نیست');
       console.log('Start Inserting invoice...');
-
       await queryRunner.manager.insert('SLS.Invoice', sepidarInvoice);
       console.log('Start Inserting invoiceItems...');
       for (const item of sepidarInvoiceItems) {
@@ -547,16 +591,23 @@ export class MssqlService {
         );
         await queryRunner.manager.query(
           `DECLARE @SummaryTable INV.SummaryRecordTable  
-         INSERT INTO @SummaryTable VALUES({item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
+         INSERT INTO @SummaryTable VALUES(${item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
         );
         await queryRunner.manager.query(
           `DECLARE @SummaryTable INV.SummaryRecordTable  
-         INSERT INTO @SummaryTable VALUES({item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0)
+         INSERT INTO @SummaryTable VALUES(${item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0)
          Select fn.*  FROM @SummaryTable T   CROSS APPLY  ( Select ItemStockSummaryType,T.ItemID ItemRef, UnitRef,
          UnitTitle, UnitTitle_En, TotalQuantity,StockQuantity,TracingQuantity,StockTracingQuantity,[Order]  
          FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn`,
         );
       }
+      if (invoice?.proforma?.sepidarId!)
+        await this.updateQuotationAfterCreateInvoice(
+          Number(invoice?.proforma?.sepidarId!),
+          sepidarInvoice,
+          sepidarInvoiceItems,
+        );
+      await this.createVoucher(sepidarInvoice);
 
       await queryRunner.commitTransaction();
 
@@ -639,23 +690,30 @@ export class MssqlService {
     }
   }
 
-  async createVoucher(
-    voucher: SepidarVoucherDTO,
-    voucherItems: SepidarVoucherItemDTO[],
-  ) {
+  async createVoucher(sepidarInvoice: SepidarInvoiceDTO) {
     const queryRunner = this.mssqlDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const fiscalYear = await queryRunner.manager.query(
-        `SELECT FiscalYearID FROM FIN.FiscalYear WHERE FiscalYearID=@0`,
-        [voucher.FiscalYearRef],
+      const voucher = await this.initNewVoucher(
+        sepidarInvoice,
+        sepidarInvoice.FiscalYearRef,
       );
-      if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
       await queryRunner.manager.insert('ACC.Voucher', voucher);
-      for (const vItem of voucherItems) {
-        await queryRunner.manager.insert('ACC.VoucherItem', vItem);
-      }
+
+      const voucherItem1 = await this.initNewVoucherItem(
+        sepidarInvoice,
+        voucher,
+        1,
+      );
+      await queryRunner.manager.insert('ACC.VoucherItem', voucherItem1);
+      const voucherItem2 = await this.initNewVoucherItem(
+        sepidarInvoice,
+        voucher,
+        2,
+      );
+      await queryRunner.manager.insert('ACC.VoucherItem', voucherItem2);
+
       await queryRunner.commitTransaction();
       return { voucherNumber: voucher.Number };
     } catch (error) {
@@ -666,11 +724,7 @@ export class MssqlService {
     }
   }
 
-  async initiatNewSepidarInvoice(
-    savedInvoice: Invoice,
-    fiscalYearId: number,
-    fiscalYear: string,
-  ) {
+  async initiatNewSepidarInvoice(savedInvoice: Invoice, fiscalYearId: number) {
     const newsSepidarInvoice = new SepidarInvoiceDTO();
     newsSepidarInvoice.FiscalYearRef = fiscalYearId;
     newsSepidarInvoice.VoucherRef = undefined;
@@ -722,8 +776,8 @@ export class MssqlService {
     newsSepidarInvoice.LastModifier = savedInvoice.createdBy.id;
     newsSepidarInvoice.LastModificationDate = new Date();
     newsSepidarInvoice.QuotationRef = savedInvoice?.proforma
-      ? savedInvoice.proforma.id + ''
-      : '';
+      ? savedInvoice.proforma.sepidarId + ''
+      : undefined;
     newsSepidarInvoice.Guid = undefined;
     newsSepidarInvoice.AdditionFactor_VatEffective = 0;
     newsSepidarInvoice.AdditionFactorInBaseCurrency_VatEffective = 0;
@@ -748,7 +802,7 @@ export class MssqlService {
     const item = new SepidarInvoiceItemDTO();
     item.AdditionFactor_VatEffective = 0;
     item.AdditionFactor_VatIneffective = 0;
-    item.QuotationItemRef = 8461;
+    item.QuotationItemRef = undefined;
     item.CustomerDiscountRate = 0;
     item.PriceInfoDiscountRate = 0;
     item.Description = undefined;
@@ -951,7 +1005,7 @@ export class MssqlService {
     sepidarQuotationItem.StockRef = sepidarInvoiceItem.StockRef;
     sepidarQuotationItem.TracingRef = sepidarInvoiceItem.TracingRef;
     sepidarQuotationItem.Quantity = sepidarInvoiceItem.Quantity;
-    sepidarQuotationItem.UsedQuantity = sepidarInvoiceItem.UsedQuantity;
+    sepidarQuotationItem.UsedQuantity = sepidarInvoiceItem.Quantity;
     sepidarQuotationItem.SecondaryQuantity =
       sepidarInvoiceItem.SecondaryQuantity;
     sepidarQuotationItem.Fee = sepidarInvoiceItem.Fee;
@@ -976,5 +1030,96 @@ export class MssqlService {
     sepidarQuotationItem.AggregateAmountDiscountRate =
       sepidarInvoiceItem.AggregateAmountDiscountRate;
     return sepidarQuotationItem;
+  }
+
+  async getVoucehrDescription(invoiceNumber: number, toCustomer: string = '') {
+    const data = await this.mssqlDataSource
+      .query(`SELECT [Number], [SaleTypeId], [Title], [Title_En], [Version], [Creator], [CreationDate], [LastModifier], 
+      [LastModificationDate], [SaleTypeMarket], [PartSalesSLRef], [PartSalesSLCode], [PartSalesSLTitle], [ServiceSalesSLRef], [ServiceSalesSLCode], [ServiceSalesSLTitle],
+      [PartSalesReturnSLRef], [PartSalesReturnSLCode], [PartSalesReturnSLTitle], [ServiceSalesReturnSLRef], [ServiceSalesReturnSLCode], [ServiceSalesReturnSLTitle], 
+      [PartSalesDiscountSLRef], [PartSalesDiscountSLCode], [PartSalesDiscountSLTitle], [ServiceSalesDiscountSLRef], [ServiceSalesDiscountSLCode], 
+      [ServiceSalesDiscountSLTitle], [SalesAdditionSLRef], [SalesAdditionSLCode], [SalesAdditionSLTitle] FROM SLS.[vwSaleType]   WHERE SaleTypeId = 1`);
+    const date = new Date();
+
+    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const persianDate = formatter.format(date);
+    let description = `بابت فاکتور شماره ${invoiceNumber} `;
+    description += `تاریخ ${persianDate} `;
+    description += `نوع فروش ${data[0].Title} `;
+    if (toCustomer) description += `به ${toCustomer}`;
+    return description;
+  }
+
+  async initNewVoucher(invoice: SepidarInvoiceDTO, fiscalYearId: number) {
+    const sepidarVoucher = new SepidarVoucherDTO();
+    sepidarVoucher.VoucherId = (await this.getNextId('ACC.Voucher')).LastId;
+    sepidarVoucher.Number = (
+      await this.getNextVoucherNumber(fiscalYearId, invoice.InvoiceId)
+    ).Number;
+    sepidarVoucher.DailyNumber = (
+      await this.getNextVoucherDailyNumber()
+    ).NextDailyNumber;
+    sepidarVoucher.FiscalYearRef = fiscalYearId;
+    sepidarVoucher.ReferenceNumber = sepidarVoucher.Number;
+    sepidarVoucher.Date = new Date();
+    sepidarVoucher.Type = 2;
+    sepidarVoucher.IsMerged = true;
+    sepidarVoucher.State = true;
+    sepidarVoucher.Description = await this.getVoucehrDescription(
+      invoice.Number,
+    );
+    sepidarVoucher.Description_En = sepidarVoucher.Description;
+    sepidarVoucher.Version = 1;
+    sepidarVoucher.CreationDate = new Date();
+    sepidarVoucher.LastModificationDate = sepidarVoucher.CreationDate;
+    return sepidarVoucher;
+  }
+
+  async initNewVoucherItem(
+    invoice: SepidarInvoiceDTO,
+    voucher: SepidarVoucherDTO,
+    voucherItemType: number,
+  ) {
+    const voucherItem = new SepidarVoucherItemDTO();
+    voucherItem.VoucherItemId = (
+      await this.getNextId('ACC.VoucherItem')
+    ).LastId;
+    voucherItem.VoucherRef = voucher.VoucherId;
+    voucherItem.RowNumber = 1;
+    let description = '';
+    if (voucherItemType == 1) {
+      const customer = await this.getCustomerById(invoice.CustomerPartyRef);
+      voucherItem.DLRef = customer.DLRef;
+      voucherItem.AccountSLRef = 420;
+      voucherItem.Debit = invoice.Price;
+      voucherItem.Credit = 0;
+      description = await this.getVoucehrDescription(invoice.Number);
+    } else {
+      voucherItem.DLRef = undefined;
+      voucherItem.AccountSLRef = 423;
+      voucherItem.Debit = 0;
+      voucherItem.Credit = invoice.Price;
+      description = await this.getVoucehrDescription(
+        invoice.Number,
+        invoice.CustomerRealName,
+      );
+    }
+    voucherItem.Description = description;
+    voucherItem.Description_En = description;
+    voucherItem.CurrencyRef = undefined;
+    voucherItem.TrackingNumber = undefined;
+    voucherItem.TrackingDate = undefined;
+    voucherItem.CurrencyCredit = undefined;
+    voucherItem.CurrencyDebit = undefined;
+    voucherItem.IssuerEntityName =
+      'SG.Sales.InvoiceManagement.Common.DsInvoice, SG.Sales.InvoiceManagement.Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null';
+    voucherItem.IssuerEntityRef = invoice.InvoiceId;
+    voucherItem.CurrencyRate = undefined;
+    voucherItem.Version = 1;
+    return voucherItem;
   }
 }

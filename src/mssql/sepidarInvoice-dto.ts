@@ -46,7 +46,7 @@ export class SepidarInvoiceDTO {
   @IsDate() CreationDate: Date;
   @IsInt() LastModifier: number;
   @IsDate() LastModificationDate: Date;
-  @IsString() QuotationRef: string;
+  @IsString() QuotationRef?: string;
   @IsOptional() @IsString() Guid?: string;
   @IsNumber() AdditionFactor_VatEffective: number;
   @IsNumber() AdditionFactorInBaseCurrency_VatEffective: number;
