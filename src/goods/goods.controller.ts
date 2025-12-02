@@ -20,7 +20,6 @@ import { GoodsService } from './goods.service';
 import { Good } from './good.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as XLSX from 'xlsx';
-import { json } from 'stream/consumers';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('goods')

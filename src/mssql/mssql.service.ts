@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
 import { SepidarQuotationDTO } from './sepidarQuotation-dto';
 import { SepidarQuotationItemDTO } from './sepidarQuotaionItem-dto';
 import { SepidarInvoiceDTO } from './sepidarInvoice-dto';
@@ -290,6 +290,13 @@ export class MssqlService {
     return data;
   }
 
+  async getSepidarUsers() {
+    const data = await this.mssqlDataSource.query(
+      '  SELECT * FROM [FMK].[User] WHERE IsDeleted=0 AND Status=1',
+    );
+    return data;
+  }
+
   async getAllExistItems(): Promise<any[]> {
     const { FiscalYearId } = await this.getFiscalYearAndId();
     const data = await this.mssqlDataSource.query(
@@ -305,8 +312,8 @@ export class MssqlService {
       `SELECT * FROM INV.vwItemStockSummary WHERE FiscalYearRef=@0 AND itemRef=@1`,
       [FiscalYearId, itemRef],
     );
+    if (!data || data?.length == 0) return [];
     console.log(data);
-
     return data;
   }
 
@@ -370,7 +377,7 @@ export class MssqlService {
 
     console.log(data);
     const checkExist = await this.mssqlDataSource.query(
-      `Select Count(1) as exist from ACC.[vwVoucher] where [QuotationId] <> ${voucherId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
+      `Select Count(1) as exist from ACC.[vwVoucher] where [VoucherId] <> ${voucherId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
     );
     if (checkExist[0].exist > 0)
       throw new BadRequestException(
@@ -380,10 +387,14 @@ export class MssqlService {
     return data[0];
   }
 
-  async getNextVoucherDailyNumber() {
-    const queryRunner = this.mssqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+  async getNextVoucherDailyNumber(queryRunner: QueryRunner) {
+    let mustRelease = false;
+    if (!queryRunner) {
+      queryRunner = this.mssqlDataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      mustRelease = true;
+    }
     try {
       await queryRunner.query(
         `Exec FMK.spGetLock 'SG.Accounting.VoucherManagement.Common.VoucherRow' `,
@@ -392,11 +403,11 @@ export class MssqlService {
         `SELECT ISNULL(MAX(DailyNumber), 0) + 1 NextDailyNumber FROM ACC.Voucher  WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
       );
       return data[0];
-    } catch (erroe) {
-      queryRunner.rollbackTransaction();
-      throw new BadRequestException();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error.message);
     } finally {
-      queryRunner.release();
+      if (mustRelease) await queryRunner.release();
     }
   }
 
@@ -439,7 +450,6 @@ export class MssqlService {
     const sepidarQuotation = await this.initiatNewSepidarQuotation(
       proforma,
       FiscalYearId,
-      FiscalYear,
     );
 
     const sepidarQuotationItems: SepidarQuotationItemDTO[] = [];
@@ -483,11 +493,11 @@ export class MssqlService {
         );
         await queryRunner.manager.query(
           `DECLARE @SummaryTable INV.SummaryRecordTable  
-         INSERT INTO @SummaryTable VALUES({item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
+         INSERT INTO @SummaryTable VALUES(${item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
         );
         await queryRunner.manager.query(
           `DECLARE @SummaryTable INV.SummaryRecordTable  
-         INSERT INTO @SummaryTable VALUES({item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0)
+         INSERT INTO @SummaryTable VALUES(${item.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0)
          Select fn.*  FROM @SummaryTable T   CROSS APPLY  ( Select ItemStockSummaryType,T.ItemID ItemRef, UnitRef,
          UnitTitle, UnitTitle_En, TotalQuantity,StockQuantity,TracingQuantity,StockTracingQuantity,[Order]  
          FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn`,
@@ -511,8 +521,9 @@ export class MssqlService {
   }
 
   async getQuotationById(quotationId: number): Promise<SepidarQuotationDTO> {
-    const data = await this.mssqlDataSource.query(
-      `SELECT  [FiscalYearRef],[SaleTypeMarket],[CustomerIdentificationCode],[CustomerEconomicCode], 
+    try {
+      const data = await this.mssqlDataSource.query(
+        `SELECT  [FiscalYearRef],[SaleTypeMarket],[CustomerIdentificationCode],[CustomerEconomicCode], 
       [CustomerState], [CustomerCity], [CustomerVillage], [CustomerZipCode], [CustomerPhone], [QuotationId], [Number], [CustomerPartyRef],[Date], 
       [CustomerPartyDLCode], [CustomerPartyName], [PartyAddressRef], [CustomerPartyName_En], [PartyAddress], [PartyAddress_En], [SaleTypeTitle], 
       [SaleTypeRef], [SaleTypeTitle_En], [NetPrice], [ExpirationDate], [CurrencyRef], [CurrencyTitle], [CurrencyTitle_En], [Price], [Discount], 
@@ -523,9 +534,12 @@ export class MssqlService {
       [CustomerGroupingTitle], [ReceiptRef], [PaymentRef], [RemainedDaysToExpiration], [CreatorName], [CustomerRealName], [CustomerRealName_En], 
       [Guid], [AdditionFactor_VatEffective], [AdditionFactorInBaseCurrency_VatEffective], [AdditionFactor_VatIneffective], 
       [AdditionFactorInBaseCurrency_VatIneffective] FROM SLS.[vwQuotation]  WHERE [QuotationId] =@0`,
-      [quotationId],
-    );
-    return data;
+        [quotationId],
+      );
+      return data[0];
+    } catch (error) {
+      throw new BadRequestException(error);
+    }
   }
 
   async getQuotationItemsById(
@@ -549,7 +563,12 @@ export class MssqlService {
 
   async createInvoice(invoice: Invoice, invoiceGoods: InvoiceGoods[]) {
     const { FiscalYearId } = await this.getFiscalYearAndId();
-
+    const sepidarQuotation = invoice.proforma.sepidarId
+      ? await this.getQuotationById(Number(invoice?.proforma?.sepidarId!))
+      : undefined;
+    const sepidarQuotationItems = invoice.proforma.sepidarId
+      ? await this.getQuotationItemsById(Number(invoice?.proforma?.sepidarId!))
+      : undefined;
     const sepidarInvoice = await this.initiatNewSepidarInvoice(
       invoice,
       FiscalYearId,
@@ -570,7 +589,7 @@ export class MssqlService {
       sepidarInvoiceItems.push(sepidarNewItem);
       i++;
     }
-    console.log(sepidarInvoice, sepidarInvoiceItems);
+
     console.log('Start inserting Invoice to Sql Server...');
 
     const queryRunner = this.mssqlDataSource.createQueryRunner();
@@ -601,13 +620,24 @@ export class MssqlService {
          FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn`,
         );
       }
-      if (invoice?.proforma?.sepidarId!)
+      if (sepidarQuotation && sepidarQuotationItems)
         await this.updateQuotationAfterCreateInvoice(
-          Number(invoice?.proforma?.sepidarId!),
+          queryRunner,
+          sepidarQuotation,
+          sepidarQuotationItems,
           sepidarInvoice,
           sepidarInvoiceItems,
         );
-      await this.createVoucher(sepidarInvoice);
+      const { voucherId } = await this.createVoucher(
+        queryRunner,
+        sepidarInvoice,
+        Number(invoice.createdBy.sepidarId),
+      );
+      sepidarInvoice.VoucherRef = voucherId;
+      await queryRunner.query(
+        `UPDATE SLS.Invoice SET VoucherRef=@0 WHERE InvoiceId=@1`,
+        [voucherId, sepidarInvoice.InvoiceId],
+      );
 
       await queryRunner.commitTransaction();
 
@@ -624,39 +654,76 @@ export class MssqlService {
   }
 
   async updateQuotationAfterCreateInvoice(
-    quotationId: number,
+    queryRunner: QueryRunner,
+    sepidarQuotation: SepidarQuotationDTO,
+    sepidarQuotaionItems: SepidarQuotationItemDTO[],
     sepidarInvoice: SepidarInvoiceDTO,
     sepidarInvoiceItems: SepidarInvoiceItemDTO[],
   ) {
     const FiscalYearId = sepidarInvoice.FiscalYearRef;
-    const sepidarQuotation = await this.getQuotationById(quotationId);
-    if (!sepidarQuotation)
-      throw new BadRequestException('پیش فاکتور مورد نظر وجود ندارد');
-    const sepidarQuotationItems: SepidarQuotationItemDTO[] =
-      await this.getQuotationItemsById(quotationId);
-
-    console.log(sepidarQuotation, sepidarQuotationItems);
-
-    const queryRunner = this.mssqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const quotationId = sepidarQuotation.QuotationId;
     try {
       console.log('Start updating Quotation...');
       await queryRunner.query(
-        `UPDATE SLS.Quotation SET Closed=1, LastModificationDate=${new Date()} WHERE Quotation=@0`,
-        [quotationId],
+        `UPDATE SLS.Quotation SET Closed=1, LastModificationDate=@0 WHERE QuotationId=@1`,
+        [new Date(), quotationId],
       );
 
       for (let i: number = 0; i < sepidarInvoiceItems.length; i++) {
         console.log('Start updating QuotationItems...');
-        const newItem = await this.updateSepidarQuotationItem(
+        const newItem = this.updateSepidarQuotationItem(
           sepidarInvoiceItems[i],
-          sepidarQuotationItems[i] ?? sepidarQuotationItems[i],
+          sepidarQuotaionItems[i],
         );
-        await queryRunner.manager.update(
-          SepidarQuotationItemDTO,
-          { QuotationId: quotationId },
-          newItem,
+        console.log(newItem);
+        await queryRunner.query(
+          `UPDATE SLS.QuotationItem SET AdditionFactor_VatEffective=@0,AdditionFactor_VatIneffective=@1,CustomerDiscountRate =@2,
+           PriceInfoDiscountRate =@3,Description =@4,Description_En=@5,DiscountQuotationItemRef=@6,PriceInfoPriceDiscount=@7,PriceInfoPercentDiscount=@8,
+           CustomerDiscount = @9,ProductPackRef =@10,ProductPackQuantity=@11,AggregateAmountPercentDiscount=@12,AdditionFactorInBaseCurrency_VatEffective =@13,      
+           AdditionFactorInBaseCurrency_VatIneffective =@14,RowID = @15,ItemRef = @16,StockRef = @17,TracingRef = @18,Quantity = @19,UsedQuantity =@20,
+           SecondaryQuantity = @21,Fee = @22, Price = @23, Discount = @24,Addition = @25, Tax = @26,PriceInBaseCurrency =@27,DiscountInBaseCurrency =@28,
+           TaxInBaseCurrency = @29,DutyInBaseCurrency =@30, NetPriceInBaseCurrency =@31,Duty = @32,Rate = @33,AggregateAmountPriceDiscount =@34,
+           AggregateAmountDiscountRate =@35 
+           WHERE QuotationItemId=@36`,
+          [
+            sepidarInvoiceItems[i].AdditionFactor_VatEffective, //0
+            sepidarInvoiceItems[i].AdditionFactor_VatIneffective, //1
+            sepidarInvoiceItems[i].CustomerDiscountRate, //2
+            sepidarInvoiceItems[i].PriceInfoDiscountRate, //3
+            sepidarInvoiceItems[i].Description, //4
+            sepidarInvoiceItems[i].Description_En, //5
+            sepidarInvoiceItems[i].DiscountInvoiceItemRef, //6
+            sepidarInvoiceItems[i].PriceInfoPriceDiscount, //7
+            sepidarInvoiceItems[i].PriceInfoPercentDiscount, //8
+            sepidarInvoiceItems[i].CustomerDiscount, //9
+            sepidarInvoiceItems[i].ProductPackRef, //10
+            sepidarInvoiceItems[i].ProductPackQuantity, //11
+            sepidarInvoiceItems[i].AggregateAmountPercentDiscount, //12
+            sepidarInvoiceItems[i].AdditionFactorInBaseCurrency_VatEffective, //13
+            sepidarInvoiceItems[i].AdditionFactorInBaseCurrency_VatIneffective, //14
+            sepidarInvoiceItems[i].RowID, //15
+            sepidarInvoiceItems[i].ItemRef, //16
+            sepidarInvoiceItems[i].StockRef, //17
+            sepidarInvoiceItems[i].TracingRef, //18
+            sepidarInvoiceItems[i].Quantity, //19
+            sepidarInvoiceItems[i].Quantity, //20
+            sepidarInvoiceItems[i].SecondaryQuantity, //21
+            sepidarInvoiceItems[i].Fee, //22
+            sepidarInvoiceItems[i].Price, //23
+            sepidarInvoiceItems[i].Discount, //24
+            sepidarInvoiceItems[i].Addition, //25
+            sepidarInvoiceItems[i].Tax, //26
+            sepidarInvoiceItems[i].PriceInBaseCurrency, //27
+            sepidarInvoiceItems[i].DiscountInBaseCurrency, //28
+            sepidarInvoiceItems[i].TaxInBaseCurrency, //29
+            sepidarInvoiceItems[i].DutyInBaseCurrency, //30
+            sepidarInvoiceItems[i].NetPriceInBaseCurrency, //31
+            sepidarInvoiceItems[i].Duty, //32
+            sepidarInvoiceItems[i].Rate, //33
+            sepidarInvoiceItems[i].AggregateAmountPriceDiscount, //34
+            sepidarInvoiceItems[i].AggregateAmountDiscountRate, //35
+            sepidarQuotaionItems[i].QuotationItemID, //36
+          ],
         );
         console.log('Start inserting SummaryTable...');
         await queryRunner.manager.query(
@@ -665,62 +732,72 @@ export class MssqlService {
         );
         await queryRunner.manager.query(
           `DECLARE @SummaryTable INV.SummaryRecordTable  
-         INSERT INTO @SummaryTable VALUES({item.StockRef}, ${sepidarInvoiceItems[i].ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
+         INSERT INTO @SummaryTable VALUES(${sepidarInvoiceItems[i].StockRef}, ${sepidarInvoiceItems[i].ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
         );
         await queryRunner.manager.query(
           `DECLARE @SummaryTable INV.SummaryRecordTable  
-         INSERT INTO @SummaryTable VALUES({item.StockRef}, ${sepidarInvoiceItems[i].ItemRef}, NULL, ${FiscalYearId}, 0)
+         INSERT INTO @SummaryTable VALUES(${sepidarInvoiceItems[i].StockRef}, ${sepidarInvoiceItems[i].ItemRef}, NULL, ${FiscalYearId}, 0)
          Select fn.*  FROM @SummaryTable T   CROSS APPLY  ( Select ItemStockSummaryType,T.ItemID ItemRef, UnitRef,
          UnitTitle, UnitTitle_En, TotalQuantity,StockQuantity,TracingQuantity,StockTracingQuantity,[Order]  
          FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn`,
         );
       }
 
-      await queryRunner.commitTransaction();
-
       return {
         quotationNumber: sepidarQuotation.Number,
         quotationId: sepidarQuotation.QuotationId,
       };
     } catch (error) {
-      await queryRunner.rollbackTransaction();
       throw new BadRequestException(error.message);
-    } finally {
-      await queryRunner.release();
     }
   }
 
-  async createVoucher(sepidarInvoice: SepidarInvoiceDTO) {
-    const queryRunner = this.mssqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+  async createVoucher(
+    queryRunner: QueryRunner,
+    sepidarInvoice: SepidarInvoiceDTO,
+    userId: number,
+  ) {
+    let mustRelease = false;
+    if (!queryRunner) {
+      queryRunner = this.mssqlDataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      mustRelease = true;
+    }
     try {
+      console.log('Start inserting new voucher...');
       const voucher = await this.initNewVoucher(
+        queryRunner,
         sepidarInvoice,
         sepidarInvoice.FiscalYearRef,
+        userId,
       );
+
       await queryRunner.manager.insert('ACC.Voucher', voucher);
 
+      console.log('ُStart inserting new voucher items...');
       const voucherItem1 = await this.initNewVoucherItem(
         sepidarInvoice,
         voucher,
         1,
       );
       await queryRunner.manager.insert('ACC.VoucherItem', voucherItem1);
+
       const voucherItem2 = await this.initNewVoucherItem(
         sepidarInvoice,
         voucher,
         2,
       );
       await queryRunner.manager.insert('ACC.VoucherItem', voucherItem2);
+      console.log(voucherItem2);
 
-      await queryRunner.commitTransaction();
-      return { voucherNumber: voucher.Number };
+      if (mustRelease) await queryRunner.commitTransaction();
+      return { voucherNumber: voucher.Number, voucherId: voucher.VoucherId };
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException();
+      throw new BadRequestException(error.message);
     } finally {
-      await queryRunner.release();
+      if (mustRelease) await queryRunner.release();
     }
   }
 
@@ -771,9 +848,9 @@ export class MssqlService {
     newsSepidarInvoice.Duty = 0;
     newsSepidarInvoice.Rate = 1;
     newsSepidarInvoice.Version = 1;
-    newsSepidarInvoice.Creator = savedInvoice.createdBy.id;
+    newsSepidarInvoice.Creator = Number(savedInvoice.createdBy.sepidarId);
     newsSepidarInvoice.CreationDate = new Date();
-    newsSepidarInvoice.LastModifier = savedInvoice.createdBy.id;
+    newsSepidarInvoice.LastModifier = Number(savedInvoice.createdBy.sepidarId);
     newsSepidarInvoice.LastModificationDate = new Date();
     newsSepidarInvoice.QuotationRef = savedInvoice?.proforma
       ? savedInvoice.proforma.sepidarId + ''
@@ -851,7 +928,6 @@ export class MssqlService {
   async initiatNewSepidarQuotation(
     savedQuotation: Proforma,
     fiscalYearId: number,
-    fiscalYear: string,
   ) {
     const newsSepidarQuotation = new SepidarQuotationDTO();
     newsSepidarQuotation.FiscalYearRef = fiscalYearId;
@@ -902,7 +978,7 @@ export class MssqlService {
     newsSepidarQuotation.Duty = 0;
     newsSepidarQuotation.Rate = 1;
     newsSepidarQuotation.Version = 1;
-    newsSepidarQuotation.Creator = savedQuotation.createdBy.id;
+    newsSepidarQuotation.Creator = Number(savedQuotation.createdBy.sepidarId);
     newsSepidarQuotation.CreationDate = new Date();
     newsSepidarQuotation.LastModifier = savedQuotation.createdBy.id;
     newsSepidarQuotation.LastModificationDate = new Date();
@@ -968,10 +1044,10 @@ export class MssqlService {
     return item;
   }
 
-  async updateSepidarQuotationItem(
+  updateSepidarQuotationItem(
     sepidarInvoiceItem: SepidarInvoiceItemDTO,
     sepidarQuotationItem: SepidarQuotationItemDTO,
-  ) {
+  ): SepidarQuotationItemDTO {
     sepidarQuotationItem.AdditionFactor_VatEffective =
       sepidarInvoiceItem.AdditionFactor_VatEffective;
     sepidarQuotationItem.AdditionFactor_VatIneffective =
@@ -1054,14 +1130,19 @@ export class MssqlService {
     return description;
   }
 
-  async initNewVoucher(invoice: SepidarInvoiceDTO, fiscalYearId: number) {
+  async initNewVoucher(
+    queryRunner: QueryRunner,
+    invoice: SepidarInvoiceDTO,
+    fiscalYearId: number,
+    userId: number,
+  ) {
     const sepidarVoucher = new SepidarVoucherDTO();
     sepidarVoucher.VoucherId = (await this.getNextId('ACC.Voucher')).LastId;
     sepidarVoucher.Number = (
       await this.getNextVoucherNumber(fiscalYearId, invoice.InvoiceId)
     ).Number;
     sepidarVoucher.DailyNumber = (
-      await this.getNextVoucherDailyNumber()
+      await this.getNextVoucherDailyNumber(queryRunner)
     ).NextDailyNumber;
     sepidarVoucher.FiscalYearRef = fiscalYearId;
     sepidarVoucher.ReferenceNumber = sepidarVoucher.Number;
@@ -1075,7 +1156,10 @@ export class MssqlService {
     sepidarVoucher.Description_En = sepidarVoucher.Description;
     sepidarVoucher.Version = 1;
     sepidarVoucher.CreationDate = new Date();
+    sepidarVoucher.Creator = userId;
+    sepidarVoucher.LastModifier = userId;
     sepidarVoucher.LastModificationDate = sepidarVoucher.CreationDate;
+    sepidarVoucher.IssuerSystem = 0;
     return sepidarVoucher;
   }
 

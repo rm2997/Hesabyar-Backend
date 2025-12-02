@@ -39,4 +39,9 @@ export class MssqlController {
   async getAllStocks() {
     return await this.mssqlService.getAllStock();
   }
+
+  @Get('getSepidarUsers')
+  async getSepidarUsers() {
+    return await this.mssqlService.getSepidarUsers();
+  }
 }

@@ -10,5 +10,6 @@ import { MssqlModule } from 'src/mssql/mssql.module';
   imports: [TypeOrmModule.forFeature([Good]), UnitsModule, MssqlModule],
   controllers: [GoodsController],
   providers: [GoodsService],
+  exports: [GoodsService],
 })
 export class GoodsModule {}

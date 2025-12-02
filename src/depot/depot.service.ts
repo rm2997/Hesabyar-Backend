@@ -19,6 +19,7 @@ import { UsersService } from 'src/users/users.service';
 import { Notification } from 'src/notification/notification.entity';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
 import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
+import { GoodsService } from 'src/goods/goods.service';
 
 @Injectable()
 export class DepotService {
@@ -36,6 +37,7 @@ export class DepotService {
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
     private readonly usersService: UsersService,
+    private readonly goodsService: GoodsService,
   ) {}
 
   async createDepot(data: Partial<Depot>, user: User): Promise<Depot> {
@@ -492,13 +494,15 @@ export class DepotService {
     const depot = await this.dataSource.transaction(async (manager) => {
       for (const depotGood of outputDepot.depotGoods) {
         const good = depotGood.good as Good;
+        const goodQuantity = await this.goodsService.getGoodById(good.id);
         const qty = depotGood.quantity;
-        if (!good) {
+        if (!good || !goodQuantity) {
           throw new NotFoundException(
             `کالای مربوط به رکورد ${depotGood.id} یافت نشد`,
           );
         }
-        if (good.goodCount < qty) {
+
+        if (goodQuantity.goodCount < qty) {
           throw new BadRequestException(
             `موجودی کافی برای کالای "${good.goodName}" وجود ندارد`,
           );

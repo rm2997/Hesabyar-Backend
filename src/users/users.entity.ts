@@ -84,4 +84,7 @@ export class User {
 
   @OneToMany(() => Good, (good) => good.id)
   goods: Good[];
+
+  @Column()
+  sepidarId: string;
 }

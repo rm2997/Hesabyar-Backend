@@ -104,7 +104,7 @@ export class GoodsService {
     const Good = await this.goodRepository.findOne({ where: { id } });
     if (!Good) throw new NotFoundException();
     const sepidarItem = await this.mssqlService.getItemById(Good.sepidarId);
-    Good.goodCount = sepidarItem.Quantity;
+    Good.goodCount = sepidarItem[0]?.Quantity ?? 0;
     return Good;
   }
 

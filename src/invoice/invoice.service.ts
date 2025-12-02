@@ -21,6 +21,7 @@ import { Notification } from 'src/notification/notification.entity';
 import { PhoneTypes } from 'src/common/decorators/phoneTypes.enum';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
 import { MssqlService } from 'src/mssql/mssql.service';
+import { GoodsService } from 'src/goods/goods.service';
 
 @Injectable()
 export class InvoiceService {
@@ -37,6 +38,7 @@ export class InvoiceService {
     private readonly smsService: SmsService,
     private readonly notificationService: NotificationService,
     private readonly usersService: UsersService,
+    private readonly goodsService: GoodsService,
   ) {}
 
   async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
@@ -57,6 +59,8 @@ export class InvoiceService {
         totalAmount: proforma.totalAmount,
         createdBy: user,
         proforma: proforma,
+        stockRef: proforma.stockRef,
+        fiscalYear: proforma.fiscalYear,
       });
 
       const savedInvoice = await queryRunner.manager.save(invoice);
@@ -77,8 +81,6 @@ export class InvoiceService {
       await queryRunner.manager.save(invoiceGoods);
       await queryRunner.manager.save(savedInvoice);
       await queryRunner.manager.save(proforma);
-      console.log(savedInvoice);
-
       const { invoiceNumber, invoiceId } =
         await this.mssqlService.createInvoice(savedInvoice, invoiceGoods!);
       if (!invoiceNumber)
@@ -350,11 +352,14 @@ export class InvoiceService {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
 
-    const badGood = invoice.invoiceGoods.find((g) => g?.good?.goodCount <= 0);
-    if (badGood) {
-      throw new BadRequestException(
-        `کالای "${badGood.good.goodName}" در انبار موجود نیست`,
-      );
+    //const badGood = invoice.invoiceGoods.find((g) => g?.good?.goodCount <= 0);
+    for (const invoiceItem of invoice.invoiceGoods) {
+      const badGood = await this.goodsService.getGoodById(invoiceItem.id);
+      if (badGood) {
+        throw new BadRequestException(
+          `کالای "${badGood.goodName}" در انبار موجود نیست`,
+        );
+      }
     }
 
     const token = await this.generateShareableLink(invoice.id);
