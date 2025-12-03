@@ -18,6 +18,8 @@ import { UnitsModule } from './units/units.module';
 import { SmsModule } from './sms/sms.module';
 import { OtpModule } from './otp/otp.module';
 import { MssqlModule } from './mssql/mssql.module';
+import { CryptoUtil } from './common/utils/crypto.util';
+
 
 @Module({
   imports: [
@@ -36,10 +38,11 @@ import { MssqlModule } from './mssql/mssql.module';
         host: configService.get('DB_HOST'),
         port: configService.get<number>('DB_PORT'),
         username: configService.get('DB_USERNAME'),
-        password: configService.get('DB_PASSWORD'),
+        password: //CryptoUtil.decrypt(configService.get('DB_PASSWORD') + '', configService.get('CONFIG_SECRET_KEY') + ''),
+          configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: configService.get('NODE_ENV') == 'development' ? true : false,
         logging: true,
         logger: 'advanced-console',
       }),
@@ -58,6 +61,7 @@ import { MssqlModule } from './mssql/mssql.module';
     SmsModule,
     OtpModule,
     MssqlModule,
+
   ],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه
@@ -72,4 +76,4 @@ import { MssqlModule } from './mssql/mssql.module';
   //   },
   // ],
 })
-export class AppModule {}
+export class AppModule { }
