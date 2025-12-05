@@ -18,8 +18,8 @@ import { UnitsModule } from './units/units.module';
 import { SmsModule } from './sms/sms.module';
 import { OtpModule } from './otp/otp.module';
 import { MssqlModule } from './mssql/mssql.module';
-import { CryptoUtil } from './common/utils/crypto.util';
-
+import { ConfigurationModule } from './config/configuration.module';
+import { ConfigurationService } from './config/configuration.service';
 
 @Module({
   imports: [
@@ -31,23 +31,11 @@ import { CryptoUtil } from './common/utils/crypto.util';
 
     // connect to local mysql db
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql',
-        host: configService.get('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get('DB_USERNAME'),
-        password: //CryptoUtil.decrypt(configService.get('DB_PASSWORD') + '', configService.get('CONFIG_SECRET_KEY') + ''),
-          configService.get('DB_PASSWORD'),
-        database: configService.get('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: configService.get('NODE_ENV') == 'development' ? true : false,
-        logging: true,
-        logger: 'advanced-console',
-      }),
+      imports: [ConfigurationModule],
+      inject: [ConfigurationService],
+      useFactory: (configService: ConfigurationService) =>
+        configService.mySqlHesabyarDataBase(),
     }),
-
     ProformaModule,
     InvoiceModule,
     UploadModule,
@@ -61,7 +49,6 @@ import { CryptoUtil } from './common/utils/crypto.util';
     SmsModule,
     OtpModule,
     MssqlModule,
-
   ],
 
   // تعریف گاردها به صورت گلوبال برای کل پروژه
@@ -76,4 +63,4 @@ import { CryptoUtil } from './common/utils/crypto.util';
   //   },
   // ],
 })
-export class AppModule { }
+export class AppModule {}

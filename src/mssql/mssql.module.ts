@@ -3,30 +3,18 @@ import { MssqlService } from './mssql.service';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MssqlController } from './mssql.controller';
-import { ConfigurationModule } from 'src/config/config.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ConfigurationService } from 'src/config/config.service';
-
+import { ConfigurationModule } from 'src/config/configuration.module';
+import { ConfigurationService } from 'src/config/configuration.service';
 
 @Module({
   imports: [
-    ConfigModule, ConfigurationModule,
+    ConfigurationModule,
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule, ConfigurationModule],
-      inject: [ConfigService, ConfigurationService],
+      imports: [ConfigurationModule],
+      inject: [ConfigurationService],
       name: 'mssqlConnection',
-      useFactory: (config: ConfigService) => ({
-        type: 'mssql',
-        //password: configService.msSqlDatabase().password,
-        host: config.get('SEPDB_HOST'),
-        //port: configService.get('SEPDB_PORT'),
-        database: config.get('SEPDB_DBNAME'),
-        username: config.get('SEPDB_USERNAME'),
-        options: { encrypt: false, trustServerCertificate: true },
-        autoLoadEntities: config.get('NODE_ENV') == 'development' ? true : false,
-        logger: 'advanced-console',
-        logging: 'all',
-      })
+      useFactory: (config: ConfigurationService) =>
+        config.msSqlSepidarDbDatabase(),
     }),
     // TypeOrmModule.forRootAsync({
     //   imports: [ConfigModule],
@@ -51,4 +39,4 @@ import { ConfigurationService } from 'src/config/config.service';
   controllers: [MssqlController],
   exports: [MssqlService],
 })
-export class MssqlModule { }
+export class MssqlModule {}
