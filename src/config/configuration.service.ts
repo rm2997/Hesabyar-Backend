@@ -24,7 +24,7 @@ export class ConfigurationService {
       logger: 'advanced-console',
       logging: 'all',
     };
-    //console.log(options);
+    if (process.env.NODE_ENV == 'developement') console.log(options);
     return options;
   }
   loadHesabyarDbPassword(): string {
@@ -46,7 +46,7 @@ export class ConfigurationService {
       logger: 'advanced-console',
       logging: 'all',
     };
-    //console.log(options);
+    if (process.env.NODE_ENV == 'developement') console.log(options);
     return options;
   }
 }

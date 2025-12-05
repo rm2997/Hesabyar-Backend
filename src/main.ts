@@ -18,14 +18,17 @@ async function bootstrap() {
 
   const secret = process.env.CONFIG_SECRET_KEY + '';
   let encrypted = CryptoUtil.encrypt(process.env.SEPDB_PASSWORD + '', secret);
-  console.log('Encrypted:', encrypted);
+  if (process.env.NODE_ENV == 'developement')
+    console.log('Encrypted:', encrypted);
   let decrypted = CryptoUtil.decrypt(encrypted, secret);
   console.log('Decrypted:', decrypted);
 
   encrypted = CryptoUtil.encrypt(process.env.DB_PASSWORD + '', secret);
-  console.log('Encrypted:', encrypted);
+  if (process.env.NODE_ENV == 'developement')
+    console.log('Encrypted:', encrypted);
   decrypted = CryptoUtil.decrypt(encrypted, secret);
-  console.log('Decrypted:', decrypted);
+  if (process.env.NODE_ENV == 'developement')
+    console.log('Decrypted:', decrypted);
 
   // encrypted = CryptoUtil.encrypt(process.env.USER_LINK_SECRET + '', secret);
   // console.log('Encrypted:', encrypted);
