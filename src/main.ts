@@ -2,20 +2,33 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from '@nestjs/common';
-import { CryptoUtil } from './common/utils/crypto.util';
 
 async function bootstrap() {
+  const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+  const nodeEnvStr = nodeEnv ? 'developement' : 'production';
+  const appPort = process.env.APP_PORT ?? 3000;
+  Logger.log(`APP is listeninig to PORT ${appPort}`, 'Hesabyar');
+  Logger.log(`APP is on ${nodeEnvStr} mode.`, 'Hesabyar');
+  Logger.log(`APP Release Date: 14040915`, 'Hesabyar');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const localOrigin = ['http://localhost:3000', 'http://www.localhost:3000'];
-  const proOrigin = ['https://www.hesab-yaar.ir', 'https://hesab-yaar.ir'];
+  const frontWhiteList = ['https://hesab-yaar.ir', 'https://www.hesab-yaar.ir', `https://localhost:3000`, `http://localhost:3000`]
+
   app.enableCors({
-    origin: process.env.NODE_ENV == 'production' ? proOrigin : localOrigin,
+    origin: (origin, callback) => {
+      if (!origin || frontWhiteList.indexOf(origin) >= 0) {
+        Logger.log(`Allowed cors for: ${origin} - ${Date()}`, 'HESABYAR-CORS');
+        callback(null, origin)
+      }
+      else {
+        Logger.error(`Not allowed cors for: ${origin} - ${Date()}`, 'HESABYAR-CORS');
+        callback(new Error('Not allowed by CORS!'))
+      }
+    },
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    allowedHeaders: "*",
     credentials: true,
   });
 
-  Logger.log(`APP is listeninig to PORT {${process.env.APP_PORT}}`, 'Hesabyar');
-  Logger.log(`APP is on {${process.env.NODE_ENV}} mode.`, 'Hesabyar');
-
-  await app.listen(process.env.APP_PORT || 3000);
+  await app.listen(appPort);
 }
 bootstrap();

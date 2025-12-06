@@ -4,13 +4,14 @@ import { CryptoUtil } from 'src/common/utils/crypto.util';
 
 @Injectable()
 export class ConfigurationService {
-  constructor() {}
+  constructor() { }
   loadSepidarPassword(): string {
+    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const secret = process.env.CONFIG_SECRET_KEY;
     if (!secret || secret.length == 0)
       Logger.error('SecretKey is empty', 'LoadSepidarPassword');
     const sepidarDbPassword = process.env.SEPDB_PASSWORD ?? '';
-    if (process.env.NODE_ENV == 'developement')
+    if (nodeEnv)
       Logger.log(
         'Plane Sepidar password is: ' + sepidarDbPassword,
         'LoadSepidarPassword',
@@ -42,13 +43,16 @@ export class ConfigurationService {
       secret,
     );
 
-    if (process.env.NODE_ENV == 'developement')
+    if (nodeEnv)
       Logger.log(
         'Encrypted Sepidar password is: ' + sepidarEncryptedDbPassword,
       );
     return sepidarEncryptedDbPassword;
   }
+
+
   msSqlSepidarDbDatabase(): TypeOrmModuleOptions {
+    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const msSqlpassword = this.loadSepidarPassword();
     const options: TypeOrmModuleOptions = {
       type: 'mssql',
@@ -58,19 +62,21 @@ export class ConfigurationService {
       username: process.env.SEPDB_USERNAME,
       password: msSqlpassword,
       options: { encrypt: false, trustServerCertificate: true },
-      autoLoadEntities: process.env.NODE_ENV == 'development' ? true : false,
-      logger: 'advanced-console',
-      logging: 'all',
+      autoLoadEntities: true,
+      synchronize: false,
+      logger: nodeEnv ? 'advanced-console' : 'simple-console',
+      logging: nodeEnv ?? 'all',
     };
-    if (process.env.NODE_ENV == 'developement') console.log(options);
+    if (nodeEnv) console.log(options);
     return options;
   }
   loadHesabyarDbPassword(): string {
+    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const secret = process.env.CONFIG_SECRET_KEY;
     if (!secret || secret.length == 0)
       Logger.error('SecretKey is empty', 'loadHesabyarDbPassword');
     const hesabyarDbPassword = process.env.DB_PASSWORD ?? '';
-    if (process.env.NODE_ENV == 'developement')
+    if (nodeEnv)
       Logger.log(
         'Plane Hesabyar password is: ' + hesabyarDbPassword,
         'loadHesabyarDbPassword',
@@ -103,7 +109,7 @@ export class ConfigurationService {
       secret,
     );
 
-    if (process.env.NODE_ENV == 'developement')
+    if (nodeEnv)
       Logger.log(
         'Encrypted Hesabyar password is: ' + hesabyarDbPassword,
         'loadHesabyarDbPassword',
@@ -111,6 +117,7 @@ export class ConfigurationService {
     return hesabyarEncryptedDbPassword;
   }
   mySqlHesabyarDataBase(): TypeOrmModuleOptions {
+    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const mySqlpassword = this.loadHesabyarDbPassword();
     const options: TypeOrmModuleOptions = {
       type: 'mysql',
@@ -119,12 +126,12 @@ export class ConfigurationService {
       database: process.env.DB_NAME ?? '',
       username: process.env.DB_USERNAME ?? '',
       password: mySqlpassword,
-      autoLoadEntities: process.env.NODE_ENV == 'developement' ? true : false,
-      synchronize: process.env.NODE_ENV == 'developement' ? true : false,
-      logger: 'advanced-console',
-      logging: 'all',
+      autoLoadEntities: true,
+      synchronize: nodeEnv,
+      logger: nodeEnv ? 'advanced-console' : 'simple-console',
+      logging: nodeEnv ?? 'all',
     };
-    if (process.env.NODE_ENV == 'developement') console.log(options);
+    if (nodeEnv) console.log(options);
     return options;
   }
 }
