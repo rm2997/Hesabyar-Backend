@@ -16,45 +16,6 @@ async function bootstrap() {
   Logger.log(`APP is listeninig to PORT {${process.env.APP_PORT}}`, 'Hesabyar');
   Logger.log(`APP is on {${process.env.NODE_ENV}} mode.`, 'Hesabyar');
 
-  const secret = process.env.CONFIG_SECRET_KEY + '';
-  let encrypted = CryptoUtil.encrypt(process.env.SEPDB_PASSWORD + '', secret);
-  if (process.env.NODE_ENV == 'developement')
-    console.log('Encrypted:', encrypted);
-  let decrypted = CryptoUtil.decrypt(encrypted, secret);
-  console.log('Decrypted:', decrypted);
-
-  encrypted = CryptoUtil.encrypt(process.env.DB_PASSWORD + '', secret);
-  if (process.env.NODE_ENV == 'developement')
-    console.log('Encrypted:', encrypted);
-  decrypted = CryptoUtil.decrypt(encrypted, secret);
-  if (process.env.NODE_ENV == 'developement')
-    console.log('Decrypted:', decrypted);
-
-  // encrypted = CryptoUtil.encrypt(process.env.USER_LINK_SECRET + '', secret);
-  // console.log('Encrypted:', encrypted);
-  // decrypted = CryptoUtil.decrypt(encrypted, secret);
-  // console.log('Decrypted:', decrypted);
-
-  // encrypted = CryptoUtil.encrypt(process.env.PROFORMA_LINK_SECRET + '', secret);
-  // console.log('Encrypted:', encrypted);
-  // decrypted = CryptoUtil.decrypt(encrypted, secret);
-  // console.log('Decrypted:', decrypted);
-
-  // encrypted = CryptoUtil.encrypt(process.env.INVOICE_LINK_SECRET + '', secret);
-  // console.log('Encrypted:', encrypted);
-  // decrypted = CryptoUtil.decrypt(encrypted, secret);
-  // console.log('Decrypted:', decrypted);
-
-  // encrypted = CryptoUtil.encrypt(process.env.DEPOT_LINK_SECRET + '', secret);
-  // console.log('Encrypted:', encrypted);
-  // decrypted = CryptoUtil.decrypt(encrypted, secret);
-  // console.log('Decrypted:', decrypted);
-
-  // encrypted = CryptoUtil.encrypt('C@rdOp*1404*', secret);
-  // console.log('Encrypted:', encrypted);
-  // decrypted = CryptoUtil.decrypt(encrypted, secret);
-  // console.log('Decrypted:', decrypted);
-
   await app.listen(process.env.APP_PORT || 3000);
 }
 bootstrap();

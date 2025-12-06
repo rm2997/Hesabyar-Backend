@@ -9,12 +9,14 @@ export class CryptoUtil {
     const key = crypto.createHash('sha256').update(secret).digest();
 
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(value, 'utf8'),
+      cipher.final(),
+    ]);
     const authTag = cipher.getAuthTag();
 
     return Buffer.concat([iv, authTag, encrypted]).toString('base64');
   }
-
 
   static decrypt(value: string, secret: string) {
     if (!value) throw new Error('Empty encrypted value');
@@ -23,7 +25,13 @@ export class CryptoUtil {
     const raw = Buffer.from(value, 'base64');
 
     if (raw.length < 32) {
-      throw new Error('Encrypted data is too short and does not contain IV + AuthTag');
+      console.log('Value is: ' + value);
+      console.log('Raw length is: ' + raw.length);
+      console.log('Secret is: ' + secret);
+
+      throw new Error(
+        'Encrypted data is too short and does not contain IV + AuthTag',
+      );
     }
 
     const iv = raw.slice(0, 16);
@@ -41,6 +49,5 @@ export class CryptoUtil {
     ]);
 
     return decrypted.toString('utf8');
-
   }
 }
