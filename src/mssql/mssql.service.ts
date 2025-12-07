@@ -20,7 +20,7 @@ export class MssqlService {
     @InjectDataSource('mssqlConnection')
     private readonly mssqlDataSource: DataSource,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async getConnectionData() {
     return {
@@ -445,7 +445,7 @@ export class MssqlService {
   }
 
   async createQuotation(proforma: Proforma, proformaGoods: ProformaGoods[]) {
-    const { FiscalYearId, FiscalYear } = await this.getFiscalYearAndId();
+    const { FiscalYearId } = await this.getFiscalYearAndId();
 
     const sepidarQuotation = await this.initiatNewSepidarQuotation(
       proforma,
@@ -980,7 +980,7 @@ export class MssqlService {
     newsSepidarQuotation.Version = 1;
     newsSepidarQuotation.Creator = Number(savedQuotation.createdBy.sepidarId);
     newsSepidarQuotation.CreationDate = new Date();
-    newsSepidarQuotation.LastModifier = savedQuotation.createdBy.id;
+    newsSepidarQuotation.LastModifier = Number(savedQuotation.createdBy.sepidarId);
     newsSepidarQuotation.LastModificationDate = new Date();
     newsSepidarQuotation.Guid = undefined;
     newsSepidarQuotation.AdditionFactor_VatEffective = 0;
