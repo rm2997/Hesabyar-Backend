@@ -44,6 +44,11 @@ export class ProformaService {
       throw new BadRequestException(
         'مشتری انتخاب شده شماره موبایل پیش فرض ندارد',
       );
+    const dbUser = await this.usersService.findById(user.id);
+    if (!dbUser)
+      throw new BadRequestException('کاربر ثبت کننده پیش فاکتور معتبر نیست');
+    if (!dbUser?.sepidarId)
+      new BadRequestException('کاربر معادل سپیدار تنظیم نشده است');
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -62,7 +67,7 @@ export class ProformaService {
         totalAmount: data.totalAmount,
         stockRef: data.stockRef,
         fiscalYear: data.fiscalYear,
-        createdBy: user,
+        createdBy: dbUser,
       });
 
       console.log('input Data is:', data);

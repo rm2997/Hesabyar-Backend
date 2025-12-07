@@ -109,30 +109,40 @@ export class CustomerService {
     limit: number,
     search: string,
   ): Promise<{ total: number; items: Customer[] }> {
-    const query = this.dataSource
-      .getRepository(Customer)
-      .createQueryBuilder('customer')
-      .leftJoinAndSelect('customer.phoneNumbers', 'customerPhones')
-      .leftJoinAndSelect('customer.locations', 'customerLocations');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Customer)
+        .createQueryBuilder('customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'customerPhones')
+        .leftJoinAndSelect('customer.locations', 'customerLocations');
 
-    if (search && search.trim().length > 0) {
-      query
-        .andWhere('customer.customerLName LIKE :search', {
-          search: `%${search}%`,
-        })
-        .orWhere('customer.customerFName LIKE :search', {
-          search: `%${search}%`,
-        });
+      if (search && search.trim().length > 0) {
+        query
+          .andWhere('customer.customerLName LIKE :search', {
+            search: `%${search}%`,
+          })
+          .orWhere('customer.customerFName LIKE :search', {
+            search: `%${search}%`,
+          });
+      }
+      const total = await query.getCount();
+
+      const items = await query
+        .skip(limit == -1 ? 0 : (page - 1) * limit)
+        .take(limit == -1 ? undefined : limit)
+        .orderBy('customer.id', 'DESC')
+        .getMany();
+      await queryRunner.commitTransaction();
+      return { total, items };
+    } catch (error) {
+      queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-    const total = await query.getCount();
-
-    const items = await query
-      .skip(limit == -1 ? 0 : (page - 1) * limit)
-      .take(limit == -1 ? undefined : limit)
-      .orderBy('customer.id', 'DESC')
-      .getMany();
-
-    return { total, items };
   }
 
   async getCustomerById(id: number): Promise<Customer | null> {

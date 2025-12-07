@@ -44,6 +44,12 @@ export class GoodsController {
     return goods;
   }
 
+  @Get()
+  async getByName(goodName: string) {
+    const goods = await this.goodsService.getGoodByName(goodName);
+    return goods;
+  }
+
   @Get(':id')
   async getGood(@Param('id') id: number) {
     const Good = await this.goodsService.getGoodById(id);

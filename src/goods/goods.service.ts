@@ -70,30 +70,36 @@ export class GoodsService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-    } catch (error) {}
-    const query = this.dataSource
-      .getRepository(Good)
-      .createQueryBuilder('good')
-      .leftJoinAndSelect('good.goodUnit', 'unit');
+      const query = queryRunner.manager
+        .getRepository(Good)
+        .createQueryBuilder('good')
+        .leftJoinAndSelect('good.goodUnit', 'unit');
 
-    if (search) {
-      query.andWhere('good.goodName LIKE :search', { search: `%${search}%` });
-    }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip(limit == -1 ? 0 : (page - 1) * limit)
-      .take(limit == -1 ? undefined : limit)
-      .orderBy('good.id', 'DESC')
-      .getMany();
-    const sepidarItems = await this.mssqlService.getAllExistItems();
-    for (const g of items) {
-      for (const i of sepidarItems) {
-        if (i.ItemRef == g.sepidarId) g.goodCount = i.Quantity;
+      if (search) {
+        query.andWhere('good.goodName LIKE :search', { search: `%${search}%` });
       }
+
+      const total = await query.getCount();
+
+      const items = await query
+        .skip(limit == -1 ? 0 : (page - 1) * limit)
+        .take(limit == -1 ? undefined : limit)
+        .orderBy('good.id', 'DESC')
+        .getMany();
+      queryRunner.commitTransaction();
+      const sepidarItems = await this.mssqlService.getAllExistItems();
+      for (const g of items) {
+        for (const i of sepidarItems) {
+          if (i.ItemRef == g.sepidarId) g.goodCount = i.Quantity;
+        }
+      }
+      return { items, total };
+    } catch (error) {
+      queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      queryRunner.release();
     }
-    return { items, total };
   }
 
   async getGoodsByCount(count: number): Promise<Good[]> {
@@ -106,6 +112,28 @@ export class GoodsService {
     const sepidarItem = await this.mssqlService.getItemById(Good.sepidarId);
     Good.goodCount = sepidarItem[0]?.Quantity ?? 0;
     return Good;
+  }
+
+  async getGoodByName(name: string): Promise<Good[] | null> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Good)
+        .createQueryBuilder('good')
+        .leftJoinAndSelect('good.goodUnit', 'unit')
+        .andWhere('good.goodName LIKE :search', { search: `${name}%` })
+        .orderBy('good.id', 'DESC');
+      const goods = query.take(10).getMany();
+      await queryRunner.commitTransaction();
+      return goods;
+    } catch (error) {
+      queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      queryRunner.release();
+    }
   }
 
   async updateGood(id: number, data: Partial<Good>): Promise<Good | null> {

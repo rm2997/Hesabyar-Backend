@@ -29,8 +29,6 @@ import { extname, join } from 'path';
 import { existsSync } from 'fs';
 import { Roles } from 'src/common/decorators/roles.enum';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
-import { NotificationService } from 'src/notification/notification.service';
-import { Notification } from 'src/notification/notification.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
