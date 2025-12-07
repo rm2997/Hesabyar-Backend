@@ -7,6 +7,7 @@ import {
   JoinColumn,
   UpdateDateColumn,
   Unique,
+  CreateDateColumn,
 } from 'typeorm';
 import { User } from '../users/users.entity';
 import { Customer } from 'src/customer/customer.entity';
@@ -123,4 +124,7 @@ export class Proforma {
 
   @ManyToOne(() => User, (user) => user.id)
   createdBy: User;
+
+  @Column({ nullable: true, default: () => 'CURRENT_TIMESTAMP' })
+  expirationDate: Date;
 }

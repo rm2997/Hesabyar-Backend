@@ -61,6 +61,7 @@ export class ProformaService {
         totalAmount: data.totalAmount,
         stockRef: data.stockRef,
         fiscalYear: data.fiscalYear,
+        expirationDate: data?.expirationDate,
         createdBy: dbUser,
       });
 

@@ -982,7 +982,7 @@ export class MssqlService {
     ).Number;
     newsSepidarQuotation.CustomerPartyRef = savedQuotation.customer.sepidarId;
     newsSepidarQuotation.Date = new Date();
-    newsSepidarQuotation.ExpirationDate = new Date();
+    newsSepidarQuotation.ExpirationDate = savedQuotation.expirationDate;
     newsSepidarQuotation.CustomerRealName =
       savedQuotation.customer.customerLName +
       ' ' +
