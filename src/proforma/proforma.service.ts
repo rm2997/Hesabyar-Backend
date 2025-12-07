@@ -55,12 +55,6 @@ export class ProformaService {
     await queryRunner.startTransaction();
 
     try {
-      // const proformaGoods = [...data?.proformaGoods!];
-
-      // proformaGoods.map((item) => {
-      //   item.createdBy = user;
-      // });
-
       const proforma = queryRunner.manager.create(Proforma, {
         title: data?.title,
         customer: data.customer,
@@ -70,11 +64,7 @@ export class ProformaService {
         createdBy: dbUser,
       });
 
-      console.log('input Data is:', data);
-      console.log('Proforma Data is:', proforma);
-
       const savedProforma = await queryRunner.manager.save(proforma);
-      console.log('After save:', savedProforma);
 
       const shareableLink = await this.generateShareableLink(savedProforma.id);
       savedProforma.customerLink = shareableLink;
@@ -86,17 +76,17 @@ export class ProformaService {
           total: item.total,
           good: item.good,
           proforma: savedProforma,
-          createdBy: user,
+          createdBy: dbUser,
         }),
       );
 
       await queryRunner.manager.save(savedProforma);
       await queryRunner.manager.save(proformaGoods);
+      console.log('Start SQL Server inserting...');
 
       const { quotationNumber, quotationId } =
         await this.mssqlService.createQuotation(savedProforma, proformaGoods!);
-      if (!quotationNumber)
-        throw new BadRequestException('درج در سپیدار انجام نشد');
+      if (!quotationNumber) throw new Error('درج در سپیدار انجام نشد');
 
       savedProforma.proformaNumber = quotationNumber;
       savedProforma.sepidarId = quotationId + '';
@@ -258,7 +248,9 @@ export class ProformaService {
         .where('proforma.customer= :customer', { customer: customerId })
         .andWhere('proforma.createdBy= :user', { user: user.id })
         .andWhere('proforma.isAccepted=1')
-        .andWhere('proforma.isConverted=0');
+        .andWhere('proforma.isConverted=0')
+        .andWhere('proforma.sepidarId is not null')
+        .andWhere("proforma.sepidarId<>''");
 
       if (search) {
         query.andWhere('proforma.id= :id', { id: search });

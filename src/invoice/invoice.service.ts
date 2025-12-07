@@ -45,25 +45,24 @@ export class InvoiceService {
     const dbUser = await this.usersService.findById(user.id);
     if (!dbUser)
       throw new BadRequestException('کاربر ثبت کننده  فاکتور معتبر نیست');
-    if (!dbUser?.sepidarId)
+    if (dbUser?.sepidarId == null || dbUser?.sepidarId == '')
       throw new BadRequestException('کاربر معادل سپیدار تنظیم نشده است');
 
+    const proforma = await this.proformaService.getProforma(
+      data?.proforma?.id!,
+    );
+    if (!proforma)
+      throw new BadRequestException('پیش فاکتور انتخاب شده معتبر نمی باشد.');
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const proforma = await this.proformaService.getProforma(
-        data?.proforma?.id!,
-      );
-      if (!proforma)
-        throw new BadRequestException('پیش فاکتور انتخاب شده معتبر نمی باشد.');
       proforma.isConverted = true;
-
       const invoice = queryRunner.manager.create(Invoice, {
         title: data?.title,
         customer: proforma.customer,
         totalAmount: proforma.totalAmount,
-        createdBy: user,
+        createdBy: dbUser,
         proforma: proforma,
         stockRef: proforma.stockRef,
         fiscalYear: proforma.fiscalYear,
@@ -89,8 +88,7 @@ export class InvoiceService {
       await queryRunner.manager.save(proforma);
       const { invoiceNumber, invoiceId } =
         await this.mssqlService.createInvoice(savedInvoice, invoiceGoods!);
-      if (!invoiceNumber)
-        throw new BadRequestException('درج در سپیدار انجام نشد');
+      if (!invoiceNumber) throw new Error('درج در سپیدار انجام نشد');
 
       savedInvoice.invoiceNumber = invoiceNumber;
       savedInvoice.sepidarId = invoiceId + '';

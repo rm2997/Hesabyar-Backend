@@ -20,7 +20,7 @@ export class MssqlService {
     @InjectDataSource('mssqlConnection')
     private readonly mssqlDataSource: DataSource,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async getConnectionData() {
     return {
@@ -273,6 +273,7 @@ export class MssqlService {
         from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  
         WHERE  miladi= LEFT(CAST(GETDATE() as date),10)`,
       );
+      console.log('Fiscal Year is: ' + data[0].FiscalYear);
       return data[0];
     } else {
       const data = await this.mssqlDataSource.query(
@@ -281,6 +282,14 @@ export class MssqlService {
       WHERE  FiscalYearId=@0`,
         [fiscalYearRef],
       );
+      if (data == null || data.length == 0) {
+        console.log('Could not fetch Fiscal year...');
+        throw new BadRequestException(
+          'خطا در دریافت سال مالی از بانک اطلاعاتی سپیدار',
+        );
+      }
+      console.log('Fiscal Year is: ' + data[0].FiscalYear);
+
       return data[0];
     }
   }
@@ -322,115 +331,89 @@ export class MssqlService {
   }
 
   async getNextId(resourceName: string): Promise<{ LastId: number }> {
-    const queryRunner = this.mssqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
     try {
-      const data = await queryRunner.query(
+      const data = await this.mssqlDataSource.query(
         `DECLARE @id int EXEC [FMK].[spGetNextId] '${resourceName}', @id output, 1 SELECT @Id as LastId`,
       );
       console.log(resourceName, data);
-      await queryRunner.commitTransaction();
+
+      console.log('Last Quotation Id is: ' + data[0].LastId);
+
       return data[0];
     } catch (error) {
-      await queryRunner.rollbackTransaction();
       throw new BadRequestException(error);
+    } finally {
     }
-    finally {
-      await queryRunner.release();
-    }
-
   }
 
   async getNextInvoiceNumber(
     fiscalYearId: number,
     invoiceId: number,
   ): Promise<{ Number: number }> {
-    const queryRunner = this.mssqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
     try {
-      await queryRunner.query("Exec FMK.spGetLock 'InvoiceRow' ");
-      const data = await queryRunner.query(
+      await this.mssqlDataSource.query("Exec FMK.spGetLock 'InvoiceRow' ");
+      const data = await this.mssqlDataSource.query(
         `Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwInvoice]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}`,
       );
       console.log(data);
-      const checkExist = await queryRunner.query(
+      const checkExist = await this.mssqlDataSource.query(
         `Select Count(1) as exist from SLS.[vwInvoice] 
         where [InvoiceId] <> ${invoiceId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
       );
 
-      await queryRunner.commitTransaction();
       if (checkExist[0].exist > 0)
-        throw new Error(
-          'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
-        );
+        throw new Error('شماره تکراری در سیستم پیدا شد، دوباره سعی کنید');
       return data[0];
     } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw new BadRequestException(error)
+      throw new BadRequestException(error);
+    } finally {
     }
-    finally {
-      await queryRunner.release();
-    }
-
   }
 
   async getNextQuotationNumber(
     fiscalYearId: number,
     quotationId: number,
   ): Promise<{ Number: number }> {
-    const queryRunner = this.mysqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
     try {
-      await queryRunner.query("Exec FMK.spGetLock 'QuotationRow' ");
-      const data = await queryRunner.query(
+      await this.mssqlDataSource.query("Exec FMK.spGetLock 'QuotationRow' ");
+      const data = await this.mssqlDataSource.query(
         `Select IsNull( Max(Number) + 1, 1) as Number FROM SLS.[vwQuotation] 
-        WHERE 1=1 And FiscalYearRef =@0`, [fiscalYearId],
+        WHERE 1=1 And FiscalYearRef =@0`,
+        [fiscalYearId],
       );
-      const checkExist = await queryRunner.query(
+      const checkExist = await this.mssqlDataSource.query(
         `Select Count(1) as exist from SLS.[vwQuotation] 
-        where [QuotationId] <>@0 And [Number] =@1 And [FiscalYearRef] =@2`, [quotationId, data[0].Number, fiscalYearId],
+        where [QuotationId] <>@0 And [Number] =@1 And [FiscalYearRef] =@2`,
+        [quotationId, data[0].Number, fiscalYearId],
       );
-      await queryRunner.commitTransaction();
       if (checkExist[0].exist > 0)
-        throw new Error(
-          'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
-        );
+        throw new Error('شماره تکراری در سیستم پیدا شد، دوباره سعی کنید');
+      console.log('Next Quotaion Number is:' + data[0]);
+
       return data[0];
     } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw new BadRequestException(error)
+      throw new BadRequestException(error);
+    } finally {
     }
-    finally {
-      await queryRunner.release();
-
-    }
-
   }
 
   async getNextVoucherNumber(
     fiscalYearId: number,
     voucherId: number,
   ): Promise<{ Number: number }> {
-    const queryRunner = this.mysqlDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
     try {
-      await queryRunner.query("Exec FMK.spGetLock 'VoucherRow'");
-      const data = await queryRunner.query(
+      await this.mssqlDataSource.query("Exec FMK.spGetLock 'VoucherRow'");
+      const data = await this.mssqlDataSource.query(
         `Select IsNull( Max(Number) + 1, 1)  as Number FROM ACC.[vwVoucher]  
         WHERE 1=1  And FiscalYearRef =${fiscalYearId}`,
       );
 
       console.log(data);
-      const checkExist = await queryRunner.query(
+      const checkExist = await this.mssqlDataSource.query(
         `Select Count(1) as exist from ACC.[vwVoucher] 
         where [VoucherId] <> ${voucherId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
       );
 
-      await queryRunner.commitTransaction();
       if (checkExist[0].exist > 0)
         throw new BadRequestException(
           'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
@@ -438,38 +421,21 @@ export class MssqlService {
 
       return data[0];
     } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw new BadRequestException(error)
+      throw new BadRequestException(error);
+    } finally {
     }
-    finally {
-      await queryRunner.release();
-
-    }
-
   }
 
   async getNextVoucherDailyNumber(queryRunner: QueryRunner) {
-    let mustRelease = false;
-    if (!queryRunner) {
-      queryRunner = this.mssqlDataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-      mustRelease = true;
-    }
     try {
-      await queryRunner.query(
-        `Exec FMK.spGetLock 'SG.Accounting.VoucherManagement.Common.VoucherRow' `,
-      );
       const data = await queryRunner.query(
         `SELECT ISNULL(MAX(DailyNumber), 0) + 1 NextDailyNumber FROM ACC.Voucher  
         WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
       );
       return data[0];
     } catch (error) {
-      await queryRunner.rollbackTransaction();
       throw new BadRequestException(error.message);
     } finally {
-      if (mustRelease) await queryRunner.release();
     }
   }
 
@@ -508,11 +474,12 @@ export class MssqlService {
 
   async createQuotation(proforma: Proforma, proformaGoods: ProformaGoods[]) {
     const { FiscalYearId } = await this.getFiscalYearAndId();
-
+    if (!FiscalYearId) throw new BadRequestException('سال مالی معتبر نیست');
     const sepidarQuotation = await this.initiatNewSepidarQuotation(
       proforma,
       FiscalYearId,
     );
+    console.log(sepidarQuotation);
 
     const sepidarQuotationItems: SepidarQuotationItemDTO[] = [];
     let i = 1;
@@ -529,20 +496,13 @@ export class MssqlService {
       sepidarQuotationItems.push(sepidarNewItem);
       i++;
     }
-    console.log(sepidarQuotation, sepidarQuotationItems);
+
     console.log('Start inserting Quotation to Sql Server...');
 
     const queryRunner = this.mssqlDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const fiscalYear = await queryRunner.manager.query(
-        `SELECT FiscalYearID FROM FMK.FiscalYear WHERE FiscalYearID=${FiscalYearId}`,
-      );
-      console.log(fiscalYear);
-
-      if (!fiscalYear.length) throw new Error('سال مالی معتبر نیست');
-
       console.log('Start Inserting Quotation...');
 
       await queryRunner.manager.insert('SLS.Quotation', sepidarQuotation);
@@ -584,6 +544,8 @@ export class MssqlService {
 
   async getQuotationById(quotationId: number): Promise<SepidarQuotationDTO> {
     try {
+      console.log('seraching for ' + quotationId);
+
       const data = await this.mssqlDataSource.query(
         `SELECT  [FiscalYearRef],[SaleTypeMarket],[CustomerIdentificationCode],[CustomerEconomicCode], 
       [CustomerState], [CustomerCity], [CustomerVillage], [CustomerZipCode], [CustomerPhone], [QuotationId], [Number], [CustomerPartyRef],[Date], 
@@ -598,6 +560,9 @@ export class MssqlService {
       [AdditionFactorInBaseCurrency_VatIneffective] FROM SLS.[vwQuotation]  WHERE [QuotationId] =@0`,
         [quotationId],
       );
+      if (data?.length == 0 || data[0] == null)
+        console.log(` Sepidar Quotation Id [${quotationId}] not found`);
+
       return data[0];
     } catch (error) {
       throw new BadRequestException(error);
@@ -625,9 +590,12 @@ export class MssqlService {
 
   async createInvoice(invoice: Invoice, invoiceGoods: InvoiceGoods[]) {
     const { FiscalYearId } = await this.getFiscalYearAndId();
-    const sepidarQuotation = invoice.proforma.sepidarId
+    if (!FiscalYearId) throw new BadRequestException('سال مالی معتبر نیست');
+    const sepidarQuotation = invoice?.proforma?.sepidarId
       ? await this.getQuotationById(Number(invoice?.proforma?.sepidarId!))
       : undefined;
+    console.log('Hesabyar proforma Sepidar ID:' + invoice.proforma.sepidarId);
+
     const sepidarQuotationItems = invoice.proforma.sepidarId
       ? await this.getQuotationItemsById(Number(invoice?.proforma?.sepidarId!))
       : undefined;
@@ -652,17 +620,13 @@ export class MssqlService {
       i++;
     }
 
-    console.log('Start inserting Invoice to Sql Server...');
-
     const queryRunner = this.mssqlDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const { FiscalYearId } = await this.getFiscalYearAndId();
-
-      if (!FiscalYearId) throw new Error('سال مالی معتبر نیست');
       console.log('Start Inserting invoice...');
       await queryRunner.manager.insert('SLS.Invoice', sepidarInvoice);
+      console.log(`Invoice number ${sepidarInvoice.Number} Added...`);
       console.log('Start Inserting invoiceItems...');
       for (const item of sepidarInvoiceItems) {
         await queryRunner.manager.insert('SLS.InvoiceItem', item);
@@ -682,6 +646,13 @@ export class MssqlService {
          FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn`,
         );
       }
+
+      console.log('Sepidar QuotationId: ' + sepidarQuotation?.QuotationId);
+      console.log(
+        'Sepidar QuotationItem count: ' + sepidarQuotationItems?.length,
+      );
+      console.log(sepidarQuotation);
+
       if (sepidarQuotation && sepidarQuotationItems)
         await this.updateQuotationAfterCreateInvoice(
           queryRunner,
@@ -690,6 +661,7 @@ export class MssqlService {
           sepidarInvoice,
           sepidarInvoiceItems,
         );
+      console.log('Start Inserting Voucher...');
       const { voucherId } = await this.createVoucher(
         queryRunner,
         sepidarInvoice,
@@ -821,10 +793,7 @@ export class MssqlService {
   ) {
     let mustRelease = false;
     if (!queryRunner) {
-      queryRunner = this.mssqlDataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-      mustRelease = true;
+      throw new BadRequestException('QueryRunner is null');
     }
     try {
       console.log('Start inserting new voucher...');
@@ -1042,14 +1011,15 @@ export class MssqlService {
     newsSepidarQuotation.Version = 1;
     newsSepidarQuotation.Creator = Number(savedQuotation.createdBy.sepidarId);
     newsSepidarQuotation.CreationDate = new Date();
-    newsSepidarQuotation.LastModifier = Number(savedQuotation.createdBy.sepidarId);
+    newsSepidarQuotation.LastModifier = Number(
+      savedQuotation.createdBy.sepidarId,
+    );
     newsSepidarQuotation.LastModificationDate = new Date();
     newsSepidarQuotation.Guid = undefined;
     newsSepidarQuotation.AdditionFactor_VatEffective = 0;
     newsSepidarQuotation.AdditionFactorInBaseCurrency_VatEffective = 0;
     newsSepidarQuotation.AdditionFactor_VatIneffective = 0;
     newsSepidarQuotation.AdditionFactorInBaseCurrency_VatIneffective = 0;
-    console.log(newsSepidarQuotation);
 
     return newsSepidarQuotation;
   }
