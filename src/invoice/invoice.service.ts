@@ -46,7 +46,7 @@ export class InvoiceService {
     if (!dbUser)
       throw new BadRequestException('کاربر ثبت کننده  فاکتور معتبر نیست');
     if (!dbUser?.sepidarId)
-      new BadRequestException('کاربر معادل سپیدار تنظیم نشده است');
+      throw new BadRequestException('کاربر معادل سپیدار تنظیم نشده است');
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -132,27 +132,37 @@ export class InvoiceService {
     limit: number,
     search: string,
   ): Promise<{ total: number; items: Invoice[] }> {
-    const query = this.dataSource
-      .getRepository(Invoice)
-      .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.createdBy', 'user')
-      .leftJoinAndSelect('invoice.customer', 'customer')
-      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
-      .leftJoinAndSelect('invoiceGoods.good', 'good');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Invoice)
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.createdBy', 'user')
+        .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+        .leftJoinAndSelect('invoiceGoods.good', 'good');
 
-    if (search) {
-      query.andWhere('invoice.id= :search', { search: search });
+      if (search) {
+        query.andWhere('invoice.id= :search', { search: search });
+      }
+
+      const total = await query.getCount();
+
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('invoice.createdAt', 'DESC')
+        .getMany();
+      await queryRunner.commitTransaction();
+      return { items, total };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('invoice.createdAt', 'DESC')
-      .getMany();
-
-    return { items, total };
   }
 
   async getInvoice(id: number): Promise<Invoice | null> {
@@ -165,28 +175,39 @@ export class InvoiceService {
     search: string,
     userId: number,
   ): Promise<{ total: number; items: Invoice[] }> {
-    const query = this.dataSource
-      .getRepository(Invoice)
-      .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.createdBy', 'user')
-      .leftJoinAndSelect('invoice.customer', 'customer')
-      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
-      .leftJoinAndSelect('invoiceGoods.good', 'good')
-      .andWhere('invoice.createdBy= :user', { user: userId });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Invoice)
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.createdBy', 'user')
+        .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+        .leftJoinAndSelect('invoiceGoods.good', 'good')
+        .andWhere('invoice.createdBy= :user', { user: userId });
 
-    if (search) {
-      query.andWhere('invoice.id= :search', { search: search });
+      if (search) {
+        query.andWhere('invoice.id= :search', { search: search });
+      }
+
+      const total = await query.getCount();
+
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('invoice.createdAt', 'DESC')
+        .getMany();
+
+      await queryRunner.commitTransaction();
+      return { items, total };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('invoice.createdAt', 'DESC')
-      .getMany();
-
-    return { items, total };
   }
 
   async getUserAcceptedInvoices(
@@ -195,30 +216,41 @@ export class InvoiceService {
     search: string,
     userId: number,
   ): Promise<{ total: number; items: Invoice[] }> {
-    const query = this.dataSource
-      .getRepository(Invoice)
-      .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.createdBy', 'user')
-      .leftJoinAndSelect('invoice.customer', 'customer')
-      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
-      .leftJoinAndSelect('invoiceGoods.good', 'good')
-      .andWhere('invoice.createdBy= :user', { user: userId })
-      .andWhere('invoice.isAccepted=1')
-      .andWhere('invoice.finished=0');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Invoice)
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.createdBy', 'user')
+        .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+        .leftJoinAndSelect('invoiceGoods.good', 'good')
+        .andWhere('invoice.createdBy= :user', { user: userId })
+        .andWhere('invoice.isAccepted=1')
+        .andWhere('invoice.finished=0');
 
-    if (search) {
-      query.andWhere('invoice.id= :search', { search: search });
+      if (search) {
+        query.andWhere('invoice.id= :search', { search: search });
+      }
+
+      const total = await query.getCount();
+
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('invoice.createdAt', 'DESC')
+        .getMany();
+
+      await queryRunner.commitTransaction();
+      return { items, total };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('invoice.createdAt', 'DESC')
-      .getMany();
-
-    return { items, total };
   }
 
   async getUserAcceptedInvoicesByCustomerId(
@@ -228,31 +260,41 @@ export class InvoiceService {
     page: number,
     userId: number,
   ): Promise<{ total: number; items: Invoice[] }> {
-    const query = this.dataSource
-      .getRepository(Invoice)
-      .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.createdBy', 'user')
-      .leftJoinAndSelect('invoice.customer', 'customer')
-      .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
-      .leftJoinAndSelect('invoiceGoods.good', 'good')
-      .where('invoice.customer= :customer', { customer: customerId })
-      .andWhere('invoice.createdBy= :user', { user: userId })
-      .andWhere('invoice.isAccepted=1')
-      .andWhere('invoice.finished=0');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Invoice)
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.createdBy', 'user')
+        .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+        .leftJoinAndSelect('invoiceGoods.good', 'good')
+        .where('invoice.customer= :customer', { customer: customerId })
+        .andWhere('invoice.createdBy= :user', { user: userId })
+        .andWhere('invoice.isAccepted=1')
+        .andWhere('invoice.finished=0');
 
-    if (search) {
-      query.andWhere('invoice.id= :search', { search: search });
+      if (search) {
+        query.andWhere('invoice.id= :search', { search: search });
+      }
+
+      const total = await query.getCount();
+
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('invoice.createdAt', 'DESC')
+        .getMany();
+      await queryRunner.commitTransaction();
+      return { items, total };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('invoice.createdAt', 'DESC')
-      .getMany();
-
-    return { items, total };
   }
 
   async updateInvoice(

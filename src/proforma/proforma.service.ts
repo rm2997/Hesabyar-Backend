@@ -47,8 +47,8 @@ export class ProformaService {
     const dbUser = await this.usersService.findById(user.id);
     if (!dbUser)
       throw new BadRequestException('کاربر ثبت کننده پیش فاکتور معتبر نیست');
-    if (!dbUser?.sepidarId)
-      new BadRequestException('کاربر معادل سپیدار تنظیم نشده است');
+    if (dbUser?.sepidarId == null || dbUser?.sepidarId == '')
+      throw new BadRequestException('کاربر معادل سپیدار تنظیم نشده است');
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -118,25 +118,37 @@ export class ProformaService {
     limit: number,
     search: string,
   ): Promise<{ items: Proforma[]; total: number }> {
-    const query = this.dataSource
-      .getRepository(Proforma)
-      .createQueryBuilder('proforma')
-      .leftJoinAndSelect('proforma.createdBy', 'user')
-      .leftJoinAndSelect('proforma.customer', 'customer')
-      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
-      .leftJoinAndSelect('proformaGoods.good', 'good');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Proforma)
+        .createQueryBuilder('proforma')
+        .leftJoinAndSelect('proforma.createdBy', 'user')
+        .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+        .leftJoinAndSelect('proformaGoods.good', 'good');
 
-    if (search) {
-      query.andWhere('proforma.id= :id', { id: search });
+      if (search) {
+        query.andWhere('proforma.id= :id', { id: search });
+      }
+
+      const total = await query.getCount();
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('proforma.createdAt', 'DESC')
+        .getMany();
+      await queryRunner.commitTransaction();
+
+      return { total, items };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('proforma.createdAt', 'DESC')
-      .getMany();
-    return { total, items };
   }
 
   async getProforma(id: number): Promise<Proforma | null> {
@@ -150,26 +162,37 @@ export class ProformaService {
     search: string,
     user: Partial<User>,
   ): Promise<{ items: Proforma[]; total: number }> {
-    const query = this.dataSource
-      .getRepository(Proforma)
-      .createQueryBuilder('proforma')
-      .leftJoinAndSelect('proforma.createdBy', 'user')
-      .leftJoinAndSelect('proforma.customer', 'customer')
-      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
-      .leftJoinAndSelect('proformaGoods.good', 'good')
-      .andWhere('proforma.createdBy= :user', { user: user.id });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Proforma)
+        .createQueryBuilder('proforma')
+        .leftJoinAndSelect('proforma.createdBy', 'user')
+        .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+        .leftJoinAndSelect('proformaGoods.good', 'good')
+        .andWhere('proforma.createdBy= :user', { user: user.id });
 
-    if (search) {
-      query.andWhere('proforma.id= :id', { id: search });
+      if (search) {
+        query.andWhere('proforma.id= :id', { id: search });
+      }
+
+      const total = await query.getCount();
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('proforma.createdAt', 'DESC')
+        .getMany();
+      await queryRunner.commitTransaction();
+      return { total, items };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('proforma.createdAt', 'DESC')
-      .getMany();
-    return { total, items };
   }
 
   async getAcceptedProformasByUserId(
@@ -178,28 +201,40 @@ export class ProformaService {
     search: string,
     user: Partial<User>,
   ): Promise<{ items: Proforma[]; total: number }> {
-    const query = this.dataSource
-      .getRepository(Proforma)
-      .createQueryBuilder('proforma')
-      .leftJoinAndSelect('proforma.createdBy', 'user')
-      .leftJoinAndSelect('proforma.customer', 'customer')
-      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
-      .leftJoinAndSelect('proformaGoods.good', 'good')
-      .andWhere('proforma.createdBy= :user', { user: user.id })
-      .andWhere('proforma.isAccepted=1')
-      .andWhere('proforma.isConverted=0');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Proforma)
+        .createQueryBuilder('proforma')
+        .leftJoinAndSelect('proforma.createdBy', 'user')
+        .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+        .leftJoinAndSelect('proformaGoods.good', 'good')
+        .andWhere('proforma.createdBy= :user', { user: user.id })
+        .andWhere('proforma.isAccepted=1')
+        .andWhere('proforma.isConverted=0');
 
-    if (search) {
-      query.andWhere('proforma.id= :id', { id: search });
+      if (search) {
+        query.andWhere('proforma.id= :id', { id: search });
+      }
+
+      const total = await query.getCount();
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('proforma.createdAt', 'DESC')
+        .getMany();
+
+      await queryRunner.commitTransaction();
+      return { total, items };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('proforma.createdAt', 'DESC')
-      .getMany();
-    return { total, items };
   }
 
   async getAcceptedProformasByCustomerId(
@@ -209,29 +244,40 @@ export class ProformaService {
     search: string,
     user: Partial<User>,
   ): Promise<{ items: Proforma[]; total: number }> {
-    const query = this.dataSource
-      .getRepository(Proforma)
-      .createQueryBuilder('proforma')
-      .leftJoinAndSelect('proforma.createdBy', 'user')
-      .leftJoinAndSelect('proforma.customer', 'customer')
-      .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
-      .leftJoinAndSelect('proformaGoods.good', 'good')
-      .where('proforma.customer= :customer', { customer: customerId })
-      .andWhere('proforma.createdBy= :user', { user: user.id })
-      .andWhere('proforma.isAccepted=1')
-      .andWhere('proforma.isConverted=0');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Proforma)
+        .createQueryBuilder('proforma')
+        .leftJoinAndSelect('proforma.createdBy', 'user')
+        .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+        .leftJoinAndSelect('proformaGoods.good', 'good')
+        .where('proforma.customer= :customer', { customer: customerId })
+        .andWhere('proforma.createdBy= :user', { user: user.id })
+        .andWhere('proforma.isAccepted=1')
+        .andWhere('proforma.isConverted=0');
 
-    if (search) {
-      query.andWhere('proforma.id= :id', { id: search });
+      if (search) {
+        query.andWhere('proforma.id= :id', { id: search });
+      }
+
+      const total = await query.getCount();
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('proforma.createdAt', 'DESC')
+        .getMany();
+      await queryRunner.commitTransaction();
+      return { total, items };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
     }
-
-    const total = await query.getCount();
-    const items = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('proforma.createdAt', 'DESC')
-      .getMany();
-    return { total, items };
   }
 
   async updateProforma(
