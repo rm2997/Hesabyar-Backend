@@ -269,12 +269,16 @@ export class MssqlService {
   }> {
     if (fiscalYearRef == 0) {
       const data = await this.mssqlDataSource.query(
-        'SELECT TOP 1 title as FiscalYear,FiscalYearId from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  WHERE  miladi= LEFT(CAST(GETDATE() as date),10)',
+        `SELECT TOP 1 title as FiscalYear,FiscalYearId 
+        from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  
+        WHERE  miladi= LEFT(CAST(GETDATE() as date),10)`,
       );
       return data[0];
     } else {
       const data = await this.mssqlDataSource.query(
-        'SELECT TOP 1 title as FiscalYear,FiscalYearId from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  WHERE  FiscalYearId=@0',
+        `SELECT TOP 1 title as FiscalYear,FiscalYearId 
+      from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  
+      WHERE  FiscalYearId=@0`,
         [fiscalYearRef],
       );
       return data[0];
@@ -318,73 +322,130 @@ export class MssqlService {
   }
 
   async getNextId(resourceName: string): Promise<{ LastId: number }> {
-    const data = await this.mssqlDataSource.query(
-      `DECLARE @id int EXEC [FMK].[spGetNextId] '${resourceName}', @id output, 1 SELECT @Id as LastId`,
-    );
-    console.log(resourceName, data);
+    const queryRunner = this.mssqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const data = await queryRunner.query(
+        `DECLARE @id int EXEC [FMK].[spGetNextId] '${resourceName}', @id output, 1 SELECT @Id as LastId`,
+      );
+      console.log(resourceName, data);
+      await queryRunner.commitTransaction();
+      return data[0];
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    }
+    finally {
+      await queryRunner.release();
+    }
 
-    return data[0];
   }
 
   async getNextInvoiceNumber(
     fiscalYearId: number,
     invoiceId: number,
   ): Promise<{ Number: number }> {
-    await this.mssqlDataSource.query("Exec FMK.spGetLock 'InvoiceRow' ");
-    const data = await this.mssqlDataSource.query(
-      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwInvoice]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}'`,
-    );
-    console.log(data);
-    const checkExist = await this.mssqlDataSource.query(
-      `Select Count(1) as exist from SLS.[vwInvoice] where [InvoiceId] <> ${invoiceId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
-    );
-    if (checkExist[0].exist > 0)
-      throw new BadRequestException(
-        'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+    const queryRunner = this.mssqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.query("Exec FMK.spGetLock 'InvoiceRow' ");
+      const data = await queryRunner.query(
+        `Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwInvoice]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}`,
+      );
+      console.log(data);
+      const checkExist = await queryRunner.query(
+        `Select Count(1) as exist from SLS.[vwInvoice] 
+        where [InvoiceId] <> ${invoiceId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
       );
 
-    return data[0];
+      await queryRunner.commitTransaction();
+      if (checkExist[0].exist > 0)
+        throw new Error(
+          'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+        );
+      return data[0];
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error)
+    }
+    finally {
+      await queryRunner.release();
+    }
+
   }
 
   async getNextQuotationNumber(
     fiscalYearId: number,
     quotationId: number,
   ): Promise<{ Number: number }> {
-    await this.mssqlDataSource.query("Exec FMK.spGetLock 'QuotationRow' ");
-    const data = await this.mssqlDataSource.query(
-      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM SLS.[vwQuotation]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}'`,
-    );
-    console.log(data);
-    const checkExist = await this.mssqlDataSource.query(
-      `Select Count(1) as exist from SLS.[vwQuotation] where [QuotationId] <> ${quotationId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
-    );
-    if (checkExist[0].exist > 0)
-      throw new BadRequestException(
-        'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+    const queryRunner = this.mysqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.query("Exec FMK.spGetLock 'QuotationRow' ");
+      const data = await queryRunner.query(
+        `Select IsNull( Max(Number) + 1, 1) as Number FROM SLS.[vwQuotation] 
+        WHERE 1=1 And FiscalYearRef =@0`, [fiscalYearId],
       );
+      const checkExist = await queryRunner.query(
+        `Select Count(1) as exist from SLS.[vwQuotation] 
+        where [QuotationId] <>@0 And [Number] =@1 And [FiscalYearRef] =@2`, [quotationId, data[0].Number, fiscalYearId],
+      );
+      await queryRunner.commitTransaction();
+      if (checkExist[0].exist > 0)
+        throw new Error(
+          'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+        );
+      return data[0];
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error)
+    }
+    finally {
+      await queryRunner.release();
 
-    return data[0];
+    }
+
   }
 
   async getNextVoucherNumber(
     fiscalYearId: number,
     voucherId: number,
   ): Promise<{ Number: number }> {
-    await this.mssqlDataSource.query("Exec FMK.spGetLock 'VoucherRow'");
-    const data = await this.mssqlDataSource.query(
-      `exec sp_executesql N'Select IsNull( Max(Number) + 1, 1)  as Number FROM ACC.[vwVoucher]  WHERE 1=1  And FiscalYearRef =${fiscalYearId}'`,
-    );
-
-    console.log(data);
-    const checkExist = await this.mssqlDataSource.query(
-      `Select Count(1) as exist from ACC.[vwVoucher] where [VoucherId] <> ${voucherId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
-    );
-    if (checkExist[0].exist > 0)
-      throw new BadRequestException(
-        'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+    const queryRunner = this.mysqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.query("Exec FMK.spGetLock 'VoucherRow'");
+      const data = await queryRunner.query(
+        `Select IsNull( Max(Number) + 1, 1)  as Number FROM ACC.[vwVoucher]  
+        WHERE 1=1  And FiscalYearRef =${fiscalYearId}`,
       );
 
-    return data[0];
+      console.log(data);
+      const checkExist = await queryRunner.query(
+        `Select Count(1) as exist from ACC.[vwVoucher] 
+        where [VoucherId] <> ${voucherId} And [Number] = ${data[0].Number} And [FiscalYearRef] = ${fiscalYearId} `,
+      );
+
+      await queryRunner.commitTransaction();
+      if (checkExist[0].exist > 0)
+        throw new BadRequestException(
+          'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+        );
+
+      return data[0];
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error)
+    }
+    finally {
+      await queryRunner.release();
+
+    }
+
   }
 
   async getNextVoucherDailyNumber(queryRunner: QueryRunner) {
@@ -400,7 +461,8 @@ export class MssqlService {
         `Exec FMK.spGetLock 'SG.Accounting.VoucherManagement.Common.VoucherRow' `,
       );
       const data = await queryRunner.query(
-        `SELECT ISNULL(MAX(DailyNumber), 0) + 1 NextDailyNumber FROM ACC.Voucher  WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
+        `SELECT ISNULL(MAX(DailyNumber), 0) + 1 NextDailyNumber FROM ACC.Voucher  
+        WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
       );
       return data[0];
     } catch (error) {
