@@ -53,7 +53,11 @@ export class UnitsService {
       .createQueryBuilder('unit');
 
     if (search) {
-      query.andWhere('unit.unitName LIKE :search', { search: `%${search}%` });
+      isNaN(Number(search))
+        ? query.andWhere('unit.unitName LIKE :search', {
+            search: `%${search}%`,
+          })
+        : query.andWhere('unit.sepidarId= :search', { search: search });
     }
     const total = await query.getCount();
 

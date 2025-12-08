@@ -122,7 +122,9 @@ export class ProformaService {
         .leftJoinAndSelect('proformaGoods.good', 'good');
 
       if (search) {
-        query.andWhere('proforma.id= :id', { id: search });
+        isNaN(Number(search))
+          ? query.andWhere('proforma.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('proforma.proformaNumber= :id', { id: search });
       }
 
       const total = await query.getCount();
@@ -167,7 +169,9 @@ export class ProformaService {
         .andWhere('proforma.createdBy= :user', { user: user.id });
 
       if (search) {
-        query.andWhere('proforma.id= :id', { id: search });
+        isNaN(Number(search))
+          ? query.andWhere('proforma.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('proforma.proformaNumber= :id', { id: search });
       }
 
       const total = await query.getCount();
@@ -208,7 +212,9 @@ export class ProformaService {
         .andWhere('proforma.isConverted=0');
 
       if (search) {
-        query.andWhere('proforma.id= :id', { id: search });
+        isNaN(Number(search))
+          ? query.andWhere('proforma.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('proforma.proformaNumber= :id', { id: search });
       }
 
       const total = await query.getCount();
@@ -254,7 +260,9 @@ export class ProformaService {
         .andWhere("proforma.sepidarId<>''");
 
       if (search) {
-        query.andWhere('proforma.id= :id', { id: search });
+        isNaN(Number(search))
+          ? query.andWhere('proforma.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('proforma.proformaNumber= :id', { id: search });
       }
 
       const total = await query.getCount();

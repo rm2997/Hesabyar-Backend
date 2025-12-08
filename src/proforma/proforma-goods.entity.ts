@@ -18,6 +18,9 @@ export class ProformaGoods {
   quantity: number;
 
   @Column({ default: 0 })
+  usedQuantity: number;
+
+  @Column({ default: 0 })
   price: number;
 
   @Column({ default: 0 })

@@ -137,13 +137,16 @@ export class InvoiceService {
       const query = queryRunner.manager
         .getRepository(Invoice)
         .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
         .leftJoinAndSelect('invoiceGoods.good', 'good');
 
       if (search) {
-        query.andWhere('invoice.id= :search', { search: search });
+        isNaN(Number(search))
+          ? query.andWhere('invoice.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('invoice.invoiceNumber= :id', { id: search });
       }
 
       const total = await query.getCount();
@@ -180,6 +183,7 @@ export class InvoiceService {
       const query = queryRunner.manager
         .getRepository(Invoice)
         .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
@@ -187,7 +191,9 @@ export class InvoiceService {
         .andWhere('invoice.createdBy= :user', { user: userId });
 
       if (search) {
-        query.andWhere('invoice.id= :search', { search: search });
+        isNaN(Number(search))
+          ? query.andWhere('invoice.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('invoice.invoiceNumber= :id', { id: search });
       }
 
       const total = await query.getCount();
@@ -221,6 +227,7 @@ export class InvoiceService {
       const query = queryRunner.manager
         .getRepository(Invoice)
         .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
@@ -230,7 +237,9 @@ export class InvoiceService {
         .andWhere('invoice.finished=0');
 
       if (search) {
-        query.andWhere('invoice.id= :search', { search: search });
+        isNaN(Number(search))
+          ? query.andWhere('invoice.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('invoice.invoiceNumber= :id', { id: search });
       }
 
       const total = await query.getCount();
@@ -265,6 +274,7 @@ export class InvoiceService {
       const query = queryRunner.manager
         .getRepository(Invoice)
         .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
@@ -275,7 +285,9 @@ export class InvoiceService {
         .andWhere('invoice.finished=0');
 
       if (search) {
-        query.andWhere('invoice.id= :search', { search: search });
+        isNaN(Number(search))
+          ? query.andWhere('invoice.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('invoice.invoiceNumber= :id', { id: search });
       }
 
       const total = await query.getCount();

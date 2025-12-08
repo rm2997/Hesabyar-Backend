@@ -76,7 +76,13 @@ export class GoodsService {
         .leftJoinAndSelect('good.goodUnit', 'unit');
 
       if (search) {
-        query.andWhere('good.goodName LIKE :search', { search: `%${search}%` });
+        isNaN(Number(search))
+          ? query.andWhere('good.goodName LIKE :search', {
+              search: `%${search.trim()}%`,
+            })
+          : query
+              .andWhere('good.sepidarId= :search', { search: search })
+              .orWhere('good.sepidarCode= :search', { search: search });
       }
 
       const total = await query.getCount();

@@ -116,17 +116,28 @@ export class CustomerService {
       const query = queryRunner.manager
         .getRepository(Customer)
         .createQueryBuilder('customer')
-        .leftJoinAndSelect('customer.phoneNumbers', 'customerPhones')
-        .leftJoinAndSelect('customer.locations', 'customerLocations');
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
+        .leftJoinAndSelect('customer.locations', 'locations');
 
       if (search && search.trim().length > 0) {
-        query
-          .andWhere('customer.customerLName LIKE :search', {
-            search: `%${search}%`,
-          })
-          .orWhere('customer.customerFName LIKE :search', {
-            search: `%${search}%`,
-          });
+        isNaN(Number(search))
+          ? query
+              .andWhere('customer.customerLName LIKE :search', {
+                search: `%${search}%`,
+              })
+              .orWhere('customer.customerFName LIKE :search', {
+                search: `%${search}%`,
+              })
+          : query
+              .andWhere('customer.sepidarId= :search', {
+                search: search,
+              })
+              .orWhere('customer.customerNationalCode= :search', {
+                search: search,
+              })
+              .orWhere('phoneNumbers.phoneNumber= :search', {
+                search: search,
+              });
       }
       const total = await query.getCount();
 

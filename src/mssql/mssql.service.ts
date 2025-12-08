@@ -492,6 +492,7 @@ export class MssqlService {
         proformaItem?.price,
         sepidarQuotation.QuotationId,
         proforma.stockRef,
+        proforma.description,
       );
       sepidarQuotationItems.push(sepidarNewItem);
       i++;
@@ -739,7 +740,7 @@ export class MssqlService {
             sepidarInvoiceItems[i].ItemRef, //16
             sepidarInvoiceItems[i].StockRef, //17
             sepidarInvoiceItems[i].TracingRef, //18
-            sepidarInvoiceItems[i].Quantity, //19
+            sepidarQuotaionItems[i].Quantity, //19
             sepidarInvoiceItems[i].Quantity, //20
             sepidarInvoiceItems[i].SecondaryQuantity, //21
             sepidarInvoiceItems[i].Fee, //22
@@ -905,8 +906,6 @@ export class MssqlService {
     invoiceId: number,
     stockRef: number,
   ) {
-    console.log(itemId);
-
     const item = new SepidarInvoiceItemDTO();
     item.AdditionFactor_VatEffective = 0;
     item.AdditionFactor_VatIneffective = 0;
@@ -1032,6 +1031,7 @@ export class MssqlService {
     itemFee: number,
     quotationId: number,
     stockRef: number,
+    description: string,
   ) {
     console.log(itemRef);
     const item = new SepidarQuotationItemDTO();
@@ -1039,8 +1039,8 @@ export class MssqlService {
     item.AdditionFactor_VatIneffective = 0;
     item.CustomerDiscountRate = 0;
     item.PriceInfoDiscountRate = 0;
-    item.Description = undefined;
-    item.Description_En = undefined;
+    item.Description = description;
+    item.Description_En = description;
     item.DiscountQuotationItemRef = undefined;
     item.PriceInfoPriceDiscount = 0;
     item.PriceInfoPercentDiscount = 0;
@@ -1057,7 +1057,7 @@ export class MssqlService {
     item.StockRef = stockRef;
     item.TracingRef = undefined;
     item.Quantity = quantity;
-    item.UsedQuantity = quantity;
+    item.UsedQuantity = 0;
     item.SecondaryQuantity = undefined;
     item.Fee = itemFee;
     item.Price = price;
