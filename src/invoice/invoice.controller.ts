@@ -50,6 +50,15 @@ export class InvoiceController {
     return await this.invoiceService.getAllInvoices(page, limit, search);
   }
 
+  @Get('readyToAcceptList')
+  async getReadyToAcceptList(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+  ) {
+    return await this.invoiceService.getReadyToAcceptList(page, limit, search);
+  }
+
   @Post('generateNewToken/:id')
   async generateNewToken(@Param('id') id: number) {
     return await this.invoiceService.renewInvoiceToken(id);

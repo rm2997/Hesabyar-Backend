@@ -260,6 +260,53 @@ export class InvoiceService {
     }
   }
 
+  async getReadyToAcceptList(
+    page: number,
+    limit: number,
+    search: string,
+  ): Promise<{ total: number; items: Invoice[] }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Invoice)
+        .createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.proforma', 'proforma')
+        .leftJoinAndSelect('invoice.createdBy', 'user')
+        .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
+        .leftJoinAndSelect('invoiceGoods.good', 'good')
+        .andWhere('invoice.isSent=1')
+        .andWhere('invoice.isAccepted=0')
+        .andWhere('invoice.approvedFile IS NOT null')
+        .andWhere(`invoice.approvedFile<>''`)
+        .andWhere('invoice.finished=0');
+
+      if (search) {
+        isNaN(Number(search))
+          ? query.andWhere('invoice.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('invoice.invoiceNumber= :id', { id: search });
+      }
+
+      const total = await query.getCount();
+
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('invoice.createdAt', 'DESC')
+        .getMany();
+
+      await queryRunner.commitTransaction();
+      return { items, total };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async getUserAcceptedInvoicesByCustomerId(
     customerId: number,
     limit: number,

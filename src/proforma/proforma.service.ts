@@ -118,6 +118,7 @@ export class ProformaService {
         .createQueryBuilder('proforma')
         .leftJoinAndSelect('proforma.createdBy', 'user')
         .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
         .leftJoinAndSelect('proformaGoods.good', 'good');
 
@@ -209,6 +210,52 @@ export class ProformaService {
         .leftJoinAndSelect('proformaGoods.good', 'good')
         .andWhere('proforma.createdBy= :user', { user: user.id })
         .andWhere('proforma.isAccepted=1')
+        .andWhere('proforma.isConverted=0');
+
+      if (search) {
+        isNaN(Number(search))
+          ? query.andWhere('proforma.title LIKE :id', { id: `${search}%` })
+          : query.andWhere('proforma.proformaNumber= :id', { id: search });
+      }
+
+      const total = await query.getCount();
+      const items = await query
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('proforma.createdAt', 'DESC')
+        .getMany();
+
+      await queryRunner.commitTransaction();
+      return { total, items };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async getReadyToAcceptList(
+    page: number,
+    limit: number,
+    search: string,
+    user: Partial<User>,
+  ): Promise<{ items: Proforma[]; total: number }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const query = queryRunner.manager
+        .getRepository(Proforma)
+        .createQueryBuilder('proforma')
+        .leftJoinAndSelect('proforma.createdBy', 'user')
+        .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
+        .leftJoinAndSelect('proformaGoods.good', 'good')
+        .andWhere('proforma.isSent=1')
+        .andWhere('proforma.approvedFile IS NOT null ')
+        .andWhere(`proforma.approvedFile<>''`)
+        .andWhere('proforma.isAccepted=0')
         .andWhere('proforma.isConverted=0');
 
       if (search) {

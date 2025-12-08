@@ -168,6 +168,22 @@ export class ProformaController {
     );
   }
 
+  @Get('readyToAcceptList')
+  async getReadyToAcceptList(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return await this.proformaService.getReadyToAcceptList(
+      page,
+      limit,
+      search,
+      user,
+    );
+  }
+
   @Get('customer/accepted/:customerId')
   async getUserAcceptedProformasByCustomerId(
     @Param('customerId') customerId: number,

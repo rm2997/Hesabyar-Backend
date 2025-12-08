@@ -31,7 +31,7 @@ export class CustomerController {
   @Get()
   async getAll(
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('limit') limit: number = 12,
     @Query('search') search: string,
   ) {
     return await this.customerService.getAllCustomers(page, limit, search);
