@@ -13,31 +13,23 @@ async function bootstrap() {
   Logger.log(`APP Release Date: 14040918`, 'Hesabyar');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const frontWhiteList = [
-    'https://hesab-yaar.ir',
     'https://www.hesab-yaar.ir',
-    `https://localhost:3000`,
-    `http://localhost:3000`,
+    'https://hesab-yaar.ir'
   ];
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || frontWhiteList.indexOf(origin) >= 0) {
-        if (nodeEnv)
-          Logger.log(
-            `Allowed cors for: ${origin} - ${Date()}`,
-            'HESABYAR-CORS',
-          );
-        callback(null, origin);
+      if (!origin) return callback(null, true);
+      if (frontWhiteList.includes(origin)) {
+        Logger.log(`Allowed CORS for: ${origin} - ${new Date()}`, 'HESABYAR-CORS');
+        return callback(null, origin);
       } else {
-        Logger.error(
-          `Not allowed cors for: ${origin} - ${Date()}`,
-          'HESABYAR-CORS',
-        );
-        callback(new Error('Not allowed by CORS!'));
+        Logger.error(`Blocked CORS for: ${origin} - ${new Date()}`, 'HESABYAR-CORS');
+        return callback(new Error('Not allowed by CORS'));
       }
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: '*',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
 

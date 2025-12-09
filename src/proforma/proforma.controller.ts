@@ -33,7 +33,7 @@ import { UserRoles } from 'src/common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
 export class ProformaController {
-  constructor(private readonly proformaService: ProformaService) {}
+  constructor(private readonly proformaService: ProformaService) { }
 
   @UserRoles(Roles.Admin)
   @Post()
@@ -98,7 +98,7 @@ export class ProformaController {
     return await this.proformaService.setProformaIsAccepted(id, acceptedBy);
   }
 
-  @Patch('sent/:id')
+  @Put('sent/:id')
   async setProformaIsSent(@Param('id') id: number) {
     return await this.proformaService.setProformaIsSent(id);
   }
