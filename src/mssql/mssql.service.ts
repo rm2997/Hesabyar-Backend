@@ -20,7 +20,7 @@ export class MssqlService {
     @InjectDataSource('mssqlConnection')
     private readonly mssqlDataSource: DataSource,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async getConnectionData() {
     return {
@@ -167,7 +167,7 @@ export class MssqlService {
       const id = lastIdResult[0]?.LastId ?? 0;
       const newId = id + 1;
       const date = new Date();
-      date.setHours(0, 0, 0);
+      date.setHours(0, 0, 0, 0);
       await queryRunner.query(
         `INSERT INTO inv.Unit 
        (UnitID, Title, Title_En, Version, Creator, CreationDate, LastModifier, LastModificationDate)
@@ -205,7 +205,7 @@ export class MssqlService {
       const id = lastIdResult[0]?.LastId ?? 0;
       const newId = id + 1;
       const date = new Date();
-      date.setHours(0, 0, 0)
+      date.setHours(0, 0, 0, 0);
       await queryRunner.query(
         `INSERT INTO INV.Item 
       (ItemID
@@ -704,7 +704,7 @@ export class MssqlService {
     try {
       console.log('Start updating Quotation...');
       const date = new Date();
-      date.setHours(0, 0, 0);
+      date.setHours(0, 0, 0, 0);
       await queryRunner.query(
         `UPDATE SLS.Quotation SET Closed=1, LastModificationDate=@0 WHERE QuotationId=@1`,
         [date, quotationId],
@@ -849,7 +849,7 @@ export class MssqlService {
     newsSepidarInvoice.ShouldControlCustomerCredit = true;
     newsSepidarInvoice.AgreementRef = undefined;
     const date = new Date();
-    date.setHours(0, 0, 0);
+    date.setHours(0, 0, 0, 0);
     newsSepidarInvoice.TaxPayerBillIssueDateTime = date;
     newsSepidarInvoice.SettlementType = 1;
     newsSepidarInvoice.Description = '';
@@ -990,7 +990,7 @@ export class MssqlService {
     ).Number;
     newsSepidarQuotation.CustomerPartyRef = savedQuotation.customer.sepidarId;
     const date = new Date();
-    date.setHours(0, 0, 0);
+    date.setHours(0, 0, 0, 0);
     newsSepidarQuotation.Date = date;
     newsSepidarQuotation.ExpirationDate = savedQuotation.expirationDate;
     newsSepidarQuotation.CustomerRealName =
@@ -1190,7 +1190,7 @@ export class MssqlService {
     sepidarVoucher.FiscalYearRef = fiscalYearId;
     sepidarVoucher.ReferenceNumber = sepidarVoucher.Number;
     const date = new Date();
-    date.setHours(0, 0, 0);
+    date.setHours(0, 0, 0, 0);
     sepidarVoucher.Date = date;
     sepidarVoucher.Type = 2;
     sepidarVoucher.IsMerged = true;
