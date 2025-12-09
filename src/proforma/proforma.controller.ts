@@ -8,7 +8,6 @@ import {
   Delete,
   UseGuards,
   Req,
-  Patch,
   NotFoundException,
   UseInterceptors,
   UploadedFile,
@@ -33,7 +32,7 @@ import { UserRoles } from 'src/common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proforma')
 export class ProformaController {
-  constructor(private readonly proformaService: ProformaService) { }
+  constructor(private readonly proformaService: ProformaService) {}
 
   @UserRoles(Roles.Admin)
   @Post()
@@ -53,7 +52,7 @@ export class ProformaController {
     return await this.proformaService.verifyAndFetchProforma(token);
   }
 
-  @Patch('token/:token')
+  @Put('token/:token')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -92,7 +91,7 @@ export class ProformaController {
   }
 
   @UserRoles(Roles.Admin || Roles.Accountant)
-  @Patch('accept/:id')
+  @Put('accept/:id')
   async setProformaIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const acceptedBy = req.user as User;
     return await this.proformaService.setProformaIsAccepted(id, acceptedBy);

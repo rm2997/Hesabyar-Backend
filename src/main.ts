@@ -14,17 +14,24 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const frontWhiteList = [
     'https://www.hesab-yaar.ir',
-    'https://hesab-yaar.ir'
+    'https://hesab-yaar.ir',
+    'http://localhost:3000',
   ];
 
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (frontWhiteList.includes(origin)) {
-        Logger.log(`Allowed CORS for: ${origin} - ${new Date()}`, 'HESABYAR-CORS');
+        Logger.log(
+          `Allowed CORS for: ${origin} - ${new Date()}`,
+          'HESABYAR-CORS',
+        );
         return callback(null, origin);
       } else {
-        Logger.error(`Blocked CORS for: ${origin} - ${new Date()}`, 'HESABYAR-CORS');
+        Logger.error(
+          `Blocked CORS for: ${origin} - ${new Date()}`,
+          'HESABYAR-CORS',
+        );
         return callback(new Error('Not allowed by CORS'));
       }
     },

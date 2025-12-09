@@ -9,7 +9,6 @@ import {
   Req,
   UseGuards,
   Query,
-  Patch,
   NotFoundException,
   Res,
   UploadedFile,
@@ -64,18 +63,18 @@ export class InvoiceController {
     return await this.invoiceService.renewInvoiceToken(id);
   }
 
-  @Patch('accept/:id')
+  @Put('accept/:id')
   async setInvoiceIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const acceptedBy = req.user as User;
     return await this.invoiceService.setInvoiceIsAccepted(id, acceptedBy);
   }
 
-  @Patch('sent/:id')
+  @Put('sent/:id')
   async setInvoiceIsSent(@Param('id') id: number) {
     return await this.invoiceService.setInvoiceIsSent(id);
   }
 
-  @Patch('sendDriverLink/:id')
+  @Put('sendDriverLink/:id')
   async sendDriverLink(@Param('id') id: number) {
     return await this.invoiceService.sendDriverLink(id);
   }
@@ -105,7 +104,7 @@ export class InvoiceController {
     return await this.invoiceService.verifyAndFetchInvoice(token);
   }
 
-  @Patch('token/:token')
+  @Put('token/:token')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -139,7 +138,7 @@ export class InvoiceController {
   }
 
   @Public()
-  @Patch('driver/token/:token')
+  @Put('driver/token/:token')
   async updateInvoiceDriverInfo(
     @Param('token') token: string,
     @Body() data: Partial<Invoice>,

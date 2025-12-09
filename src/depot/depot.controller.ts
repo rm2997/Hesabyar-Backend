@@ -6,7 +6,6 @@ import {
   Get,
   NotFoundException,
   Param,
-  Patch,
   Post,
   Put,
   Query,
@@ -175,7 +174,7 @@ export class DepotController {
     return res.sendFile(filePath);
   }
 
-  @Patch('image/:id')
+  @Put('image/:id')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -278,7 +277,7 @@ export class DepotController {
     return await this.depotService.verifyAndFetchDepot(token);
   }
 
-  @Patch('token/:token')
+  @Put('token/:token')
   @Public()
   async updateDepotByToken(
     @Param('token') token: string,
@@ -293,7 +292,7 @@ export class DepotController {
     return saved;
   }
 
-  @Patch('sent/:id')
+  @Put('sent/:id')
   async setDepotIsSent(@Param('id') id: number) {
     return await this.depotService.setDepotIsSent(id);
   }
@@ -314,7 +313,7 @@ export class DepotController {
   }
 
   @UserRoles(Roles.Admin)
-  @Patch('accept/:id')
+  @Put('accept/:id')
   async setDepotIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const user = req.user as User;
     const depot = await this.depotService.getDepotById(id);
@@ -327,7 +326,7 @@ export class DepotController {
   }
 
   @UserRoles(Roles.Admin)
-  @Patch('warehouseAccept/:id')
+  @Put('warehouseAccept/:id')
   async setDepotIsAcceptedByWarehouse(
     @Param('id') id: number,
     @Req() req: Request,

@@ -3,13 +3,12 @@ import {
   Post,
   Get,
   Param,
-  Patch,
   Body,
   Req,
   UseGuards,
-  NotFoundException,
   Delete,
   Query,
+  Put,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -80,12 +79,12 @@ export class NotificationController {
     return this.notificationService.getNotificationById(+id);
   }
 
-  @Patch(':id/read')
+  @Put(':id/read')
   async markAsRead(@Param('id') id: string) {
     return this.notificationService.markAsRead(+id);
   }
 
-  @Patch(':id/unread')
+  @Put(':id/unread')
   async markAsUnread(@Param('id') id: string) {
     return this.notificationService.markAsUnread(+id);
   }
