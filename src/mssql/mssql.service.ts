@@ -20,7 +20,7 @@ export class MssqlService {
     @InjectDataSource('mssqlConnection')
     private readonly mssqlDataSource: DataSource,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async getConnectionData() {
     return {
@@ -166,12 +166,14 @@ export class MssqlService {
       );
       const id = lastIdResult[0]?.LastId ?? 0;
       const newId = id + 1;
+      const date = new Date();
+      date.setHours(0, 0, 0);
       await queryRunner.query(
         `INSERT INTO inv.Unit 
        (UnitID, Title, Title_En, Version, Creator, CreationDate, LastModifier, LastModificationDate)
        VALUES 
        (@0, @1, @2, @3, @4, @5, @6, @7)`,
-        [newId, unitName, unitName, 1, 1, new Date(), 1, new Date()],
+        [newId, unitName, unitName, 1, 1, date, 1, date],
       );
       await queryRunner.query(
         `UPDATE FMK.IDGeneration 
@@ -202,6 +204,8 @@ export class MssqlService {
       );
       const id = lastIdResult[0]?.LastId ?? 0;
       const newId = id + 1;
+      const date = new Date();
+      date.setHours(0, 0, 0)
       await queryRunner.query(
         `INSERT INTO INV.Item 
       (ItemID
@@ -243,7 +247,7 @@ export class MssqlService {
            ,IranCode)
        VALUES 
        (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @14, @15, @16, @17, @18, @19, @20, @21, @22, @23, @24, @25, @26, @27, @28, @29, @30, @31, @32, @33, @34, @35, @36)`,
-        [newId, unitName, unitName, 1, 1, new Date(), 1, new Date()],
+        [newId, unitName, unitName, 1, 1, date, 1, date],
       );
       await queryRunner.query(
         `UPDATE FMK.IDGeneration 
@@ -699,9 +703,11 @@ export class MssqlService {
     const quotationId = sepidarQuotation.QuotationId;
     try {
       console.log('Start updating Quotation...');
+      const date = new Date();
+      date.setHours(0, 0, 0);
       await queryRunner.query(
         `UPDATE SLS.Quotation SET Closed=1, LastModificationDate=@0 WHERE QuotationId=@1`,
-        [new Date(), quotationId],
+        [date, quotationId],
       );
 
       for (let i: number = 0; i < sepidarInvoiceItems.length; i++) {
@@ -842,7 +848,9 @@ export class MssqlService {
     newsSepidarInvoice.OrderRef = undefined;
     newsSepidarInvoice.ShouldControlCustomerCredit = true;
     newsSepidarInvoice.AgreementRef = undefined;
-    newsSepidarInvoice.TaxPayerBillIssueDateTime = new Date();
+    const date = new Date();
+    date.setHours(0, 0, 0);
+    newsSepidarInvoice.TaxPayerBillIssueDateTime = date;
     newsSepidarInvoice.SettlementType = 1;
     newsSepidarInvoice.Description = '';
     newsSepidarInvoice.InvoiceId = (await this.getNextId('SLS.Invoice')).LastId;
@@ -853,7 +861,7 @@ export class MssqlService {
       )
     ).Number;
     newsSepidarInvoice.CustomerPartyRef = savedInvoice.customer.sepidarId;
-    newsSepidarInvoice.Date = new Date();
+    newsSepidarInvoice.Date = date;
     newsSepidarInvoice.CustomerRealName =
       savedInvoice.customer.customerLName +
       ' ' +
@@ -881,9 +889,10 @@ export class MssqlService {
     newsSepidarInvoice.Rate = 1;
     newsSepidarInvoice.Version = 1;
     newsSepidarInvoice.Creator = Number(savedInvoice.createdBy.sepidarId);
-    newsSepidarInvoice.CreationDate = new Date();
+
+    newsSepidarInvoice.CreationDate = date;
     newsSepidarInvoice.LastModifier = Number(savedInvoice.createdBy.sepidarId);
-    newsSepidarInvoice.LastModificationDate = new Date();
+    newsSepidarInvoice.LastModificationDate = date;
     newsSepidarInvoice.QuotationRef = savedInvoice?.proforma
       ? savedInvoice.proforma.sepidarId + ''
       : undefined;
@@ -980,7 +989,9 @@ export class MssqlService {
       )
     ).Number;
     newsSepidarQuotation.CustomerPartyRef = savedQuotation.customer.sepidarId;
-    newsSepidarQuotation.Date = new Date();
+    const date = new Date();
+    date.setHours(0, 0, 0);
+    newsSepidarQuotation.Date = date;
     newsSepidarQuotation.ExpirationDate = savedQuotation.expirationDate;
     newsSepidarQuotation.CustomerRealName =
       savedQuotation.customer.customerLName +
@@ -1009,11 +1020,11 @@ export class MssqlService {
     newsSepidarQuotation.Rate = 1;
     newsSepidarQuotation.Version = 1;
     newsSepidarQuotation.Creator = Number(savedQuotation.createdBy.sepidarId);
-    newsSepidarQuotation.CreationDate = new Date();
+    newsSepidarQuotation.CreationDate = date;
     newsSepidarQuotation.LastModifier = Number(
       savedQuotation.createdBy.sepidarId,
     );
-    newsSepidarQuotation.LastModificationDate = new Date();
+    newsSepidarQuotation.LastModificationDate = date;
     newsSepidarQuotation.Guid = undefined;
     newsSepidarQuotation.AdditionFactor_VatEffective = 0;
     newsSepidarQuotation.AdditionFactorInBaseCurrency_VatEffective = 0;
@@ -1178,7 +1189,9 @@ export class MssqlService {
     ).NextDailyNumber;
     sepidarVoucher.FiscalYearRef = fiscalYearId;
     sepidarVoucher.ReferenceNumber = sepidarVoucher.Number;
-    sepidarVoucher.Date = new Date();
+    const date = new Date();
+    date.setHours(0, 0, 0);
+    sepidarVoucher.Date = date;
     sepidarVoucher.Type = 2;
     sepidarVoucher.IsMerged = true;
     sepidarVoucher.State = true;
@@ -1187,7 +1200,7 @@ export class MssqlService {
     );
     sepidarVoucher.Description_En = sepidarVoucher.Description;
     sepidarVoucher.Version = 1;
-    sepidarVoucher.CreationDate = new Date();
+    sepidarVoucher.CreationDate = date;
     sepidarVoucher.Creator = userId;
     sepidarVoucher.LastModifier = userId;
     sepidarVoucher.LastModificationDate = sepidarVoucher.CreationDate;
