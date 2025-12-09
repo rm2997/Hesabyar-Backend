@@ -119,6 +119,7 @@ export class ProformaService {
         .leftJoinAndSelect('proforma.createdBy', 'user')
         .leftJoinAndSelect('proforma.customer', 'customer')
         .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
+        .leftJoinAndSelect('customer.locations', 'locations')
         .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
         .leftJoinAndSelect('proformaGoods.good', 'good');
 
@@ -165,6 +166,7 @@ export class ProformaService {
         .createQueryBuilder('proforma')
         .leftJoinAndSelect('proforma.createdBy', 'user')
         .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
         .leftJoinAndSelect('proformaGoods.good', 'good')
         .andWhere('proforma.createdBy= :user', { user: user.id });
@@ -206,6 +208,7 @@ export class ProformaService {
         .createQueryBuilder('proforma')
         .leftJoinAndSelect('proforma.createdBy', 'user')
         .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
         .leftJoinAndSelect('proformaGoods.good', 'good')
         .andWhere('proforma.createdBy= :user', { user: user.id })
@@ -250,6 +253,7 @@ export class ProformaService {
         .createQueryBuilder('proforma')
         .leftJoinAndSelect('proforma.createdBy', 'user')
         .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
         .leftJoinAndSelect('proformaGoods.good', 'good')
         .andWhere('proforma.isSent=1')
@@ -297,6 +301,7 @@ export class ProformaService {
         .createQueryBuilder('proforma')
         .leftJoinAndSelect('proforma.createdBy', 'user')
         .leftJoinAndSelect('proforma.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('proforma.proformaGoods', 'proformaGoods')
         .leftJoinAndSelect('proformaGoods.good', 'good')
         .where('proforma.customer= :customer', { customer: customerId })

@@ -140,6 +140,8 @@ export class InvoiceService {
         .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
+        .leftJoinAndSelect('customer.locations', 'locations')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
         .leftJoinAndSelect('invoiceGoods.good', 'good');
 
@@ -186,6 +188,7 @@ export class InvoiceService {
         .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
         .leftJoinAndSelect('invoiceGoods.good', 'good')
         .andWhere('invoice.createdBy= :user', { user: userId });
@@ -230,6 +233,7 @@ export class InvoiceService {
         .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
         .leftJoinAndSelect('invoiceGoods.good', 'good')
         .andWhere('invoice.createdBy= :user', { user: userId })
@@ -275,6 +279,7 @@ export class InvoiceService {
         .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
         .leftJoinAndSelect('invoiceGoods.good', 'good')
         .andWhere('invoice.isSent=1')
@@ -324,6 +329,7 @@ export class InvoiceService {
         .leftJoinAndSelect('invoice.proforma', 'proforma')
         .leftJoinAndSelect('invoice.createdBy', 'user')
         .leftJoinAndSelect('invoice.customer', 'customer')
+        .leftJoinAndSelect('customer.phoneNumbers', 'phoneNumbers')
         .leftJoinAndSelect('invoice.invoiceGoods', 'invoiceGoods')
         .leftJoinAndSelect('invoiceGoods.good', 'good')
         .where('invoice.customer= :customer', { customer: customerId })
