@@ -111,4 +111,7 @@ export class Customer {
 
   @Column()
   sepidarId: number;
+
+  @Column()
+  sepidarDlId: string;
 }

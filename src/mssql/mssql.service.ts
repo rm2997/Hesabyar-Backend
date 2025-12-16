@@ -20,7 +20,7 @@ export class MssqlService {
     @InjectDataSource('mssqlConnection')
     private readonly mssqlDataSource: DataSource,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async getConnectionData() {
     return {
@@ -70,6 +70,7 @@ export class MssqlService {
           ],
         );
       }
+      await mysqlQueryRunner.query('UPDATE good JOIN unit ON good.goodUnitId = unit.sepidarId SET good.goodUnitId = unit.id; ');
       await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
       await mysqlQueryRunner.commitTransaction();
       return { result: 'ok' };
@@ -109,7 +110,9 @@ export class MssqlService {
 
   async syncCustomers() {
     const data = await this.mssqlDataSource.query(
-      'SELECT partyid, Name as customerFName ,LastName as customerLName, EconomicCode as customerEconomicCode,IsCustomer,IsBroker,IsPurchasingAgent as isBuyerAgent From GNR.Party',
+      `SELECT partyid, Name as customerFName ,LastName as customerLName, EconomicCode as customerEconomicCode,
+       IsCustomer,IsBroker,IsPurchasingAgent as isBuyerAgent ,dl.Code as sepidarDlId
+       FROM GNR.Party LEFT OUTER JOIN ACC.DL on Party.DLRef=dl.DLId`,
     );
     console.log(data);
 
@@ -122,7 +125,7 @@ export class MssqlService {
       await mysqlQueryRunner.query('ALTER TABLE customer AUTO_INCREMENT = 1');
       for (const g of data) {
         await mysqlQueryRunner.query(
-          'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt,sepidarId) VALUES(?,?,?,?,?,?,?,?)',
+          'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt,sepidarId,sepidarDlId) VALUES(?,?,?,?,?,?,?,?,?)',
           [
             g.customerFName,
             g.customerLName,
@@ -132,6 +135,7 @@ export class MssqlService {
             g.isBuyerAgent,
             new Date(),
             g.partyid,
+            g.sepidarDlId
           ],
         );
       }
@@ -1193,14 +1197,14 @@ export class MssqlService {
     date.setHours(0, 0, 0, 0);
     sepidarVoucher.Date = date;
     sepidarVoucher.Type = 2;
-    sepidarVoucher.IsMerged = true;
+    sepidarVoucher.IsMerged = false;
     sepidarVoucher.State = true;
     sepidarVoucher.Description = await this.getVoucehrDescription(
       invoice.Number,
     );
     sepidarVoucher.Description_En = sepidarVoucher.Description;
     sepidarVoucher.Version = 1;
-    sepidarVoucher.CreationDate = date;
+    sepidarVoucher.CreationDate = new Date();
     sepidarVoucher.Creator = userId;
     sepidarVoucher.LastModifier = userId;
     sepidarVoucher.LastModificationDate = sepidarVoucher.CreationDate;

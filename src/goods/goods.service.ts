@@ -18,7 +18,7 @@ export class GoodsService {
     private readonly goodRepository: Repository<Good>,
     private readonly unitService: UnitsService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async createGood(data: Partial<Good>, user: number): Promise<Good> {
     const nameExist = await this.goodRepository.findOne({
@@ -78,11 +78,11 @@ export class GoodsService {
       if (search) {
         isNaN(Number(search))
           ? query.andWhere('good.goodName LIKE :search', {
-              search: `%${search.trim()}%`,
-            })
+            search: `%${search.trim()}%`,
+          })
           : query
-              .andWhere('good.sepidarId= :search', { search: search })
-              .orWhere('good.sepidarCode= :search', { search: search });
+            .andWhere('good.sepidarId= :search', { search: search })
+            .orWhere('good.sepidarCode= :search', { search: search });
       }
 
       const total = await query.getCount();
@@ -92,7 +92,7 @@ export class GoodsService {
         .take(limit == -1 ? undefined : limit)
         .orderBy('good.id', 'DESC')
         .getMany();
-      queryRunner.commitTransaction();
+      await queryRunner.commitTransaction();
       const sepidarItems = await this.mssqlService.getAllExistItems();
       for (const g of items) {
         for (const i of sepidarItems) {
@@ -101,10 +101,10 @@ export class GoodsService {
       }
       return { items, total };
     } catch (error) {
-      queryRunner.rollbackTransaction();
-      throw new BadRequestException(error);
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error.message);
     } finally {
-      queryRunner.release();
+      await queryRunner.release();
     }
   }
 

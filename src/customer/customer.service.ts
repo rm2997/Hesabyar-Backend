@@ -21,7 +21,7 @@ export class CustomerService {
     @InjectRepository(CustomerPhone)
     private readonly customerPhoneRepository: Repository<CustomerPhone>,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async createCustomer(
     data: Partial<Customer>,
@@ -122,22 +122,22 @@ export class CustomerService {
       if (search && search.trim().length > 0) {
         isNaN(Number(search))
           ? query
-              .andWhere('customer.customerLName LIKE :search', {
-                search: `%${search}%`,
-              })
-              .orWhere('customer.customerFName LIKE :search', {
-                search: `%${search}%`,
-              })
+            .andWhere('customer.customerLName LIKE :search', {
+              search: `%${search}%`,
+            })
+            .orWhere('customer.customerFName LIKE :search', {
+              search: `%${search}%`,
+            })
           : query
-              .andWhere('customer.sepidarId= :search', {
-                search: search,
-              })
-              .orWhere('customer.customerNationalCode= :search', {
-                search: search,
-              })
-              .orWhere('phoneNumbers.phoneNumber= :search', {
-                search: search,
-              });
+            .andWhere('customer.sepidarDlId= :search', {
+              search: search,
+            })
+            .orWhere('customer.customerNationalCode= :search', {
+              search: search,
+            })
+            .orWhere('phoneNumbers.phoneNumber= :search', {
+              search: search,
+            });
       }
       const total = await query.getCount();
 
@@ -146,11 +146,12 @@ export class CustomerService {
         .take(limit == -1 ? undefined : limit)
         .orderBy('customer.id', 'DESC')
         .getMany();
+
       await queryRunner.commitTransaction();
       return { total, items };
     } catch (error) {
-      queryRunner.rollbackTransaction();
-      throw new BadRequestException(error);
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error?.message);
     } finally {
       await queryRunner.release();
     }
