@@ -4,9 +4,10 @@ import { CryptoUtil } from 'src/common/utils/crypto.util';
 
 @Injectable()
 export class ConfigurationService {
-  constructor() { }
+  constructor() {}
   loadSepidarPassword(): string {
-    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+    const nodeEnv =
+      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const secret = process.env.CONFIG_SECRET_KEY;
     if (!secret || secret.length == 0)
       Logger.error('SecretKey is empty', 'LoadSepidarPassword');
@@ -50,19 +51,23 @@ export class ConfigurationService {
     return sepidarEncryptedDbPassword;
   }
 
-
   msSqlSepidarDbDatabase(): TypeOrmModuleOptions {
-    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+    const nodeEnv =
+      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const msSqlpassword = this.loadSepidarPassword();
     const options: TypeOrmModuleOptions = {
       type: 'mssql',
-      host: process.env.SEPDB_HOST,
+      host: process.env.SEPDB_HOST ?? '',
+
       port: Number(process.env.SEPDB_PORT) ?? 1433,
       database: process.env.SEPDB_DBNAME,
       username: process.env.SEPDB_USERNAME,
       password: msSqlpassword,
-      options: { encrypt: false, trustServerCertificate: true },
-      autoLoadEntities: true,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+      autoLoadEntities: false,
       synchronize: false,
       logger: nodeEnv ? 'advanced-console' : 'simple-console',
       logging: nodeEnv ?? 'all',
@@ -71,7 +76,8 @@ export class ConfigurationService {
     return options;
   }
   loadHesabyarDbPassword(): string {
-    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+    const nodeEnv =
+      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const secret = process.env.CONFIG_SECRET_KEY;
     if (!secret || secret.length == 0)
       Logger.error('SecretKey is empty', 'loadHesabyarDbPassword');
@@ -117,7 +123,8 @@ export class ConfigurationService {
     return hesabyarEncryptedDbPassword;
   }
   mySqlHesabyarDataBase(): TypeOrmModuleOptions {
-    const nodeEnv = process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+    const nodeEnv =
+      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
     const mySqlpassword = this.loadHesabyarDbPassword();
     const options: TypeOrmModuleOptions = {
       type: 'mysql',
