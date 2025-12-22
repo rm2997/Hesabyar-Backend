@@ -82,7 +82,8 @@ export class GoodsService {
           })
           : query
             .andWhere('good.sepidarId= :search', { search: search })
-            .orWhere('good.sepidarCode= :search', { search: search });
+            .orWhere('good.sepidarCode= :search', { search: search })
+            .orWhere('good.sepidarCode LIKE :search', { search: `%${search.trim()}` });
       }
 
       const total = await query.getCount();
@@ -96,7 +97,10 @@ export class GoodsService {
       const sepidarItems = await this.mssqlService.getAllExistItems();
       for (const g of items) {
         for (const i of sepidarItems) {
-          if (i.ItemRef == g.sepidarId) g.goodCount = i.Quantity;
+          if (i.ItemRef == g.sepidarId) {
+            g.goodCount = i.Quantity;
+            g.goodSaleCount = i.SaleQuantity
+          }
         }
       }
       return { items, total };
@@ -117,7 +121,15 @@ export class GoodsService {
     if (!Good) throw new NotFoundException();
     const sepidarItem = await this.mssqlService.getItemById(Good.sepidarId);
     Good.goodCount = sepidarItem[0]?.Quantity ?? 0;
+    Good.goodSaleCount = sepidarItem[0]?.SaleQuantity ?? 0;
     return Good;
+  }
+
+  async getGoodSaleList(id: number) {
+    const Good = await this.goodRepository.findOne({ where: { id } });
+    if (!Good) throw new NotFoundException();
+    const sepidarItem = await this.mssqlService.getItemSaleListById(Good.sepidarId);
+    return sepidarItem;
   }
 
   async getGoodByName(name: string): Promise<Good[] | null> {

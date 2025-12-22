@@ -330,8 +330,19 @@ export class MssqlService {
   async getItemById(itemRef: number) {
     const { FiscalYearId } = await this.getFiscalYearAndId();
     const data = await this.mssqlDataSource.query(
-      `SELECT * FROM INV.vwItemStockSummary WHERE FiscalYearRef=@0 AND itemRef=@1`,
+      `SELECT * FROM INV.ItemStockSummary WHERE FiscalYearRef=@0 AND itemRef=@1`,
       [FiscalYearId, itemRef],
+    );
+    if (!data || data?.length == 0) return [];
+    console.log(data);
+    return data;
+  }
+
+  async getItemSaleListById(itemRef: number) {
+    //const { FiscalYearId } = await this.getFiscalYearAndId();
+    const data = await this.mssqlDataSource.query(
+      `select * from sls.vwInvoice inner join sls.vwInvoiceItem on vwInvoice.InvoiceId=vwInvoiceItem.InvoiceRef where  itemRef=@0`,
+      [itemRef],
     );
     if (!data || data?.length == 0) return [];
     console.log(data);

@@ -24,7 +24,7 @@ import * as XLSX from 'xlsx';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('goods')
 export class GoodsController {
-  constructor(private readonly goodsService: GoodsService) {}
+  constructor(private readonly goodsService: GoodsService) { }
 
   @Post()
   async create(@Body() data: Partial<Good>, @Req() req: Request) {
@@ -53,8 +53,6 @@ export class GoodsController {
   @Get(':id')
   async getGood(@Param('id') id: number) {
     const Good = await this.goodsService.getGoodById(id);
-    console.log(Good?.goodUnit);
-
     return Good;
   }
 
@@ -83,4 +81,11 @@ export class GoodsController {
 
     return await this.goodsService.createGoodFromExcelFile(data, user);
   }
+
+  @Get('saleList/:id')
+  async getGoodSaleList(@Param('id') id: number) {
+    const Good = await this.goodsService.getGoodSaleList(id);
+    return Good;
+  }
+
 }

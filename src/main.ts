@@ -10,7 +10,7 @@ async function bootstrap() {
   const appPort = process.env.APP_PORT ?? 3000;
   Logger.log(`APP is listeninig to PORT ${appPort}`, 'Hesabyar');
   Logger.log(`APP is on ${nodeEnvStr} mode.`, 'Hesabyar');
-  Logger.log(`APP Release Date: 14040925`, 'Hesabyar');
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const frontWhiteList = [
     'https://www.hesab-yaar.ir',
@@ -39,7 +39,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
-
+  Logger.log(`APP Release Date: 14041001`, 'Hesabyar');
   await app.listen(appPort);
 }
 bootstrap();

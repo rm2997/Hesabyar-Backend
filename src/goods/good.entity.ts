@@ -31,6 +31,9 @@ export class Good {
   @Column({ default: 0, nullable: false })
   goodCount: number;
 
+  @Column({ default: 0, nullable: false })
+  goodSaleCount: number;
+
   @Column({ nullable: true })
   goodInfo: string;
 
