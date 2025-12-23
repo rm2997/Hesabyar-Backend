@@ -20,7 +20,7 @@ export class MssqlService {
     @InjectDataSource('mssqlConnection')
     private readonly mssqlDataSource: DataSource,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async getConnectionData() {
     return {
@@ -59,10 +59,10 @@ export class MssqlService {
         await mysqlQueryRunner.query(
           'INSERT INTO good (goodName,goodPrice,goodCount,goodInfo,createdAt,sepidarId,sepidarCode,goodUnitId) VALUES(?,?,?,?,?,?,?,?)',
           [
-            g.goodName,
+            g.goodName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             g.goodPrice,
             g.goodCount,
-            g.goodInfo,
+            g.goodInfo.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             new Date(),
             g.sepidarId,
             g.sepidarCode,
@@ -70,7 +70,9 @@ export class MssqlService {
           ],
         );
       }
-      await mysqlQueryRunner.query('UPDATE good JOIN unit ON good.goodUnitId = unit.sepidarId SET good.goodUnitId = unit.id; ');
+      await mysqlQueryRunner.query(
+        'UPDATE good JOIN unit ON good.goodUnitId = unit.sepidarId SET good.goodUnitId = unit.id; ',
+      );
       await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
       await mysqlQueryRunner.commitTransaction();
       return { result: 'ok' };
@@ -95,7 +97,12 @@ export class MssqlService {
       for (const g of data) {
         await mysqlQueryRunner.query(
           'INSERT INTO unit (unitName,unitInfo,createdAt,sepidarId) VALUES(?,?,?,?)',
-          [g.unitName, g.unitInfo, new Date(), g.sepidarID],
+          [
+            g.unitName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
+            g.unitInfo.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
+            new Date(),
+            g.sepidarID,
+          ],
         );
       }
       await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
@@ -127,15 +134,15 @@ export class MssqlService {
         await mysqlQueryRunner.query(
           'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt,sepidarId,sepidarDlId) VALUES(?,?,?,?,?,?,?,?,?)',
           [
-            g.customerFName,
-            g.customerLName,
+            g.customerFName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
+            g.customerLName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             g.EconomicCode,
             g.IsCustomer,
             g.IsBroker,
             g.isBuyerAgent,
             new Date(),
             g.partyid,
-            g.sepidarDlId
+            g.sepidarDlId,
           ],
         );
       }
@@ -338,11 +345,15 @@ export class MssqlService {
     return data;
   }
 
-  async getItemSaleListById(itemRef: number) {
-    //const { FiscalYearId } = await this.getFiscalYearAndId();
+  async getItemSaleListById(itemRef: number, fiscalYearRef: number = 0) {
+    let FiscalYearId = fiscalYearRef;
+    if (FiscalYearId == 0)
+      FiscalYearId = (await this.getFiscalYearAndId()).FiscalYearId;
+
     const data = await this.mssqlDataSource.query(
-      `select * from sls.vwInvoice inner join sls.vwInvoiceItem on vwInvoice.InvoiceId=vwInvoiceItem.InvoiceRef where  itemRef=@0`,
-      [itemRef],
+      `select * from sls.vwInvoice inner join sls.vwInvoiceItem on 
+      vwInvoice.InvoiceId=vwInvoiceItem.InvoiceRef where itemRef=@0 AND FiscalYearRef=@1`,
+      [itemRef, FiscalYearId],
     );
     if (!data || data?.length == 0) return [];
     console.log(data);

@@ -47,7 +47,10 @@ export class UsersService {
       .createQueryBuilder('user');
 
     if (search) {
-      query.andWhere('user.userName LIKE :search', { search: `%${search}%` });
+      query
+        .andWhere('user.userName LIKE :search', { search: `%${search}%` })
+        .orWhere('user.userfname LIKE :search', { search: `%${search}%` })
+        .orWhere('user.userlname LIKE :search', { search: `%${search}%` });
     }
     const total = await query.getCount();
     const items = await query
