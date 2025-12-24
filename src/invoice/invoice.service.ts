@@ -466,9 +466,9 @@ export class InvoiceService {
     //const badGood = invoice.invoiceGoods.find((g) => g?.good?.goodCount <= 0);
     for (const invoiceItem of invoice.invoiceGoods) {
       const badGood = await this.goodsService.getGoodById(invoiceItem.id);
-      if (badGood) {
+      if (!badGood || badGood?.goodCount <= 0) {
         throw new BadRequestException(
-          `کالای "${badGood.goodName}" در انبار موجود نیست`,
+          `کالای "${invoiceItem?.good?.goodName}" در انبار موجود نیست`,
         );
       }
     }

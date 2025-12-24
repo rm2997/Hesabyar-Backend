@@ -39,7 +39,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
-  Logger.log(`APP Release Date: 14041002`, 'Hesabyar');
+  Logger.log(`APP Release Date: 14041003`, 'Hesabyar');
   await app.listen(appPort);
 }
 bootstrap();

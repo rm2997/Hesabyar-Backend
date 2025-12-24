@@ -34,5 +34,7 @@ echo Compressing deploy...
 powershell -NoProfile -Command "Compress-Archive -Path '%DEPLOY_DIR%\*' -DestinationPath '%DEPLOY_DIR%_%pattern%.zip'"
 
 echo Deploying finished...
+echo "Start sendig to Hesabyar Host..."
+
 
 endlocal
