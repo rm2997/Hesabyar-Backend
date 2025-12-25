@@ -18,7 +18,7 @@ export class GoodsService {
     private readonly goodRepository: Repository<Good>,
     private readonly unitService: UnitsService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   async createGood(data: Partial<Good>, user: number): Promise<Good> {
     const nameExist = await this.goodRepository.findOne({
@@ -78,12 +78,14 @@ export class GoodsService {
       if (search) {
         isNaN(Number(search))
           ? query.andWhere('good.goodName LIKE :search', {
-            search: `%${search.trim()}%`,
-          })
+              search: `%${search.trim()}%`,
+            })
           : query
-            .andWhere('good.sepidarId= :search', { search: search })
-            .orWhere('good.sepidarCode= :search', { search: search })
-            .orWhere('good.sepidarCode LIKE :search', { search: `%${search.trim()}` });
+              .andWhere('good.sepidarId= :search', { search: search })
+              .orWhere('good.sepidarCode= :search', { search: search })
+              .orWhere('good.sepidarCode LIKE :search', {
+                search: `%${search.trim()}`,
+              });
       }
 
       const total = await query.getCount();
@@ -99,7 +101,7 @@ export class GoodsService {
         for (const i of sepidarItems) {
           if (i.ItemRef == g.sepidarId) {
             g.goodCount = i.Quantity;
-            g.goodSaleCount = i.SaleQuantity
+            g.goodSaleCount = i.SaleQuantity;
           }
         }
       }
@@ -117,18 +119,25 @@ export class GoodsService {
   }
 
   async getGoodById(id: number): Promise<Good | null> {
-    const Good = await this.goodRepository.findOne({ where: { id } });
-    if (!Good) throw new NotFoundException();
-    const sepidarItem = await this.mssqlService.getItemById(Good.sepidarId);
-    Good.goodCount = sepidarItem[0]?.Quantity ?? 0;
-    Good.goodSaleCount = sepidarItem[0]?.SaleQuantity ?? 0;
-    return Good;
+    console.log(`good Id is: ${id}`);
+
+    const tmpGood = await this.goodRepository.findOne({ where: { id } });
+    console.log(tmpGood);
+    if (!tmpGood) throw new NotFoundException('کالای مورد نظر وجود ندارد');
+    const sepidarItem = await this.mssqlService.getItemById(tmpGood?.sepidarId);
+    console.log(sepidarItem);
+
+    tmpGood.goodCount = sepidarItem[0]?.Quantity ?? 0;
+    tmpGood.goodSaleCount = sepidarItem[0]?.SaleQuantity ?? 0;
+    return tmpGood;
   }
 
   async getGoodSaleList(id: number) {
     const Good = await this.goodRepository.findOne({ where: { id } });
     if (!Good) throw new NotFoundException();
-    const sepidarItem = await this.mssqlService.getItemSaleListById(Good.sepidarId);
+    const sepidarItem = await this.mssqlService.getItemSaleListById(
+      Good.sepidarId,
+    );
     return sepidarItem;
   }
 
