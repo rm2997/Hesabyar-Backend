@@ -302,7 +302,7 @@ export class DepotService {
   async getDepotById(id: number): Promise<Depot | null> {
     const depot = await this.depotRepository.findOne({
       where: { id },
-      relations: ['depotGoods', 'depotGoods.good', 'depotInvoice'],
+      relations: ['depotGoods', 'depotGoods.good', 'depotInvoice', 'createdBy'],
     });
     if (!depot) throw new NotFoundException('سند مورد نظر موجود نیست');
 
@@ -493,44 +493,55 @@ export class DepotService {
     outputDepot: Depot,
     user: User,
   ): Promise<Depot | any> {
+    // const depot = await this.dataSource.transaction(async (manager) => {
+    for (const depotGood of outputDepot.depotGoods) {
+      const good = depotGood.good as Good;
+      const goodQuantity = await this.goodsService.getGoodById(good.id);
+      if (!goodQuantity)
+        throw new BadRequestException(
+          `کالای ${depotGood?.good.goodName} وجود ندارد`,
+        );
+      const qty = depotGood.quantity;
+      if (!good) {
+        throw new NotFoundException(
+          `کالای مربوط به رکورد ${depotGood.id} وجود ندارد`,
+        );
+      }
+
+      if (goodQuantity.goodCount < qty) {
+        throw new BadRequestException(
+          `موجودی کافی برای کالای "${good.goodName}" وجود ندارد`,
+        );
+      }
+      //good.goodCount -= qty;
+      //await manager.save(Good, good);
+    }
+
+    const depot = await this.getDepotById(outputDepot.id);
+    console.log(depot);
+
+    if (!depot) throw new BadRequestException('سند مورد نظر وجود ندارد');
+    const queryRunner = this.dataSource.createQueryRunner();
+    queryRunner.connect();
+    queryRunner.startTransaction();
     try {
-      const depot = await this.dataSource.transaction(async (manager) => {
-        for (const depotGood of outputDepot.depotGoods) {
-          const good = depotGood.good as Good;
-          const goodQuantity = await this.goodsService.getGoodById(good.id);
-          const qty = depotGood.quantity;
-          if (!good || !goodQuantity) {
-            throw new NotFoundException(
-              `کالای مربوط به رکورد ${depotGood.id} وجود ندارد`,
-            );
-          }
-
-          if (goodQuantity.goodCount < qty) {
-            throw new BadRequestException(
-              `موجودی کافی برای کالای "${good.goodName}" وجود ندارد`,
-            );
-          }
-          //good.goodCount -= qty;
-          //await manager.save(Good, good);
-        }
-
-        console.log('depot will accept by warehouse user:', user);
-        const invoice = depot?.depotInvoice!;
-        invoice.finished = true;
-        await manager.save(Invoice, invoice);
-        outputDepot.warehouseAcceptedBy = user;
-        outputDepot.warehouseAcceptedAt = new Date();
-        outputDepot.finished = true;
-        const sepidarInventoryDelivery =
-          await this.mssqlService.createIncentoryDelivery(depot);
-        if (!sepidarInventoryDelivery)
-          throw new BadRequestException('خطا در درج در سپیدار');
-        outputDepot.sepidarId =
-          sepidarInventoryDelivery.InventoryDeliveryID + '';
-        outputDepot.depotNumber = sepidarInventoryDelivery.Number;
-
-        return await manager.save(Depot, outputDepot);
-      });
+      console.log('depot will accept by warehouse user:', user);
+      const invoice = depot?.depotInvoice!;
+      invoice.finished = true;
+      await queryRunner.manager.save(Invoice, invoice);
+      depot.warehouseAcceptedBy = user;
+      depot.warehouseAcceptedAt = new Date();
+      depot.finished = true;
+      const sepidarInventoryDelivery =
+        await this.mssqlService.createInventoryDelivery(depot);
+      if (!sepidarInventoryDelivery)
+        throw new BadRequestException('خطا در درج در سپیدار');
+      depot.sepidarId = sepidarInventoryDelivery.InventoryDeliveryID + '';
+      depot.depotNumber = sepidarInventoryDelivery.Number;
+      await queryRunner.manager.save(Depot, depot);
+      await queryRunner.commitTransaction();
+      // return await manager.save(Depot, outputDepot);
+      // });
 
       const mobileNumber = await this.customerPhoneRepository.findOne({
         where: {
@@ -539,11 +550,11 @@ export class DepotService {
           customer: { id: depot?.depotInvoice.customer.id },
         },
       });
-      const token = await this.generateNewToken(depot?.id);
+      const token = await this.generateNewToken(outputDepot?.id);
       if (mobileNumber) {
         const sms = await this.sendSmsForDepotExit(
           mobileNumber?.phoneNumber!,
-          depot?.depotInvoice?.id,
+          Number(depot?.depotInvoice?.invoiceNumber),
           depot?.driver,
           token,
         );
@@ -552,7 +563,10 @@ export class DepotService {
 
       return depot;
     } catch (error) {
+      await queryRunner.rollbackTransaction();
       throw new BadRequestException(error.manager);
+    } finally {
+      await queryRunner.release();
     }
   }
 

@@ -122,11 +122,8 @@ export class GoodsService {
     console.log(`good Id is: ${id}`);
 
     const tmpGood = await this.goodRepository.findOne({ where: { id } });
-    console.log(tmpGood);
     if (!tmpGood) throw new NotFoundException('کالای مورد نظر وجود ندارد');
     const sepidarItem = await this.mssqlService.getItemById(tmpGood?.sepidarId);
-    console.log(sepidarItem);
-
     tmpGood.goodCount = sepidarItem[0]?.Quantity ?? 0;
     tmpGood.goodSaleCount = sepidarItem[0]?.SaleQuantity ?? 0;
     return tmpGood;

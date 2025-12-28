@@ -457,7 +457,11 @@ export class MssqlService {
     }
   }
 
-  async getNextInventoryDeliveryNumber(fiscalYearId: number, stockId: number) {
+  async getNextInventoryDeliveryNumber(
+    fiscalYearId: number,
+    stockId: number,
+    inventoryDeliveryID: number,
+  ): Promise<number> {
     try {
       await this.mssqlDataSource.query(
         "Exec FMK.spGetLock 'InventoryDeliveryRow'",
@@ -468,15 +472,19 @@ export class MssqlService {
       );
       console.log(data);
       const checkExist = await this.mssqlDataSource.query(
-        `elect Count(1) from INV.[vwInventoryDelivery] where [InventoryDeliveryID] <> 7987 And [Number] = '1327' And [FiscalYearRef] = 11  And [StockRef] = 5 `,
+        `SELECT Count(1) as exist from INV.[vwInventoryDelivery] where [InventoryDeliveryID] <> @0  And [Number] = @1 And [FiscalYearRef] =@2  And [StockRef] =@3 `,
+        [inventoryDeliveryID, data[0].Number, fiscalYearId, stockId],
       );
+      console.log(checkExist);
 
-      if (checkExist[0].exist > 0)
+      if (checkExist[0].exist > 0) {
         throw new BadRequestException(
           'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
         );
+      }
+      console.log(data[0]);
 
-      return data[0];
+      return data[0].Number;
     } catch (error) {
       throw new BadRequestException(error.message);
     } finally {
@@ -892,19 +900,29 @@ export class MssqlService {
     }
   }
 
-  async createIncentoryDelivery(depot: Depot) {
+  async createInventoryDelivery(depot: Depot) {
     const { FiscalYearId } = await this.getFiscalYearAndId();
     if (!FiscalYearId) throw new BadRequestException('سال مالی معتبر نیست');
-    const depoGoods: DepotGoods[] = depot.depotGoods;
+    const depoGoods: DepotGoods[] = [...depot.depotGoods];
+    console.log('Start initiating InventoryDelivery...');
     const inventoryDelivery: SepidarInventoryDeliveryDto =
       await this.initNewSepidarInventoryDelivery(depot, FiscalYearId);
     const inventoryDeliveryItems: SepidarInventoryDeliveryItemDto[] = [];
     let i = 1;
-    for (const item of depoGoods) {
+    for (const tmpGood of depoGoods) {
+      console.log('Start initiating InventoryDeliveryItem...');
+      const invoiceItem = await this.getInvoiceItemByInvoiceId(
+        Number(depot.depotInvoice.sepidarId),
+        Number(tmpGood?.good?.sepidarId),
+      );
+      if (!invoiceItem)
+        throw new BadRequestException('خطا در دریافت اطلاعات اقلام فاکتور');
+      const invoiceItemId: number = invoiceItem?.InvoiceItemID;
       const tmpItem = await this.initiatNewSepidarInvoiceItem(
         i,
-        item,
-        inventoryDelivery.InventoryDeliveryID,
+        tmpGood,
+        inventoryDelivery?.InventoryDeliveryID,
+        invoiceItemId,
       );
       inventoryDeliveryItems.push(tmpItem);
       i++;
@@ -969,6 +987,7 @@ export class MssqlService {
       inventoryDelivery.Number = await this.getNextInventoryDeliveryNumber(
         fiscalYearId,
         depot.depotInvoice.stockRef,
+        inventoryDelivery.InventoryDeliveryID,
       );
       inventoryDelivery.IsReturn = false;
       inventoryDelivery.StockRef = depot.depotInvoice.stockRef;
@@ -990,7 +1009,28 @@ export class MssqlService {
       inventoryDelivery.Date = date;
       inventoryDelivery.Type = 1;
       inventoryDelivery.TotalPrice = depot.totalAmount;
+
       return inventoryDelivery;
+    } catch (error) {
+      console.log(error);
+
+      throw new BadRequestException(error.message);
+    }
+  }
+  async getInvoiceItemByInvoiceId(invoiceId: number, itemRef: number) {
+    try {
+      const invoiceItem = await this.mssqlDataSource.query(
+        'SELECT * FROM SLS.InvoiceItem WHERE InvoiceRef=@0 AND ItemRef=@1',
+        [invoiceId, itemRef],
+      );
+      if (!invoiceItem)
+        throw new BadRequestException(
+          ' اقلام فاکتور مورد نظر در سپیدار وجود ندارد',
+        );
+
+      console.log(invoiceItem);
+
+      return invoiceItem[0];
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -1000,6 +1040,7 @@ export class MssqlService {
     rowNumber: number,
     depotItem: DepotGoods,
     inventoryId: number,
+    invoiceItemId: number,
   ) {
     try {
       const retVal = new SepidarInventoryDeliveryItemDto();
@@ -1015,7 +1056,7 @@ export class MssqlService {
       retVal.InventoryDeliveryRef = inventoryId;
       retVal.IsReturn = false;
       retVal.RowNumber = rowNumber;
-      retVal.BaseInvoiceItem = Number(depotItem.sepidarId);
+      retVal.BaseInvoiceItem = invoiceItemId;
       retVal.ItemRef = depotItem.good.sepidarId;
       retVal.TracingRef = undefined;
       retVal.Quantity = depotItem.quantity;
@@ -1027,6 +1068,8 @@ export class MssqlService {
       retVal.Description_En = undefined;
       return retVal;
     } catch (error) {
+      console.log(error);
+
       throw new BadRequestException(error.message);
     }
   }
