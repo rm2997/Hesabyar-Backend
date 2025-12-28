@@ -15,6 +15,9 @@ export class DepotGoods {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: 'nvarchar', nullable: true })
+  sepidarId: string;
+
   @Column({ default: 0 })
   quantity: number;
 

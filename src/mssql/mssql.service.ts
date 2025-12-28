@@ -12,6 +12,10 @@ import { Invoice } from 'src/invoice/invoice.entity';
 import { InvoiceGoods } from 'src/invoice/invoice-good.entity';
 import { Proforma } from 'src/proforma/proforma.entity';
 import { ProformaGoods } from 'src/proforma/proforma-goods.entity';
+import { SepidarInventoryDeliveryDto } from './sepidarInventoryDelivery-dto';
+import { Depot } from 'src/depot/depot.entity';
+import { DepotGoods } from 'src/depot/depot-goods.entity';
+import { SepidarInventoryDeliveryItemDto } from './sepidarInventoryDeliveryItem-dto';
 
 @Injectable()
 export class MssqlService {
@@ -366,9 +370,6 @@ export class MssqlService {
         `DECLARE @id int EXEC [FMK].[spGetNextId] '${resourceName}', @id output, 1 SELECT @Id as LastId`,
       );
       console.log(resourceName, data);
-
-      console.log('Last Quotation Id is: ' + data[0].LastId);
-
       return data[0];
     } catch (error) {
       throw new BadRequestException(error);
@@ -452,6 +453,32 @@ export class MssqlService {
       return data[0];
     } catch (error) {
       throw new BadRequestException(error);
+    } finally {
+    }
+  }
+
+  async getNextInventoryDeliveryNumber(fiscalYearId: number, stockId: number) {
+    try {
+      await this.mssqlDataSource.query(
+        "Exec FMK.spGetLock 'InventoryDeliveryRow'",
+      );
+      const data = await this.mssqlDataSource.query(
+        `SELECT IsNull( Max(Number) + 1, 1) as Number from INV.[vwInventoryDelivery]  where 1=1  And [FiscalYearRef] = @0  And [StockRef] = @1`,
+        [fiscalYearId, stockId],
+      );
+      console.log(data);
+      const checkExist = await this.mssqlDataSource.query(
+        `elect Count(1) from INV.[vwInventoryDelivery] where [InventoryDeliveryID] <> 7987 And [Number] = '1327' And [FiscalYearRef] = 11  And [StockRef] = 5 `,
+      );
+
+      if (checkExist[0].exist > 0)
+        throw new BadRequestException(
+          'شماره تکراری در سیستم پیدا شد، دوباره سعی کنید',
+        );
+
+      return data[0];
+    } catch (error) {
+      throw new BadRequestException(error.message);
     } finally {
     }
   }
@@ -636,8 +663,8 @@ export class MssqlService {
     );
 
     const sepidarInvoiceItems: SepidarInvoiceItemDTO[] = [];
+    let i = 1;
     for (const invoiceItem of invoiceGoods) {
-      let i = 1;
       const sepidarNewItem = await this.initiatNewSepidarInvoiceItems(
         i,
         invoiceItem.quantity,
@@ -862,6 +889,145 @@ export class MssqlService {
       throw new BadRequestException(error.message);
     } finally {
       if (mustRelease) await queryRunner.release();
+    }
+  }
+
+  async createIncentoryDelivery(depot: Depot) {
+    const { FiscalYearId } = await this.getFiscalYearAndId();
+    if (!FiscalYearId) throw new BadRequestException('سال مالی معتبر نیست');
+    const depoGoods: DepotGoods[] = depot.depotGoods;
+    const inventoryDelivery: SepidarInventoryDeliveryDto =
+      await this.initNewSepidarInventoryDelivery(depot, FiscalYearId);
+    const inventoryDeliveryItems: SepidarInventoryDeliveryItemDto[] = [];
+    let i = 1;
+    for (const item of depoGoods) {
+      const tmpItem = await this.initiatNewSepidarInvoiceItem(
+        i,
+        item,
+        inventoryDelivery.InventoryDeliveryID,
+      );
+      inventoryDeliveryItems.push(tmpItem);
+      i++;
+    }
+
+    const queryRunner = this.mssqlDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      console.log('Start inserting InventoryDelivery...');
+      queryRunner.manager.insert('INV.InventoryDelivery', inventoryDelivery);
+      console.log('InventoryDelivery added...');
+      console.log(inventoryDelivery);
+      console.log('Start inserting InventoryDeliveryItems...');
+      for (const item of inventoryDeliveryItems) {
+        queryRunner.manager.insert('INV.InventoryDeliveryItem', item);
+        await queryRunner.manager.query(
+          `DECLARE @SummaryTable INV.SummaryRecordTable  
+         INSERT INTO @SummaryTable VALUES(${inventoryDelivery.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spLockItemStockSummary] @SummaryTable`,
+        );
+        await queryRunner.manager.query(
+          `DECLARE @SummaryTable INV.SummaryRecordTable  
+         INSERT INTO @SummaryTable VALUES(${inventoryDelivery.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0 )  Exec [INV].[spUpdateItemStockSummary] @SummaryTable , 0`,
+        );
+        await queryRunner.manager.query(
+          `DECLARE @SummaryTable INV.SummaryRecordTable  
+         INSERT INTO @SummaryTable VALUES(${inventoryDelivery.StockRef}, ${item.ItemRef}, NULL, ${FiscalYearId}, 0)
+         Select fn.*  FROM @SummaryTable T   CROSS APPLY  ( Select ItemStockSummaryType,T.ItemID ItemRef, UnitRef,
+         UnitTitle, UnitTitle_En, TotalQuantity,StockQuantity,TracingQuantity,StockTracingQuantity,[Order]  
+         FROM [INV].[fnItemStockSummary](T.StockID, T.ItemID, T.TracingID, T.FiscalYearID)  )fn`,
+        );
+        console.log(`InventoryDeliveryItem ${item.RowNumber} added...`);
+        console.log(item);
+      }
+      const extarDataId = (await this.getNextId('FMK.ExtraData')).LastId;
+      await queryRunner.query(
+        'INSERT INTO FMK.[ExtraData] (ExtraDataID,EntityTypeName,EntityRef,Note,Version) VALUES(@0,@1,@2,@3,@4)',
+        [
+          extarDataId,
+          'SG.Inventory.InventoryOperations.Common.DsInventoryDelivery',
+          inventoryDelivery.InventoryDeliveryID,
+          inventoryDelivery.Description,
+          0,
+        ],
+      );
+      await queryRunner.commitTransaction();
+      return inventoryDelivery;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(error.message);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async initNewSepidarInventoryDelivery(depot: Depot, fiscalYearId: number) {
+    try {
+      const inventoryDelivery = new SepidarInventoryDeliveryDto();
+      inventoryDelivery.InventoryDeliveryID = (
+        await this.getNextId('INV.InventoryDelivery')
+      ).LastId;
+      inventoryDelivery.Number = await this.getNextInventoryDeliveryNumber(
+        fiscalYearId,
+        depot.depotInvoice.stockRef,
+      );
+      inventoryDelivery.IsReturn = false;
+      inventoryDelivery.StockRef = depot.depotInvoice.stockRef;
+      inventoryDelivery.ReceiverDLRef = Number(
+        depot.depotInvoice.customer.sepidarDlId,
+      );
+      inventoryDelivery.AccountingVoucherRef = undefined;
+      inventoryDelivery.FiscalYearRef = fiscalYearId;
+      inventoryDelivery.Creator = Number(depot.createdBy.sepidarId);
+      inventoryDelivery.CreationDate = new Date();
+      inventoryDelivery.LastModifier = Number(depot.createdBy.sepidarId);
+      inventoryDelivery.LastModificationDate = inventoryDelivery.CreationDate;
+      inventoryDelivery.Version = 1;
+      inventoryDelivery.CreatorForm = 1;
+      inventoryDelivery.DestinationStockRef = undefined;
+      inventoryDelivery.Description = depot.description;
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      inventoryDelivery.Date = date;
+      inventoryDelivery.Type = 1;
+      inventoryDelivery.TotalPrice = depot.totalAmount;
+      return inventoryDelivery;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  async initiatNewSepidarInvoiceItem(
+    rowNumber: number,
+    depotItem: DepotGoods,
+    inventoryId: number,
+  ) {
+    try {
+      const retVal = new SepidarInventoryDeliveryItemDto();
+      retVal.ProductOrderRef = undefined;
+      retVal.ParityCheck = undefined;
+      retVal.QuotationItemRef = undefined;
+      retVal.WeighingRef = undefined;
+      retVal.ItemRequestItemRef = undefined;
+      retVal.ItemDescription = depotItem.description;
+      retVal.InventoryDeliveryItemID = (
+        await this.getNextId('INV.InventoryDeliveryItem')
+      ).LastId;
+      retVal.InventoryDeliveryRef = inventoryId;
+      retVal.IsReturn = false;
+      retVal.RowNumber = rowNumber;
+      retVal.BaseInvoiceItem = Number(depotItem.sepidarId);
+      retVal.ItemRef = depotItem.good.sepidarId;
+      retVal.TracingRef = undefined;
+      retVal.Quantity = depotItem.quantity;
+      retVal.SecondaryQuantity = undefined;
+      retVal.SLAccountRef = 422;
+      retVal.Price = undefined;
+      retVal.Description = depotItem.description;
+      retVal.Version = 1;
+      retVal.Description_En = undefined;
+      return retVal;
+    } catch (error) {
+      throw new BadRequestException(error.message);
     }
   }
 

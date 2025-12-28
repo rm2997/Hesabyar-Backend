@@ -20,6 +20,12 @@ export class Depot {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: 'nvarchar', nullable: true })
+  sepidarId: string;
+
+  @Column({ nullable: false })
+  depotNumber: number;
+
   @Column({ type: 'enum', enum: DepotTypes, default: DepotTypes.in })
   depotType: DepotTypes;
 

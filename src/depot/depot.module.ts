@@ -10,6 +10,7 @@ import { UsersModule } from 'src/users/users.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { CustomerPhone } from 'src/customer/customer-phone.entity';
 import { GoodsModule } from 'src/goods/goods.module';
+import { MssqlModule } from 'src/mssql/mssql.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GoodsModule } from 'src/goods/goods.module';
     UsersModule,
     GoodsModule,
     NotificationModule,
+    MssqlModule,
   ],
   controllers: [DepotController],
   providers: [DepotService],
