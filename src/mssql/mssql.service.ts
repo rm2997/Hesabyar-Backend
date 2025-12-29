@@ -356,8 +356,8 @@ export class MssqlService {
       FiscalYearId = (await this.getFiscalYearAndId()).FiscalYearId;
 
     const data = await this.mssqlDataSource.query(
-      `select * from sls.vwInvoice inner join sls.vwInvoiceItem on 
-      vwInvoice.InvoiceId=vwInvoiceItem.InvoiceRef where itemRef=@0 AND FiscalYearRef=@1`,
+      `SELECT * FROM sls.vwInvoice INNER JOIN sls.vwInvoiceItem ON 
+      vwInvoice.InvoiceId=vwInvoiceItem.InvoiceRef WHERE State=1 AND itemRef=@0 AND FiscalYearRef=@1`,
       [itemRef, FiscalYearId],
     );
     if (!data || data?.length == 0) return [];
