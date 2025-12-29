@@ -34,7 +34,7 @@ import { UserRoles } from 'src/common/decorators/roles.decorator';
 export class ProformaController {
   constructor(private readonly proformaService: ProformaService) {}
 
-  @UserRoles(Roles.Admin)
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Post()
   async create(@Body() data: Partial<Proforma>, @Req() req: Request) {
     const user = req.user as User;
@@ -90,13 +90,14 @@ export class ProformaController {
     return saved;
   }
 
-  @UserRoles(Roles.Admin || Roles.Accountant)
+  @UserRoles(Roles.Admin)
   @Put('accept/:id')
   async setProformaIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const acceptedBy = req.user as User;
     return await this.proformaService.setProformaIsAccepted(id, acceptedBy);
   }
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put('sent/:id')
   async setProformaIsSent(@Param('id') id: number) {
     return await this.proformaService.setProformaIsSent(id);
@@ -128,6 +129,7 @@ export class ProformaController {
     };
   }
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put('convert/:id')
   async convert(@Param('id') id: number, @Req() req: Request) {
     const user = req.user as User;
@@ -201,7 +203,6 @@ export class ProformaController {
     );
   }
 
-  @UserRoles(Roles.Admin || Roles.Accountant)
   @Get()
   async getAll(
     @Query('page') page: number = 1,
@@ -217,6 +218,7 @@ export class ProformaController {
     return response;
   }
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put(':id')
   async update(
     @Param('id') id: number,
@@ -227,6 +229,7 @@ export class ProformaController {
     return await this.proformaService.updateProforma(id, data, user);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async delete(@Param('id') id: number) {
     return await this.proformaService.deleteProforma(id);

@@ -80,7 +80,6 @@ export class UsersController {
     return await this.usersService.findByToken(token);
   }
 
-  //He
   @Put('changePass/:id')
   async changePass(
     @Param('id') id: number,

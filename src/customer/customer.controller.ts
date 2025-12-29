@@ -16,12 +16,15 @@ import { User } from 'src/users/users.entity';
 import { Customer } from './customer.entity';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('customer')
 export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
+  @UserRoles(Roles.Admin, Roles.Accountant, Roles.Salesperson)
   @Post()
   async create(@Body() data: any, @Req() req: Request) {
     const user = req.user as User;
@@ -45,6 +48,7 @@ export class CustomerController {
     return customer;
   }
 
+  @UserRoles(Roles.Admin)
   @Put(':id')
   async updateCustomer(
     @Param('id') id: number,
@@ -57,16 +61,19 @@ export class CustomerController {
     return await this.customerService.updateCustomer(id, data, user);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async deleteCustomer(@Param('id') id: number) {
     return await this.customerService.deleteCustomer(id);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete('customerPhone:id')
   async deleteCustomerPhone(@Param('id') id: number) {
     return await this.customerService.deleteCustomerPhone(id);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete('customerPhone:id')
   async deleteCustomerLocation(@Param('id') id: number) {
     return await this.customerService.deleteCustomerLocation(id);

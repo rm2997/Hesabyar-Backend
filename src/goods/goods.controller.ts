@@ -20,12 +20,15 @@ import { GoodsService } from './goods.service';
 import { Good } from './good.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as XLSX from 'xlsx';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('goods')
 export class GoodsController {
-  constructor(private readonly goodsService: GoodsService) { }
+  constructor(private readonly goodsService: GoodsService) {}
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Post()
   async create(@Body() data: Partial<Good>, @Req() req: Request) {
     const user = req.user as User;
@@ -56,16 +59,19 @@ export class GoodsController {
     return Good;
   }
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put(':id')
   async updateGood(@Param('id') id: number, @Body() data: Partial<Good>) {
     return await this.goodsService.updateGood(id, data);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async deleteGood(@Param('id') id: number) {
     return await this.goodsService.deleteGood(id);
   }
 
+  @UserRoles(Roles.Admin)
   @Post('upload-excel')
   @UseInterceptors(FileInterceptor('excelFile'))
   async uploadExcel(
@@ -87,5 +93,4 @@ export class GoodsController {
     const Good = await this.goodsService.getGoodSaleList(id);
     return Good;
   }
-
 }

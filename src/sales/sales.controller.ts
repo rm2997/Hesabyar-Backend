@@ -15,12 +15,15 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { SalesService } from './sales.service';
 import { Sale } from './sale.entity';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sales')
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Post()
   async create(@Body() data: Partial<Sale>, @Req() req: Request) {
     const user = req.user as User;
@@ -40,11 +43,13 @@ export class SalesController {
     return Sale;
   }
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put(':id')
   async updateSale(@Param('id') id: number, @Body() data: Partial<Sale>) {
     return await this.salesService.updateSale(id, data);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async deleteSale(@Param('id') id: number) {
     return await this.salesService.deleteSale(id);

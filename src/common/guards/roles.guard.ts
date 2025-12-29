@@ -23,6 +23,8 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user; // اطلاعات کاربر از درخواست
+    console.log(user);
+
     // اگر کاربر هیچ نقشی نداشته باشد یا نقش‌های وی اجازه دسترسی را ندهد، خطا می‌دهد
     if (!user || !roles.some((role) => user.role?.includes(role))) {
       throw new UnauthorizedException(

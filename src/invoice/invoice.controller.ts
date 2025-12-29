@@ -27,12 +27,20 @@ import { extname, join } from 'path';
 import { existsSync } from 'fs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('invoice')
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
+  @UserRoles(
+    Roles.Admin,
+    Roles.Warehouseman,
+    Roles.Salesperson,
+    Roles.Accountant,
+  )
   @Post()
   async create(@Body() data: Partial<Invoice>, @Req() req: Request) {
     const user = req.user as User;
@@ -63,17 +71,30 @@ export class InvoiceController {
     return await this.invoiceService.renewInvoiceToken(id);
   }
 
+  @UserRoles(Roles.Admin)
   @Put('accept/:id')
   async setInvoiceIsAccepted(@Param('id') id: number, @Req() req: Request) {
     const acceptedBy = req.user as User;
     return await this.invoiceService.setInvoiceIsAccepted(id, acceptedBy);
   }
 
+  @UserRoles(
+    Roles.Admin,
+    Roles.Warehouseman,
+    Roles.Salesperson,
+    Roles.Accountant,
+  )
   @Put('sent/:id')
   async setInvoiceIsSent(@Param('id') id: number) {
     return await this.invoiceService.setInvoiceIsSent(id);
   }
 
+  @UserRoles(
+    Roles.Admin,
+    Roles.Warehouseman,
+    Roles.Salesperson,
+    Roles.Accountant,
+  )
   @Put('sendDriverLink/:id')
   async sendDriverLink(@Param('id') id: number) {
     return await this.invoiceService.sendDriverLink(id);
@@ -211,6 +232,7 @@ export class InvoiceController {
     return await this.invoiceService.updateInvoice(id, data, user);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async delete(@Param('id') id: number) {
     return await this.invoiceService.deleteInvoice(id);

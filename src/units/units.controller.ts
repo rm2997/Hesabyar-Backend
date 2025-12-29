@@ -16,12 +16,15 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Unit } from './unit.entity';
 import { UnitsService } from './units.service';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('units')
 export class UnitsController {
   constructor(private readonly unitsService: UnitsService) {}
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Post()
   async create(@Body() data: Partial<Unit>, @Req() req: Request) {
     const user = req.user as User;
@@ -45,11 +48,13 @@ export class UnitsController {
     return Unit;
   }
 
+  @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put(':id')
   async updateUnit(@Param('id') id: number, @Body() data: Partial<Unit>) {
     return await this.unitsService.updateUnit(id, data);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async deleteUnit(@Param('id') id: number) {
     return await this.unitsService.deleteUnit(id);

@@ -1,6 +1,11 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { MssqlService } from './mssql.service';
+import { UserRoles } from 'src/common/decorators/roles.decorator';
+import { Roles } from 'src/common/decorators/roles.enum';
+import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sepidar')
 export class MssqlController {
   constructor(private readonly mssqlService: MssqlService) {}
@@ -15,16 +20,19 @@ export class MssqlController {
     return await this.mssqlService.getConnectionData();
   }
 
+  @UserRoles(Roles.Admin)
   @Post('syncGoods')
   async syncGoods() {
     return await this.mssqlService.syncGoods();
   }
 
+  @UserRoles(Roles.Admin)
   @Post('syncUnits')
   async syncUnits() {
     return await this.mssqlService.syncUnits();
   }
 
+  @UserRoles(Roles.Admin)
   @Post('syncCustomers')
   async syncCustomers() {
     return await this.mssqlService.syncCustomers();

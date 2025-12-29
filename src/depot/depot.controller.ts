@@ -36,6 +36,12 @@ import * as fs from 'fs';
 export class DepotController {
   constructor(private readonly depotService: DepotService) {}
 
+  @UserRoles(
+    Roles.Admin,
+    Roles.Warehouseman,
+    Roles.Salesperson,
+    Roles.Accountant,
+  )
   @Post()
   async create(@Body() data: Partial<Depot>, @Req() req: Request) {
     const user = req.user as User;
@@ -215,7 +221,7 @@ export class DepotController {
     else return await this.depotService.getAllOutputDepots(page, limit, search);
   }
 
-  @UserRoles(Roles.Admin || Roles.Accountant)
+  @UserRoles(Roles.Admin)
   @Get('acceptList')
   async getDepotsForAccept(
     @Query('page') page: number = 1,
@@ -237,6 +243,7 @@ export class DepotController {
       );
   }
 
+  @UserRoles(Roles.Admin, Roles.Warehouseman)
   @Get('warehouseList')
   async getDepotsForWareHouseAccept(
     @Query('page') page: number = 1,
@@ -292,11 +299,18 @@ export class DepotController {
     return saved;
   }
 
+  @UserRoles(Roles.Admin, Roles.Accountant, Roles.Salesperson)
   @Put('sent/:id')
   async setDepotIsSent(@Param('id') id: number) {
     return await this.depotService.setDepotIsSent(id);
   }
 
+  @UserRoles(
+    Roles.Admin,
+    Roles.Accountant,
+    Roles.Salesperson,
+    Roles.Warehouseman,
+  )
   @Put(':id')
   async updateDepot(
     @Param('id') id: number,
@@ -307,6 +321,7 @@ export class DepotController {
     return await this.depotService.updateDepot(id, data);
   }
 
+  @UserRoles(Roles.Admin)
   @Delete(':id')
   async deleteDepot(@Param('id') id: number) {
     return await this.depotService.deleteDepot(id);
@@ -325,7 +340,7 @@ export class DepotController {
     else return await this.depotService.setOutputtDepotIsAccepted(depot, user);
   }
 
-  @UserRoles(Roles.Admin || Roles.Warehouseman)
+  @UserRoles(Roles.Admin, Roles.Warehouseman)
   @Put('warehouseAccept/:id')
   async setDepotIsAcceptedByWarehouse(
     @Param('id') id: number,
