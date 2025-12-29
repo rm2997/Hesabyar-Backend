@@ -325,7 +325,7 @@ export class DepotController {
     else return await this.depotService.setOutputtDepotIsAccepted(depot, user);
   }
 
-  @UserRoles(Roles.Admin)
+  @UserRoles(Roles.Admin || Roles.Warehouseman)
   @Put('warehouseAccept/:id')
   async setDepotIsAcceptedByWarehouse(
     @Param('id') id: number,

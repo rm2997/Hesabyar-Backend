@@ -392,7 +392,7 @@ export class UsersService {
 
   async getWarehouseUsers(): Promise<User[]> {
     const admins: User[] = await this.usersRepository.find({
-      where: { role: Roles.Warehouseman },
+      where: { role: Roles.Warehouseman || Roles.Warehouseman },
     });
 
     return admins;

@@ -414,7 +414,7 @@ export class DepotService {
     sender: User,
     docId: Number,
   ) {
-    const warehouseMen: User[] = await this.usersService.getAdminUsers();
+    const warehouseMen: User[] = await this.usersService.getWarehouseUsers();
     if (!warehouseMen || warehouseMen?.length == 0) return;
     warehouseMen.forEach(async (user) => {
       const notif = new Notification();

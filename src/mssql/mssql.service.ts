@@ -16,6 +16,7 @@ import { SepidarInventoryDeliveryDto } from './sepidarInventoryDelivery-dto';
 import { Depot } from 'src/depot/depot.entity';
 import { DepotGoods } from 'src/depot/depot-goods.entity';
 import { SepidarInventoryDeliveryItemDto } from './sepidarInventoryDeliveryItem-dto';
+import { PersianAlphabet } from 'src/common/decorators/persianAlphabet';
 
 @Injectable()
 export class MssqlService {
@@ -122,7 +123,7 @@ export class MssqlService {
   async syncCustomers() {
     const data = await this.mssqlDataSource.query(
       `SELECT partyid, Name as customerFName ,LastName as customerLName, EconomicCode as customerEconomicCode,
-       IsCustomer,IsBroker,IsPurchasingAgent as isBuyerAgent ,dl.Code as sepidarDlId
+       IsCustomer,IsBroker,IsPurchasingAgent as isBuyerAgent ,dl.DLId as sepidarDlId
        FROM GNR.Party LEFT OUTER JOIN ACC.DL on Party.DLRef=dl.DLId`,
     );
     console.log(data);
@@ -909,6 +910,20 @@ export class MssqlService {
       await this.initNewSepidarInventoryDelivery(depot, FiscalYearId);
     const inventoryDeliveryItems: SepidarInventoryDeliveryItemDto[] = [];
     let i = 1;
+    let desc = `راننده ${depot?.driver} `;
+    depot?.driverCarNumber
+      ? (desc += `  شماره پلاک ${depot.driverCarNumber} `)
+      : '';
+    depot?.driverMobile
+      ? (desc += `  شماره موبایل ${depot?.driverCarNumber?.substring(7)} ${depot?.driverCarNumber?.substring(4, 7)} ${
+          depot.driverCarNumber
+            ? PersianAlphabet?.find(
+                (k) => k.key == depot?.driverCarNumber?.substring(2, 4),
+              )?.value
+            : ''
+        }`)
+      : '';
+    depot?.driverNatCode ? (desc += `  شماره ملی ${depot.driverNatCode} `) : '';
     for (const tmpGood of depoGoods) {
       console.log('Start initiating InventoryDeliveryItem...');
       const invoiceItem = await this.getInvoiceItemByInvoiceId(
@@ -923,6 +938,7 @@ export class MssqlService {
         tmpGood,
         inventoryDelivery?.InventoryDeliveryID,
         invoiceItemId,
+        desc,
       );
       inventoryDeliveryItems.push(tmpItem);
       i++;
@@ -1003,7 +1019,8 @@ export class MssqlService {
       inventoryDelivery.Version = 1;
       inventoryDelivery.CreatorForm = 1;
       inventoryDelivery.DestinationStockRef = undefined;
-      inventoryDelivery.Description = depot.description;
+
+      inventoryDelivery.Description = depot?.description;
       const date = new Date();
       date.setHours(0, 0, 0, 0);
       inventoryDelivery.Date = date;
@@ -1041,6 +1058,7 @@ export class MssqlService {
     depotItem: DepotGoods,
     inventoryId: number,
     invoiceItemId: number,
+    desc: string,
   ) {
     try {
       const retVal = new SepidarInventoryDeliveryItemDto();
@@ -1063,7 +1081,7 @@ export class MssqlService {
       retVal.SecondaryQuantity = undefined;
       retVal.SLAccountRef = 422;
       retVal.Price = undefined;
-      retVal.Description = depotItem.description;
+      retVal.Description = desc;
       retVal.Version = 1;
       retVal.Description_En = undefined;
       return retVal;
