@@ -365,6 +365,18 @@ export class MssqlService {
     return data;
   }
 
+  async getInventoryDeliveryById(inventoryDeliveryID: number) {
+    try {
+      const retVal = await this.mssqlDataSource.query(
+        `SELECT * FROM INV.InventoryDelivery where InventoryDeliveryID=@0`,
+        [inventoryDeliveryID],
+      );
+      return retVal;
+    } catch (error) {
+      throw new BadRequestException('سند مورد نظر در سپیدار وجود ندارد');
+    }
+  }
+
   async getNextId(resourceName: string): Promise<{ LastId: number }> {
     try {
       const data = await this.mssqlDataSource.query(

@@ -113,6 +113,40 @@ export class DepotService {
     return { items, total };
   }
 
+  async checkSepidarDepot(id: number) {
+    try {
+      const depot = await this.getDepotById(id);
+      if (!depot) throw new Error('سند مورد نظر وجود ندارد');
+      if (!depot.depotNumber || !depot.sepidarId)
+        throw new Error('سند مورد نظر در سپیدار ثبت نشده است ');
+      const sepidarInventoryDelivery =
+        await this.mssqlService.getInventoryDeliveryById(
+          Number(depot?.sepidarId),
+        );
+      if (!sepidarInventoryDelivery) {
+        const invoice = depot.depotInvoice;
+        invoice.finished = false;
+        const queryRunner = this.dataSource.createQueryRunner();
+        try {
+          await queryRunner.connect();
+          await queryRunner.startTransaction();
+          await queryRunner.manager.save(Invoice, invoice);
+          await queryRunner.manager.delete(Depot, depot.id);
+          await queryRunner.commitTransaction();
+          return 'سند در سپیدار حذف شده است بنابراین سند خروجی از سیستم حذف شد';
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          throw new Error(error.message);
+        } finally {
+          await queryRunner.release();
+        }
+      }
+      return 'سند بروز است';
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
   async getAllOutputDepots(
     page: number,
     limit: number,

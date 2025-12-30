@@ -221,6 +221,12 @@ export class DepotController {
     else return await this.depotService.getAllOutputDepots(page, limit, search);
   }
 
+  @UserRoles(Roles.Admin, Roles.Warehouseman)
+  @Get('checkSepidarDepot/:id')
+  async checkSepidarDepot(@Param('id') id: number) {
+    return this.depotService.checkSepidarDepot(id);
+  }
+
   @UserRoles(Roles.Admin)
   @Get('acceptList')
   async getDepotsForAccept(
