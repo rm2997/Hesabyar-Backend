@@ -118,7 +118,9 @@ export class DepotService {
       const depot = await this.getDepotById(id);
       if (!depot) throw new Error('سند مورد نظر وجود ندارد');
       if (!depot.depotNumber || !depot.sepidarId)
-        throw new Error('سند مورد نظر در سپیدار ثبت نشده است ');
+        throw new Error(
+          'سند مورد نظر تاکنون هیچ سند خروجی از سپیدار دریافت نکرده است ',
+        );
       const sepidarInventoryDelivery =
         await this.mssqlService.getInventoryDeliveryById(
           Number(depot?.sepidarId),
@@ -126,6 +128,12 @@ export class DepotService {
       if (!sepidarInventoryDelivery) {
         const invoice = depot.depotInvoice;
         invoice.finished = false;
+        invoice.driver = '';
+        invoice.driverCarNumber = '';
+        invoice.driverNatCode = '';
+        invoice.driverTokenIsSent = false;
+        invoice.driverToken = '';
+
         const queryRunner = this.dataSource.createQueryRunner();
         try {
           await queryRunner.connect();
@@ -133,7 +141,11 @@ export class DepotService {
           await queryRunner.manager.save(Invoice, invoice);
           await queryRunner.manager.delete(Depot, depot.id);
           await queryRunner.commitTransaction();
-          return 'سند در سپیدار حذف شده است بنابراین سند خروجی از سیستم حذف شد';
+          return {
+            message:
+              'سند خروج در سپیدار حذف شده است، بنابراین سند خروج کالا از سیستم نیز حذف شد',
+            action: 1,
+          };
         } catch (error) {
           await queryRunner.rollbackTransaction();
           throw new Error(error.message);
@@ -141,7 +153,7 @@ export class DepotService {
           await queryRunner.release();
         }
       }
-      return 'سند بروز است';
+      return { message: 'سند بروز است', action: 0 };
     } catch (error) {
       throw new BadRequestException(error.message);
     }

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, QueryRunner } from 'typeorm';
+import { DataSource, IsNull, QueryRunner } from 'typeorm';
 import { SepidarQuotationDTO } from './sepidarQuotation-dto';
 import { SepidarQuotationItemDTO } from './sepidarQuotaionItem-dto';
 import { SepidarInvoiceDTO } from './sepidarInvoice-dto';
@@ -371,7 +371,7 @@ export class MssqlService {
         `SELECT * FROM INV.InventoryDelivery where InventoryDeliveryID=@0`,
         [inventoryDeliveryID],
       );
-      return retVal;
+      return retVal[0] ?? null;
     } catch (error) {
       throw new BadRequestException('سند مورد نظر در سپیدار وجود ندارد');
     }
