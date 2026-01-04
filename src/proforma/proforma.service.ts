@@ -390,20 +390,27 @@ export class ProformaService {
     });
   }
 
-  async setProformaIsSent(id: number) {
+  async setProformaIsSent(id: number, phone: string = '') {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
     const token = await this.generateShareableLink(proforma.id);
-    const mobileNumber = await this.customerPhoneRepository.findOne({
-      where: {
-        phoneType: PhoneTypes.mobile,
-        isPrimary: true,
-        customer: { id: proforma.customer.id },
-      },
-    });
+    let mobileNumber = phone;
+    if (phone?.length > 0) {
+      const phoneNumber = await this.customerPhoneRepository.findOne({
+        where: {
+          phoneType: PhoneTypes.mobile,
+          isPrimary: true,
+          customer: { id: proforma.customer.id },
+        },
+      });
+      if (phoneNumber) mobileNumber = phoneNumber?.phoneNumber;
+    }
+
+    if (phone?.length == 0)
+      throw new BadRequestException('شماره موبایل مشتری در سیستم ثبت نشده است');
     const smsResult = await this.smsService.sendUpdateProformaSms(
       proforma.customer,
-      mobileNumber?.phoneNumber!,
+      phone,
       token,
     );
     if (smsResult.status !== 1)

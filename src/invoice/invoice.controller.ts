@@ -85,8 +85,11 @@ export class InvoiceController {
     Roles.Accountant,
   )
   @Put('sent/:id')
-  async setInvoiceIsSent(@Param('id') id: number) {
-    return await this.invoiceService.setInvoiceIsSent(id);
+  async setInvoiceIsSent(
+    @Param('id') id: number,
+    @Query('phone') phone: string,
+  ) {
+    return await this.invoiceService.setInvoiceIsSent(id, phone);
   }
 
   @UserRoles(
@@ -96,8 +99,8 @@ export class InvoiceController {
     Roles.Accountant,
   )
   @Put('sendDriverLink/:id')
-  async sendDriverLink(@Param('id') id: number) {
-    return await this.invoiceService.sendDriverLink(id);
+  async sendDriverLink(@Param('id') id: number, @Query('phone') phone: string) {
+    return await this.invoiceService.sendDriverLink(id, phone);
   }
 
   @Get('file/:id')

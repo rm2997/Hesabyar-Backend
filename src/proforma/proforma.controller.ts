@@ -99,8 +99,11 @@ export class ProformaController {
 
   @UserRoles(Roles.Admin, Roles.Salesperson, Roles.Accountant)
   @Put('sent/:id')
-  async setProformaIsSent(@Param('id') id: number) {
-    return await this.proformaService.setProformaIsSent(id);
+  async setProformaIsSent(
+    @Param('id') id: number,
+    @Query('phone') phone: string,
+  ) {
+    return await this.proformaService.setProformaIsSent(id, phone);
   }
 
   @Get('file/:id')

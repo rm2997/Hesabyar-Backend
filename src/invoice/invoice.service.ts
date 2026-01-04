@@ -459,7 +459,7 @@ export class InvoiceService {
     throw new NotFoundException('فاکتور وجود ندارد');
   }
 
-  async sendDriverLink(id: number) {
+  async sendDriverLink(id: number, phone: string = '') {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
 
@@ -478,16 +478,23 @@ export class InvoiceService {
     }
 
     const token = await this.generateShareableLink(invoice.id);
-    const mobileNumber = await this.customerPhoneRepository.findOne({
-      where: {
-        phoneType: PhoneTypes.mobile,
-        isPrimary: true,
-        customer: { id: invoice?.customer.id },
-      },
-    });
+
+    let mobileNumber = phone;
+    if (phone?.length > 0) {
+      const phoneNumber = await this.customerPhoneRepository.findOne({
+        where: {
+          phoneType: PhoneTypes.mobile,
+          isPrimary: true,
+          customer: { id: invoice?.customer.id },
+        },
+      });
+      if (phoneNumber) mobileNumber = phoneNumber?.phoneNumber;
+    }
+    if (phone?.length == 0)
+      throw new BadRequestException('شماره موبایل مشتری در سیستم ثبت نشده است');
     const smsResult = await this.smsService.sendUpdateInvoiceDriverNameSms(
       invoice.customer,
-      mobileNumber?.phoneNumber!,
+      phone,
       token,
       invoice.id,
     );
@@ -502,21 +509,27 @@ export class InvoiceService {
     });
   }
 
-  async setInvoiceIsSent(id: number) {
+  async setInvoiceIsSent(id: number, phone: string = '') {
     const invoice = await this.invoiceRepository.findOne({ where: { id } });
     if (!invoice) throw new NotFoundException('فاکتور مورد نظر وجود ندارد');
 
     const token = await this.generateShareableLink(invoice.id);
-    const mobileNumber = await this.customerPhoneRepository.findOne({
-      where: {
-        phoneType: PhoneTypes.mobile,
-        isPrimary: true,
-        customer: { id: invoice?.customer.id },
-      },
-    });
+    let mobileNumber = phone;
+    if (phone?.length > 0) {
+      const phoneNumber = await this.customerPhoneRepository.findOne({
+        where: {
+          phoneType: PhoneTypes.mobile,
+          isPrimary: true,
+          customer: { id: invoice?.customer.id },
+        },
+      });
+      if (phoneNumber) mobileNumber = phoneNumber?.phoneNumber;
+    }
+    if (phone?.length == 0)
+      throw new BadRequestException('شماره موبایل مشتری در سیستم ثبت نشده است');
     const smsResult = await this.smsService.sendUpdateInvoiceSms(
       invoice.customer,
-      mobileNumber?.phoneNumber!,
+      phone,
       token,
     );
     if (smsResult.status !== 1)
