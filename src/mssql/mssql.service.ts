@@ -163,6 +163,42 @@ export class MssqlService {
     }
   }
 
+  async syncCustomerPhones() {
+    const data = await this.mssqlDataSource.query(
+      'SELECT PartyPhoneId,PartyRef,IsMain,Type,Phone,Version FROM GNR.PartyPhone',
+    );
+    console.log(data);
+
+    const mysqlQueryRunner = this.mysqlDataSource.createQueryRunner();
+    await mysqlQueryRunner.connect();
+    await mysqlQueryRunner.startTransaction();
+    try {
+      await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 0');
+      await mysqlQueryRunner.query('DELETE FROM customer_phone;');
+      await mysqlQueryRunner.query(
+        'ALTER TABLE customer_phone AUTO_INCREMENT = 1',
+      );
+      for (const g of data) {
+        await mysqlQueryRunner.query(
+          `INSERT INTO customer_phone (id, phoneType, phoneNumber, isPrimary, createdAt, customerId, createdById) 
+          VALUES (NULL, ?, ?, ?, 'current_timestamp(6).000000', ?, ?)`,
+          [g.Type, g.Phone, g.IsMain, g.PartyRef, 1],
+        );
+      }
+      await mysqlQueryRunner.query(
+        'UPDATE customer_phone JOIN customer ON customer_phone.customerId = customer.sepidarId SET customer_phone.customerId = customer.id; ',
+      );
+      await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
+      await mysqlQueryRunner.commitTransaction();
+      return { result: 'ok' };
+    } catch (error) {
+      await mysqlQueryRunner.rollbackTransaction();
+      throw new BadRequestException(error.message);
+    } finally {
+      await mysqlQueryRunner.release();
+    }
+  }
+
   async getCustomerById(customerId: number) {
     const data = await this.mssqlDataSource.query(
       'SELECT * FROM GNR.vwParty WHERE PartyId=@0',

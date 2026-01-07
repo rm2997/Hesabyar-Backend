@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { MssqlService } from './mssql.service';
 import { UserRoles } from 'src/common/decorators/roles.decorator';
 import { Roles } from 'src/common/decorators/roles.enum';
@@ -35,7 +42,13 @@ export class MssqlController {
   @UserRoles(Roles.Admin)
   @Post('syncCustomers')
   async syncCustomers() {
-    return await this.mssqlService.syncCustomers();
+    const result = await this.mssqlService.syncCustomers();
+    if ((result.result = 'ok'))
+      return await this.mssqlService.syncCustomerPhones();
+    else
+      throw new BadRequestException(
+        'مشکلی در انتقال از سپیدار مشتریان پیش آمده است',
+      );
   }
 
   @Get('getFiscalYear/:fiscalYearId')
