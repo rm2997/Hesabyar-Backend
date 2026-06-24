@@ -652,7 +652,7 @@ export class DepotService {
   async generateNewToken(depotId: number): Promise<string> {
     const payload = { depotId };
     const secret = this.configService.get('DEPOT_LINK_SECRET');
-    const expiresIn = this.configService.get<string>('DEPOT_LINK_EXPIRES_IN');
+    const expiresIn = this.configService.get('DEPOT_LINK_EXPIRES_IN');
 
     const token = jwt.sign(payload, secret, { expiresIn });
     return token;

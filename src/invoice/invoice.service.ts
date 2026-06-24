@@ -425,7 +425,7 @@ export class InvoiceService {
   async generateShareableLink(invoiceId: number): Promise<string> {
     const payload = { invoiceId };
     const secret = this.configService.get('INVOICE_LINK_SECRET');
-    const expiresIn = this.configService.get<string>('INVOICE_LINK_EXPIRES_IN');
+    const expiresIn = this.configService.get('INVOICE_LINK_EXPIRES_IN');
 
     const token = jwt.sign(payload, secret, { expiresIn });
     return token;

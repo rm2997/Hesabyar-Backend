@@ -23,7 +23,7 @@ import { Captcha } from './captcha.entity';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: config.get<string>('JWT_EXPIRES_IN'),
+          expiresIn: config.get('JWT_EXPIRES_IN'),
         },
       }),
     }),
