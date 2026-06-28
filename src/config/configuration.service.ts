@@ -7,7 +7,7 @@ export class ConfigurationService {
   constructor() {}
   loadSepidarPassword(): string {
     const nodeEnv =
-      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+      process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
     const secret = process.env.CONFIG_SECRET_KEY;
     if (!secret || secret.length == 0)
       Logger.error('SecretKey is empty', 'LoadSepidarPassword');
@@ -53,7 +53,7 @@ export class ConfigurationService {
 
   msSqlSepidarDbDatabase(): TypeOrmModuleOptions {
     const nodeEnv =
-      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+      process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
     const msSqlpassword = this.loadSepidarPassword();
     const options: TypeOrmModuleOptions = {
       type: 'mssql',
@@ -75,57 +75,57 @@ export class ConfigurationService {
     if (nodeEnv) console.log(options);
     return options;
   }
-  loadHesabyarDbPassword(): string {
+  loadAsansorlandDbPassword(): string {
     const nodeEnv =
-      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+      process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
     const secret = process.env.CONFIG_SECRET_KEY;
     if (!secret || secret.length == 0)
-      Logger.error('SecretKey is empty', 'loadHesabyarDbPassword');
-    const hesabyarDbPassword = process.env.DB_PASSWORD ?? '';
+      Logger.error('SecretKey is empty', 'loadAsansorlandDbPassword');
+    const AsansorlandDbPassword = process.env.DB_PASSWORD ?? '';
     if (nodeEnv)
       Logger.log(
-        'Plane Hesabyar password is: ' + hesabyarDbPassword,
-        'loadHesabyarDbPassword',
+        'Plane Asansorland password is: ' + AsansorlandDbPassword,
+        'loadAsansorlandDbPassword',
       );
     if (
       !secret ||
       secret.length == 0 ||
-      !hesabyarDbPassword ||
-      hesabyarDbPassword.length == 0
+      !AsansorlandDbPassword ||
+      AsansorlandDbPassword.length == 0
     )
       return '';
 
-    if (hesabyarDbPassword.length < 32) {
+    if (AsansorlandDbPassword.length < 32) {
       Logger.error(
-        'Hesabyar password is not encrypted ' + hesabyarDbPassword,
-        'loadHesabyarDbPassword',
+        'Asansorland Db password is not encrypted ' + AsansorlandDbPassword,
+        'loadAsansorlandDbPassword',
       );
       const sepidarEncryptedDbPassword = CryptoUtil.encrypt(
-        hesabyarDbPassword,
+        AsansorlandDbPassword,
         secret,
       );
       Logger.log(
-        'Encrypted Hesabyar password is: ' + sepidarEncryptedDbPassword,
-        'loadHesabyarDbPassword',
+        'Encrypted Asansorland Db password is: ' + sepidarEncryptedDbPassword,
+        'loadAsansorlandDbPassword',
       );
       return '';
     }
-    const hesabyarEncryptedDbPassword = CryptoUtil.decrypt(
-      hesabyarDbPassword,
+    const asansorlandEncryptedDbPassword = CryptoUtil.decrypt(
+      AsansorlandDbPassword,
       secret,
     );
 
     if (nodeEnv)
       Logger.log(
-        'Encrypted Hesabyar password is: ' + hesabyarDbPassword,
-        'loadHesabyarDbPassword',
+        'Encrypted Asansorland password is: ' + asansorlandEncryptedDbPassword,
+        'loadAsansorlandDbPassword',
       );
-    return hesabyarEncryptedDbPassword;
+    return asansorlandEncryptedDbPassword;
   }
-  mySqlHesabyarDataBase(): TypeOrmModuleOptions {
+  mySqlAsansorlandDataBase(): TypeOrmModuleOptions {
     const nodeEnv =
-      process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
-    const mySqlpassword = this.loadHesabyarDbPassword();
+      process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
+    const mySqlpassword = this.loadAsansorlandDbPassword();
     const options: TypeOrmModuleOptions = {
       type: 'mysql',
       host: process.env.DB_HOST ?? '',

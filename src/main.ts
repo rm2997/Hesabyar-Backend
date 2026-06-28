@@ -5,16 +5,15 @@ import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
   const nodeEnv =
-    process.env.HESABYAR_NODE_ENV + '' == 'developement' ? true : false;
+    process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
   const nodeEnvStr = nodeEnv ? 'developement' : 'production';
   const appPort = process.env.APP_PORT ?? 3000;
-  Logger.log(`APP is listeninig to PORT ${appPort}`, 'Hesabyar');
-  Logger.log(`APP is on ${nodeEnvStr} mode.`, 'Hesabyar');
+  Logger.log(`APP is listeninig to PORT ${appPort}`, 'ASANSORLAND');
+  Logger.log(`APP is on ${nodeEnvStr} mode.`, 'ASANSORLAND');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const frontWhiteList = [
-    'https://www.hesab-yaar.ir',
-    'https://hesab-yaar.ir',
+    'https://www.asansorlands.ir',
     'http://localhost:3000',
   ];
 
@@ -24,13 +23,13 @@ async function bootstrap() {
       if (frontWhiteList.includes(origin)) {
         Logger.log(
           `Allowed CORS for: ${origin} - ${new Date()}`,
-          'HESABYAR-CORS',
+          'ASANSORLAND-CORS',
         );
         return callback(null, origin);
       } else {
         Logger.error(
           `Blocked CORS for: ${origin} - ${new Date()}`,
-          'HESABYAR-CORS',
+          'ASANSORLAND-CORS',
         );
         return callback(new Error('Not allowed by CORS'));
       }
@@ -39,7 +38,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
-  Logger.log(`APP Release Date: 14041017`, 'Hesabyar');
+  Logger.log(`APP Release Date: 14041017`, 'ASANSORLAND');
   await app.listen(appPort);
 }
 bootstrap();

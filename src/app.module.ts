@@ -34,7 +34,7 @@ import { ConfigurationService } from './config/configuration.service';
       imports: [ConfigurationModule],
       inject: [ConfigurationService],
       useFactory: (configService: ConfigurationService) =>
-        configService.mySqlHesabyarDataBase(),
+        configService.mySqlAsansorlandDataBase(),
     }),
     ProformaModule,
     InvoiceModule,
