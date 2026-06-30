@@ -6,39 +6,47 @@ import { Logger } from '@nestjs/common';
 async function bootstrap() {
   const nodeEnv =
     process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
+  const version = 'v1.0 - 14050509';
   const nodeEnvStr = nodeEnv ? 'developement' : 'production';
   const appPort = process.env.APP_PORT ?? 3000;
-  Logger.log(`APP is listeninig to PORT ${appPort}`, 'ASANSORLAND');
+  Logger.log(`APP is listeninig to PORT [${appPort}]`, 'ASANSORLAND');
   Logger.log(`APP is on ${nodeEnvStr} mode.`, 'ASANSORLAND');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const frontWhiteList = [
-    'https://www.asansorlands.ir',
-    'http://localhost:3000',
-  ];
-
+  // const frontWhiteList = [
+  //   'https://www.asansorlands.ir',
+  //   'http://www.asansorlands.ir',
+  //   'http://localhost:3000',
+  // ];
+const frontWhiteList = process.env.ASANSORLAND_WHITE_LIST?.split(',').map(x=>x.trim()).filter(Boolean)??[]
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (frontWhiteList.includes(origin)) {
-        Logger.log(
-          `Allowed CORS for: ${origin} - ${new Date()}`,
-          'ASANSORLAND-CORS',
-        );
+        if (nodeEnv)
+          Logger.log(
+            `Allowed CORS for: ${origin} - ${new Date()}`,
+            'ASANSORLAND-CORS',
+          );
         return callback(null, origin);
       } else {
-        Logger.error(
-          `Blocked CORS for: ${origin} - ${new Date()}`,
+        Logger.debug(
+          `Blocked CORS for: [${origin}] - [${new Date()}`,
           'ASANSORLAND-CORS',
         );
-        return callback(new Error('Not allowed by CORS'));
+        return callback(
+          new Error(
+            `Address [${origin}] not allowed by Asansorland CORS white list [${frontWhiteList}]`,
+          ),
+        );
       }
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
-  Logger.log(`APP Release Date: 14041017`, 'ASANSORLAND');
+  Logger.debug(`APP Release [${version}]`, 'ASANSORLAND');
+  Logger.debug(`Front white list [${frontWhiteList}]`, 'ASANSORLAND');
   await app.listen(appPort);
 }
 bootstrap();

@@ -129,12 +129,12 @@ export class AuthService {
     }
 
     const isExpired =
-      Date.now() - new Date(captcha.createdAt).getTime() > 3 * 60 * 1000;
+      Date.now() - new Date(captcha?.createdAt!).getTime() > 3 * 60 * 1000;
     if (isExpired) {
       throw new BadRequestException('کپچا منقضی شده است');
     }
 
-    if (captcha.text.toLowerCase() !== userAnswer.toLowerCase()) {
+    if (captcha?.text?.toLowerCase() !== userAnswer.toLowerCase()) {
       throw new BadRequestException('پاسخ کپچا اشتباه است');
     }
 

@@ -8,26 +8,26 @@ import {
 @Entity('captcha')
 export class Captcha {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
   @Column()
-  token: string;
+  token?: string;
 
   @Column()
-  text: string;
+  text?: string;
 
   @Column()
-  ip: string;
+  ip?: string;
 
-  @Column()
-  userName: string;
+  @Column({ nullable: true })
+  userName?: string;
 
   @Column({ default: 0 })
-  failedCount: number;
+  failedCount?: number;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @Column({ type: Boolean, default: false })
-  isUsed: boolean;
+  isUsed?: boolean;
 }

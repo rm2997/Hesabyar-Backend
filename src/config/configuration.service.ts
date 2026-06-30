@@ -46,7 +46,7 @@ export class ConfigurationService {
 
     if (nodeEnv)
       Logger.log(
-        'Encrypted Sepidar password is: ' + sepidarEncryptedDbPassword,
+        'Decrypted Sepidar password is: ' + sepidarEncryptedDbPassword,
       );
     return sepidarEncryptedDbPassword;
   }
@@ -117,7 +117,7 @@ export class ConfigurationService {
 
     if (nodeEnv)
       Logger.log(
-        'Encrypted Asansorland password is: ' + asansorlandEncryptedDbPassword,
+        'Decrypted Asansorland password is: ' + asansorlandEncryptedDbPassword,
         'loadAsansorlandDbPassword',
       );
     return asansorlandEncryptedDbPassword;
@@ -126,6 +126,7 @@ export class ConfigurationService {
     const nodeEnv =
       process.env.ASANSORLAND_NODE_ENV + '' == 'developement' ? true : false;
     const mySqlpassword = this.loadAsansorlandDbPassword();
+
     const options: TypeOrmModuleOptions = {
       type: 'mysql',
       host: process.env.DB_HOST ?? '',

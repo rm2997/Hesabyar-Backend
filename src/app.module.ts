@@ -26,7 +26,7 @@ import { ConfigurationService } from './config/configuration.service';
     // .env file loading
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ['.env.dev','.env'],
     }),
 
     // connect to local mysql db
@@ -49,18 +49,6 @@ import { ConfigurationService } from './config/configuration.service';
     SmsModule,
     OtpModule,
     MssqlModule,
-  ],
-
-  // تعریف گاردها به صورت گلوبال برای کل پروژه
-  // providers: [
-  //   {
-  //     provide: APP_GUARD,
-  //     useClass: JwtAuthGuard, // گارد JWT برای احراز هویت
-  //   },
-  //   {
-  //     provide: APP_GUARD,
-  //     useClass: RolesGuard, // گارد نقش‌ها برای کنترل دسترسی
-  //   },
-  // ],
+  ],  
 })
 export class AppModule {}

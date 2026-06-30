@@ -26,7 +26,6 @@ pnpm-debug.log*
 coverage
 
 # docker related
-Dockerfile
 docker-compose.yml 
 
 # docs
