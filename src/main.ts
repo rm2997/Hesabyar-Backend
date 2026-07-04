@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 
 async function bootstrap() {
   const nodeEnv =
@@ -35,8 +35,8 @@ const frontWhiteList = process.env.ASANSORLAND_WHITE_LIST?.split(',').map(x=>x.t
           'ASANSORLAND-CORS',
         );
         return callback(
-          new Error(
-            `Address [${origin}] not allowed by Asansorland CORS white list [${frontWhiteList}]`,
+          new UnauthorizedException(
+            `به دلایل امنیتی امکان پاسخگویی به آدرس شما وجود ندارد`,
           ),
         );
       }

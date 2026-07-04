@@ -40,7 +40,7 @@ export class OtpService {
     const rnd = Math.floor(10000 + Math.random() * 90000);
     const newOtp = this.otpRepository.create();
     newOtp.code = rnd.toString();
-    newOtp.mobileNumber = user.usermobilenumber;
+    newOtp.mobileNumber = user?.usermobilenumber!;
     newOtp.token = token;
     newOtp.toUser = user;
     newOtp.expiresAt = new Date(Date.now() + 3 * 60 * 1000); //3 Min later

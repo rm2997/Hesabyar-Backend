@@ -14,26 +14,26 @@ import {
 @Entity()
 export class Unit {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
   @Column()
-  unitName: string;
+  unitName?: string;
 
   @Column({ nullable: true })
-  unitInfo: string;
+  unitInfo?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updateAt: Date;
+  updateAt?: Date;
 
   @Column({ type: 'nvarchar', nullable: true })
-  sepidarId: string;
+  sepidarId?: string;
 
   @OneToMany(() => Good, (good) => good.goodUnit)
-  goods: Good[];
+  goods?: Good[];
 
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
-  createdBy: User;
+  createdBy?: User;
 }

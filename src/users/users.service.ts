@@ -120,7 +120,8 @@ export class UsersService {
     // });
 
     if (!user) throw new NotFoundException('Moblie number not found');
-    const token = await this.generateUserChangePassToken(user?.id);
+    const token = await this.generateUserChangePassToken(user?.id!);
+    if (process.env.ASANSORLAND_NODE_ENV==='developement') console.log(token);    
     await this.smsService.sendForgetPassSms(user, token);
     return { status: 'success', usermobilenumber: user?.usermobilenumber };
     //return { ...user, password: '', token: token };
@@ -201,7 +202,7 @@ export class UsersService {
       select: { password: true },
     });
     if (!user) throw new NotFoundException('کاربر مورد نظر پیدا نشد');
-    const result = await this.validatePassword(user.password, password);
+    const result = await this.validatePassword(user?.password!, password);
 
     return { result: result };
   }
@@ -215,7 +216,7 @@ export class UsersService {
       passwordData.token,
     );
     if (!userByToken) throw new NotFoundException();
-    const user = await this.findById(userByToken.id);
+    const user = await this.findById(userByToken?.id!);
     if (!user) throw new NotFoundException();
     let newPass = '';
     if (passwordData.new) {
@@ -238,7 +239,7 @@ export class UsersService {
     const checkPass =
       issuedUser.role == Roles.Admin
         ? true
-        : await this.validatePassword(user.password, passwordData.current);
+        : await this.validatePassword(user?.password!, passwordData.current);
 
     if (issuedUser.role !== Roles.Admin && !checkPass)
       throw new UnauthorizedException('کلمه عبور جاری صحیح نیست');

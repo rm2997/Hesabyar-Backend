@@ -182,7 +182,7 @@ export class InvoiceController {
       page,
       limit,
       search,
-      user.id,
+      user?.id!,
     );
   }
 
@@ -198,7 +198,7 @@ export class InvoiceController {
       page,
       limit,
       search,
-      user.id,
+      user?.id!,
     );
   }
 
@@ -216,7 +216,7 @@ export class InvoiceController {
       limit,
       search,
       page,
-      user.id,
+      user?.id!,
     );
   }
 

@@ -65,7 +65,7 @@ export class AuthService {
       console.log('otp :', otp);
 
       await this.smsService.sendValidationKeySms(
-        user.usermobilenumber,
+        user?.usermobilenumber!,
         otp.code,
       );
 

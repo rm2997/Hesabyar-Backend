@@ -28,7 +28,7 @@ export class UnitsController {
   @Post()
   async create(@Body() data: Partial<Unit>, @Req() req: Request) {
     const user = req.user as User;
-    return this.unitsService.createUnit(data, user.id);
+    return this.unitsService.createUnit(data, user?.id!);
   }
 
   @Get()

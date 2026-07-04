@@ -42,7 +42,7 @@ export class InvoiceService {
   ) {}
 
   async createInvoice(data: Partial<Invoice>, user: User): Promise<Invoice> {
-    const dbUser = await this.usersService.findById(user.id);
+    const dbUser = await this.usersService.findById(user?.id!);
     if (!dbUser)
       throw new BadRequestException('کاربر ثبت کننده  فاکتور معتبر نیست');
     if (dbUser?.sepidarId == null || dbUser?.sepidarId == '')

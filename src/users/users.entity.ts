@@ -17,74 +17,74 @@ import { Otp } from 'src/otp/otp.entity';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
   @Column({ unique: true })
-  username: string;
+  username?: string;
 
   @Column({ select: false })
-  password: string;
+  password?: string;
 
   @Column({ type: 'enum', enum: Roles })
-  role: Roles;
+  role?: Roles;
 
   @Column()
-  userfname: string;
+  userfname?: string;
 
   @Column()
-  userlname: string;
+  userlname?: string;
 
   @Column({ unique: true, length: 11 })
-  usermobilenumber: string;
+  usermobilenumber?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @Column()
-  createdBy: number;
+  createdBy?: number;
 
   @Column({ nullable: true })
-  userLocation: string;
+  userLocation?: string;
 
   @Column({ nullable: true })
-  lastLogin: Date;
+  lastLogin?: Date;
 
   @Column({ type: Boolean, nullable: false, default: 1 })
-  twoFactorAuthntication: boolean;
+  twoFactorAuthntication?: boolean;
 
   @Column({ type: Boolean, default: true })
-  mustChangePassword: boolean;
+  mustChangePassword?: boolean;
 
   @Column({ type: Boolean, default: true })
-  isUserActive: boolean;
+  isUserActive?: boolean;
 
   @Column({ nullable: true, type: 'char', length: 5 })
-  capcha: string;
+  capcha?: string;
 
   @OneToMany(() => Proforma, (proforma) => proforma.acceptedBy)
-  userAcceptedProforma: Proforma[];
+  userAcceptedProforma?: Proforma[];
 
   @OneToMany(() => Proforma, (proforma) => proforma.convertedBy)
-  userConvertedProforma: Proforma[];
+  userConvertedProforma?: Proforma[];
 
   @OneToMany(() => Invoice, (invoice) => invoice.acceptedBy)
-  userAcceptedInvoice: Invoice[];
+  userAcceptedInvoice?: Invoice[];
 
   @OneToMany(() => Notification, (notification) => notification.fromUser)
-  usernotifications: Notification[];
+  usernotifications?: Notification[];
 
   @OneToMany(() => Notification, (notification) => notification.toUser)
-  assignednotifications: Notification[];
+  assignednotifications?: Notification[];
 
   @OneToMany(() => Otp, (otp) => otp.toUser)
-  userSentOtpCode: Otp[];
+  userSentOtpCode?: Otp[];
 
   @OneToMany(() => Customer, (customer) => customer.id)
-  customers: Customer[];
+  customers?: Customer[];
 
   @OneToMany(() => Good, (good) => good.id)
-  goods: Good[];
+  goods?: Good[];
 
   @Column()
-  sepidarId: string;
+  sepidarId?: string;
 }

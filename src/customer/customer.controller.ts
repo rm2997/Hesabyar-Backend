@@ -28,7 +28,7 @@ export class CustomerController {
   @Post()
   async create(@Body() data: any, @Req() req: Request) {
     const user = req.user as User;
-    return this.customerService.createCustomer(data, user.id);
+    return this.customerService.createCustomer(data, user?.id!);
   }
 
   @Get()

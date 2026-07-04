@@ -18,44 +18,44 @@ import { CustomerPhone } from './customer-phone.entity';
 @Entity()
 export class Customer {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
   @Column({ type: 'enum', enum: CustomerTypes, default: CustomerTypes.real })
-  customerType: CustomerTypes;
+  customerType?: CustomerTypes;
 
   @Column({
     type: 'enum',
     enum: CustomerParties,
     default: CustomerParties.partyPhone,
   })
-  customerBase: CustomerParties;
+  customerBase?: CustomerParties;
 
   @Column({ type: 'enum', enum: Genders, default: Genders.mr })
-  customerGender: Genders;
+  customerGender?: Genders;
 
-  @Column({ nullable: true, type: 'nvarchar', length: 30 })
-  customerFName: string;
+  @Column({ nullable: true, type: 'nvarchar', length: 100 })
+  customerFName?: string;
 
-  @Column({ nullable: true, type: 'nvarchar', length: 70 })
-  customerLName: string;
+  @Column({ nullable: true, type: 'nvarchar', length: 200 })
+  customerLName?: string;
 
   @Column({ nullable: true })
-  customerTitle: string;
+  customerTitle?: string;
 
   @Column({ type: 'boolean', default: false })
-  isPrimary: Boolean;
+  isPrimary?: Boolean;
 
   @Column({ type: 'boolean', default: false })
-  isProvider: Boolean;
+  isProvider?: Boolean;
 
   @Column({ type: 'boolean', default: false })
-  isCustomer: Boolean;
+  isCustomer?: Boolean;
 
   @Column({ type: 'boolean', default: false })
-  isBroker: Boolean;
+  isBroker?: Boolean;
 
   @Column({ type: 'boolean', default: false })
-  isBuyerAgent: Boolean;
+  isBuyerAgent?: Boolean;
 
   // @Column({
   //   type: 'enum',
@@ -81,37 +81,37 @@ export class Customer {
   // customerMobile: string;
 
   @Column({ nullable: true, type: 'nvarchar', length: 15 })
-  customerNationalCode: string;
+  customerNationalCode?: string;
 
   @Column({ nullable: true, type: 'nvarchar' })
-  customerEconomicCode: string;
+  customerEconomicCode?: string;
 
   // @Column({ nullable: true, length: 10 })
   // customerPostalCode: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
-  createdBy: User;
+  createdBy?: User;
 
   @OneToMany(() => CustomerAddress, (location) => location.customer, {
     eager: true,
     cascade: true,
     onDelete: 'CASCADE',
   })
-  locations: CustomerAddress[];
+  locations?: CustomerAddress[];
 
   @OneToMany(() => CustomerPhone, (phone) => phone.customer, {
     eager: true,
     cascade: true,
     onDelete: 'CASCADE',
   })
-  phoneNumbers: CustomerPhone[];
+  phoneNumbers?: CustomerPhone[];
 
   @Column()
-  sepidarId: number;
+  sepidarId?: number;
 
   @Column()
-  sepidarDlId: string;
+  sepidarDlId?: string;
 }

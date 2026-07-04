@@ -27,7 +27,7 @@ export class SalesController {
   @Post()
   async create(@Body() data: Partial<Sale>, @Req() req: Request) {
     const user = req.user as User;
-    return this.salesService.createSale(data, user.id);
+    return this.salesService.createSale(data, user?.id!);
   }
 
   @Get()

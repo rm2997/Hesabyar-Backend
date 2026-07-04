@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, IsNull, QueryRunner } from 'typeorm';
+import { DataSource,  QueryRunner } from 'typeorm';
 import { SepidarQuotationDTO } from './sepidarQuotation-dto';
 import { SepidarQuotationItemDTO } from './sepidarQuotaionItem-dto';
 import { SepidarInvoiceDTO } from './sepidarInvoice-dto';
@@ -17,6 +17,7 @@ import { Depot } from 'src/depot/depot.entity';
 import { DepotGoods } from 'src/depot/depot-goods.entity';
 import { SepidarInventoryDeliveryItemDto } from './sepidarInventoryDeliveryItem-dto';
 import { PersianAlphabet } from 'src/common/decorators/persianAlphabet';
+import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class MssqlService {
@@ -50,7 +51,7 @@ export class MssqlService {
     }
   }
 
-  async syncGoods() {
+  async syncGoods(user:Partial<User>) {
     const data = await this.mssqlDataSource.query(
       'SELECT ItemID as sepidarId, Title as goodName,UnitRef ,0 as goodPrice,INV.item.Version as goodCount,Title_En as goodInfo,Code as sepidarCode  from INV.Item',
     );
@@ -62,13 +63,14 @@ export class MssqlService {
       await mysqlQueryRunner.query('ALTER TABLE good AUTO_INCREMENT = 1');
       for (const g of data) {
         await mysqlQueryRunner.query(
-          'INSERT INTO good (goodName,goodPrice,goodCount,goodInfo,createdAt,sepidarId,sepidarCode,goodUnitId) VALUES(?,?,?,?,?,?,?,?)',
+          'INSERT INTO good (goodName,goodPrice,goodCount,goodInfo,createdAt,createdById,sepidarId,sepidarCode,goodUnitId) VALUES(?,?,?,?,?,?,?,?,?)',
           [
             g.goodName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             g.goodPrice,
             g.goodCount,
             g.goodInfo.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             new Date(),
+            user.id,
             g.sepidarId,
             g.sepidarCode,
             g.UnitRef,
@@ -88,7 +90,7 @@ export class MssqlService {
     }
   }
 
-  async syncUnits() {
+  async syncUnits(user:Partial<User>) {
     const data = await this.mssqlDataSource.query(
       'SELECT unitId as sepidarID,Title as unitName ,Title_En as unitInfo from INV.Unit',
     );
@@ -101,11 +103,12 @@ export class MssqlService {
       await mysqlQueryRunner.query('ALTER TABLE unit AUTO_INCREMENT = 1');
       for (const g of data) {
         await mysqlQueryRunner.query(
-          'INSERT INTO unit (unitName,unitInfo,createdAt,sepidarId) VALUES(?,?,?,?)',
+          'INSERT INTO unit (unitName,unitInfo,createdAt,createdById,sepidarId) VALUES(?,?,?,?,?)',
           [
             g.unitName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             g.unitInfo.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             new Date(),
+            user.id,
             g.sepidarID,
           ],
         );
@@ -120,7 +123,7 @@ export class MssqlService {
     }
   }
 
-  async syncCustomers() {
+  async syncCustomers(user:Partial<User>) {
     const data = await this.mssqlDataSource.query(
       `SELECT partyid, Name as customerFName ,LastName as customerLName, EconomicCode as customerEconomicCode,
        IsCustomer,IsBroker,IsPurchasingAgent as isBuyerAgent ,dl.DLId as sepidarDlId
@@ -137,7 +140,7 @@ export class MssqlService {
       await mysqlQueryRunner.query('ALTER TABLE customer AUTO_INCREMENT = 1');
       for (const g of data) {
         await mysqlQueryRunner.query(
-          'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt,sepidarId,sepidarDlId) VALUES(?,?,?,?,?,?,?,?,?)',
+          'INSERT INTO customer (customerFName,customerLName,customerEconomicCode,IsCustomer,IsBroker,isBuyerAgent,createdAt,createdById,sepidarId,sepidarDlId) VALUES(?,?,?,?,?,?,?,?,?,?)',
           [
             g.customerFName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
             g.customerLName.replace(/ي/g, 'ی').replace(/ك/g, 'ک'),
@@ -146,6 +149,7 @@ export class MssqlService {
             g.IsBroker,
             g.isBuyerAgent,
             new Date(),
+            user.id,
             g.partyid,
             g.sepidarDlId,
           ],
@@ -163,7 +167,7 @@ export class MssqlService {
     }
   }
 
-  async syncCustomerPhones() {
+  async syncCustomerPhones(user:Partial<User>) {
     const data = await this.mssqlDataSource.query(
       'SELECT PartyPhoneId,PartyRef,IsMain,Type,Phone,Version FROM GNR.PartyPhone',
     );
@@ -177,12 +181,12 @@ export class MssqlService {
       await mysqlQueryRunner.query('DELETE FROM customer_phone;');
       await mysqlQueryRunner.query(
         'ALTER TABLE customer_phone AUTO_INCREMENT = 1',
-      );
+      );//'current_timestamp(6).000000'
       for (const g of data) {
         await mysqlQueryRunner.query(
           `INSERT INTO customer_phone (id, phoneType, phoneNumber, isPrimary, createdAt, customerId, createdById) 
-          VALUES (NULL, ?, ?, ?, 'current_timestamp(6).000000', ?, ?)`,
-          [g.Type, g.Phone, g.IsMain, g.PartyRef, 1],
+          VALUES (NULL, ?, ?, ?, ?, ?, ?)`,
+          [g.Type, g.Phone, g.IsMain,new Date(), g.PartyRef, user.id],
         );
       }
       await mysqlQueryRunner.query(
@@ -191,9 +195,9 @@ export class MssqlService {
       await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
       await mysqlQueryRunner.commitTransaction();
       return { result: 'ok' };
-    } catch (error) {
+    } catch (error:any) {
       await mysqlQueryRunner.rollbackTransaction();
-      throw new BadRequestException(error.message);
+      throw new BadRequestException(error?.message);
     } finally {
       await mysqlQueryRunner.release();
     }
@@ -547,8 +551,8 @@ export class MssqlService {
         WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
       );
       return data[0];
-    } catch (error) {
-      throw new BadRequestException(error.message);
+    } catch (error:any) {
+      throw new BadRequestException(error?.message);
     } finally {
     }
   }
@@ -1161,7 +1165,7 @@ export class MssqlService {
         newsSepidarInvoice.InvoiceId,
       )
     ).Number;
-    newsSepidarInvoice.CustomerPartyRef = savedInvoice.customer.sepidarId;
+    newsSepidarInvoice.CustomerPartyRef = savedInvoice.customer?.sepidarId!;
     newsSepidarInvoice.Date = date;
     newsSepidarInvoice.CustomerRealName =
       savedInvoice.customer.customerLName +
@@ -1289,7 +1293,7 @@ export class MssqlService {
         newsSepidarQuotation.QuotationId,
       )
     ).Number;
-    newsSepidarQuotation.CustomerPartyRef = savedQuotation.customer.sepidarId;
+    newsSepidarQuotation.CustomerPartyRef = savedQuotation?.customer?.sepidarId!;
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     newsSepidarQuotation.Date = date;

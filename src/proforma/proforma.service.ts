@@ -36,7 +36,7 @@ export class ProformaService {
   ) {}
 
   async createProforma(data: Partial<Proforma>, user: User): Promise<Proforma> {
-    const customerPrimaryMobile = data.customer?.phoneNumbers.find(
+    const customerPrimaryMobile = data.customer?.phoneNumbers?.find(
       (phone) =>
         phone.isPrimary == true && phone.phoneType == PhoneTypes.mobile,
     );
@@ -44,7 +44,7 @@ export class ProformaService {
       throw new BadRequestException(
         'مشتری انتخاب شده شماره موبایل پیش فرض ندارد',
       );
-    const dbUser = await this.usersService.findById(user.id);
+    const dbUser = await this.usersService.findById(user?.id!);
     if (!dbUser)
       throw new BadRequestException('کاربر ثبت کننده پیش فاکتور معتبر نیست');
     if (dbUser?.sepidarId == null || dbUser?.sepidarId == '')

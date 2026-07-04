@@ -34,7 +34,7 @@ export class GoodsController {
     const user = req.user as User;
     console.log(data);
 
-    return this.goodsService.createGood(data, user.id);
+    return this.goodsService.createGood(data, user?.id!);
   }
 
   @Get()
