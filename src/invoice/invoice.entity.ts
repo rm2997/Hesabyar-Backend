@@ -20,7 +20,7 @@ export class Invoice {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })
+  @Column({ nullable: true })
   invoiceNumber: number;
 
   @Column({ nullable: false })

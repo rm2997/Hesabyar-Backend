@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -106,7 +107,8 @@ export class GoodsService {
         }
       }
       return { items, total };
-    } catch (error) {
+    } catch (error: any) {
+      Logger.error(error.message);
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(error.message);
     } finally {

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource,  QueryRunner } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
 import { SepidarQuotationDTO } from './sepidarQuotation-dto';
 import { SepidarQuotationItemDTO } from './sepidarQuotaionItem-dto';
 import { SepidarInvoiceDTO } from './sepidarInvoice-dto';
@@ -51,7 +51,7 @@ export class MssqlService {
     }
   }
 
-  async syncGoods(user:Partial<User>) {
+  async syncGoods(user: Partial<User>) {
     const data = await this.mssqlDataSource.query(
       'SELECT ItemID as sepidarId, Title as goodName,UnitRef ,0 as goodPrice,INV.item.Version as goodCount,Title_En as goodInfo,Code as sepidarCode  from INV.Item',
     );
@@ -90,7 +90,7 @@ export class MssqlService {
     }
   }
 
-  async syncUnits(user:Partial<User>) {
+  async syncUnits(user: Partial<User>) {
     const data = await this.mssqlDataSource.query(
       'SELECT unitId as sepidarID,Title as unitName ,Title_En as unitInfo from INV.Unit',
     );
@@ -123,7 +123,7 @@ export class MssqlService {
     }
   }
 
-  async syncCustomers(user:Partial<User>) {
+  async syncCustomers(user: Partial<User>) {
     const data = await this.mssqlDataSource.query(
       `SELECT partyid, Name as customerFName ,LastName as customerLName, EconomicCode as customerEconomicCode,
        IsCustomer,IsBroker,IsPurchasingAgent as isBuyerAgent ,dl.DLId as sepidarDlId
@@ -167,7 +167,7 @@ export class MssqlService {
     }
   }
 
-  async syncCustomerPhones(user:Partial<User>) {
+  async syncCustomerPhones(user: Partial<User>) {
     const data = await this.mssqlDataSource.query(
       'SELECT PartyPhoneId,PartyRef,IsMain,Type,Phone,Version FROM GNR.PartyPhone',
     );
@@ -181,12 +181,12 @@ export class MssqlService {
       await mysqlQueryRunner.query('DELETE FROM customer_phone;');
       await mysqlQueryRunner.query(
         'ALTER TABLE customer_phone AUTO_INCREMENT = 1',
-      );//'current_timestamp(6).000000'
+      ); //'current_timestamp(6).000000'
       for (const g of data) {
         await mysqlQueryRunner.query(
           `INSERT INTO customer_phone (id, phoneType, phoneNumber, isPrimary, createdAt, customerId, createdById) 
           VALUES (NULL, ?, ?, ?, ?, ?, ?)`,
-          [g.Type, g.Phone, g.IsMain,new Date(), g.PartyRef, user.id],
+          [g.Type, g.Phone, g.IsMain, new Date(), g.PartyRef, user.id],
         );
       }
       await mysqlQueryRunner.query(
@@ -195,7 +195,7 @@ export class MssqlService {
       await mysqlQueryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
       await mysqlQueryRunner.commitTransaction();
       return { result: 'ok' };
-    } catch (error:any) {
+    } catch (error: any) {
       await mysqlQueryRunner.rollbackTransaction();
       throw new BadRequestException(error?.message);
     } finally {
@@ -333,7 +333,6 @@ export class MssqlService {
         from GNR.DimDate INNER JOIN FMK.FiscalYear on Jyear=Title  
         WHERE  miladi= LEFT(CAST(GETDATE() as date),10)`,
       );
-      console.log('Fiscal Year is: ' + data[0].FiscalYear);
       return data[0];
     } else {
       const data = await this.mssqlDataSource.query(
@@ -551,7 +550,7 @@ export class MssqlService {
         WHERE LEFT(CONVERT(nvarchar(19),Date,120),10)=LEFT(CONVERT(nvarchar(19),GETDATE(),120),10)`,
       );
       return data[0];
-    } catch (error:any) {
+    } catch (error: any) {
       throw new BadRequestException(error?.message);
     } finally {
     }
@@ -594,7 +593,7 @@ export class MssqlService {
     const { FiscalYearId } = await this.getFiscalYearAndId();
     if (!FiscalYearId) throw new BadRequestException('سال مالی معتبر نیست');
     const sepidarQuotation = await this.initiatNewSepidarQuotation(
-      proforma,
+      proforma!,
       FiscalYearId,
     );
     console.log(sepidarQuotation);
@@ -609,8 +608,8 @@ export class MssqlService {
         proformaItem?.good?.sepidarId,
         proformaItem?.price,
         sepidarQuotation.QuotationId,
-        proforma.stockRef,
-        proforma.description,
+        proforma?.stockRef!,
+        proforma?.description!,
       );
       sepidarQuotationItems.push(sepidarNewItem);
       i++;
@@ -1137,9 +1136,8 @@ export class MssqlService {
       retVal.Version = 1;
       retVal.Description_En = undefined;
       return retVal;
-    } catch (error) {
-      console.log(error);
-
+    } catch (error: any) {
+      Logger.log(error.message);
       throw new BadRequestException(error.message);
     }
   }
@@ -1192,12 +1190,12 @@ export class MssqlService {
     newsSepidarInvoice.Tax = 0;
     newsSepidarInvoice.Duty = 0;
     newsSepidarInvoice.Rate = 1;
-    newsSepidarInvoice.Version = 1;
+    newsSepidarInvoice.Version = 2;
     newsSepidarInvoice.Creator = Number(savedInvoice.createdBy.sepidarId);
 
-    newsSepidarInvoice.CreationDate = date;
+    newsSepidarInvoice.CreationDate = new Date();
     newsSepidarInvoice.LastModifier = Number(savedInvoice.createdBy.sepidarId);
-    newsSepidarInvoice.LastModificationDate = date;
+    newsSepidarInvoice.LastModificationDate = new Date();
     newsSepidarInvoice.QuotationRef = savedInvoice?.proforma
       ? savedInvoice.proforma.sepidarId + ''
       : undefined;
@@ -1276,7 +1274,7 @@ export class MssqlService {
     const newsSepidarQuotation = new SepidarQuotationDTO();
     newsSepidarQuotation.FiscalYearRef = fiscalYearId;
     // newsSepidarQuotation.VoucherRef = undefined;
-    newsSepidarQuotation.PriceInBaseCurrency = savedQuotation.totalAmount;
+    newsSepidarQuotation.PriceInBaseCurrency = savedQuotation?.totalAmount!;
     // newsSepidarQuotation.BaseOnInventoryDelivery = false;
     // newsSepidarQuotation.OrderRef = undefined;
     // newsSepidarQuotation.ShouldControlCustomerCredit = true;
@@ -1293,20 +1291,23 @@ export class MssqlService {
         newsSepidarQuotation.QuotationId,
       )
     ).Number;
-    newsSepidarQuotation.CustomerPartyRef = savedQuotation?.customer?.sepidarId!;
+    newsSepidarQuotation.CustomerPartyRef =
+      savedQuotation?.customer?.sepidarId!;
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     newsSepidarQuotation.Date = date;
-    newsSepidarQuotation.ExpirationDate = savedQuotation.expirationDate;
+    const expirationDate = new Date(savedQuotation?.expirationDate!);
+    expirationDate.setHours(0, 0, 0, 0);
+    newsSepidarQuotation.ExpirationDate = expirationDate;
     newsSepidarQuotation.CustomerRealName =
-      savedQuotation.customer.customerLName +
+      savedQuotation?.customer?.customerLName +
       ' ' +
-      savedQuotation.customer.customerFName;
+      savedQuotation?.customer?.customerFName;
     newsSepidarQuotation.SaleTypeRef = 1;
     newsSepidarQuotation.CustomerRealName_En =
-      savedQuotation.customer.customerLName +
+      savedQuotation?.customer?.customerLName +
       ' ' +
-      savedQuotation.customer.customerFName;
+      savedQuotation?.customer?.customerFName;
     newsSepidarQuotation.PartyAddressRef = undefined;
     newsSepidarQuotation.Closed = false;
     newsSepidarQuotation.CurrencyRef = 1;
@@ -1315,21 +1316,23 @@ export class MssqlService {
     newsSepidarQuotation.AdditionInBaseCurrency = 0;
     newsSepidarQuotation.TaxInBaseCurrency = 0;
     newsSepidarQuotation.DutyInBaseCurrency = 0;
-    newsSepidarQuotation.NetPriceInBaseCurrency = savedQuotation.totalAmount;
-    newsSepidarQuotation.Price = savedQuotation.totalAmount;
+    newsSepidarQuotation.NetPriceInBaseCurrency = savedQuotation?.totalAmount!;
+    newsSepidarQuotation.Price = savedQuotation?.totalAmount!;
     newsSepidarQuotation.Discount = 0;
     newsSepidarQuotation.DeliveryLocationRef = 1;
     newsSepidarQuotation.Addition = 0;
     newsSepidarQuotation.Tax = 0;
     newsSepidarQuotation.Duty = 0;
     newsSepidarQuotation.Rate = 1;
-    newsSepidarQuotation.Version = 1;
-    newsSepidarQuotation.Creator = Number(savedQuotation.createdBy.sepidarId);
-    newsSepidarQuotation.CreationDate = date;
-    newsSepidarQuotation.LastModifier = Number(
-      savedQuotation.createdBy.sepidarId,
+    newsSepidarQuotation.Version = 2;
+    newsSepidarQuotation.Creator = Number(
+      savedQuotation?.createdBy?.sepidarId!,
     );
-    newsSepidarQuotation.LastModificationDate = date;
+    newsSepidarQuotation.CreationDate = new Date();
+    newsSepidarQuotation.LastModifier = Number(
+      savedQuotation?.createdBy?.sepidarId,
+    );
+    newsSepidarQuotation.LastModificationDate = new Date();
     newsSepidarQuotation.Guid = undefined;
     newsSepidarQuotation.AdditionFactor_VatEffective = 0;
     newsSepidarQuotation.AdditionFactorInBaseCurrency_VatEffective = 0;

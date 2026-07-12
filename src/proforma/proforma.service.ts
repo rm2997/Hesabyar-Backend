@@ -67,7 +67,9 @@ export class ProformaService {
 
       const savedProforma = await queryRunner.manager.save(proforma);
 
-      const shareableLink = await this.generateShareableLink(savedProforma.id);
+      const shareableLink = await this.generateShareableLink(
+        savedProforma?.id!,
+      );
       savedProforma.customerLink = shareableLink;
 
       const proformaGoods = data?.proformaGoods?.map((item) =>
@@ -96,7 +98,7 @@ export class ProformaService {
       await queryRunner.commitTransaction();
 
       return savedProforma;
-    } catch (error) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(error.message);
     } finally {
@@ -352,29 +354,29 @@ export class ProformaService {
         g.createdBy = updatedBy;
       }
     });
-    await this.proformaGoodsRepository.remove(proforma.proformaGoods);
+    await this.proformaGoodsRepository.remove(proforma?.proformaGoods!);
     proforma.proformaGoods = [...data?.proformaGoods!];
     return await this.proformaRepository.save({ ...proforma, ...data });
   }
 
   async updateProformaByPublicCustomer(proforma: Proforma) {
     const saved = await this.updateProforma(
-      proforma?.id,
+      proforma?.id!,
       proforma,
-      proforma.createdBy,
+      proforma?.createdBy!,
     );
 
     const admins: User[] = await this.usersService.getAdminUsers();
     if (!admins || admins?.length == 0) return saved;
     admins.forEach(async (user) => {
       const notif = new Notification();
-      notif.fromUser = proforma.createdBy;
+      notif.fromUser = proforma?.createdBy!;
       notif.toUser = user;
       notif.message = ` همکار گرامی لطفا جهت تایید پیش فاکتور شماره ${proforma.id} اقدام فرمایید`;
       notif.title = ` تایید پیش فاکتور شماره ${proforma.id}`;
       await this.notificationService.createNotification(
         notif,
-        proforma.createdBy,
+        proforma?.createdBy!,
       );
     });
     return saved;
@@ -393,14 +395,14 @@ export class ProformaService {
   async setProformaIsSent(id: number, phone: string = '') {
     const proforma = await this.proformaRepository.findOne({ where: { id } });
     if (!proforma) throw new NotFoundException('پیش‌ فاکتور وجود ندارد');
-    const token = await this.generateShareableLink(proforma.id);
+    const token = await this.generateShareableLink(proforma?.id!);
     let mobileNumber = phone;
     if (phone?.length > 0) {
       const phoneNumber = await this.customerPhoneRepository.findOne({
         where: {
           phoneType: PhoneTypes.mobile,
           isPrimary: true,
-          customer: { id: proforma.customer.id },
+          customer: { id: proforma?.customer?.id },
         },
       });
       if (phoneNumber) mobileNumber = phoneNumber?.phoneNumber;
@@ -409,7 +411,7 @@ export class ProformaService {
     if (phone?.length == 0)
       throw new BadRequestException('شماره موبایل مشتری در سیستم ثبت نشده است');
     const smsResult = await this.smsService.sendUpdateProformaSms(
-      proforma.customer,
+      proforma?.customer!,
       phone,
       token,
     );
